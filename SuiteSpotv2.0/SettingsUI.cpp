@@ -170,13 +170,6 @@ void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Enable/disable all SuiteSpot auto-loading and queuing features");
     }
-
-    ImGui::SameLine();
-    ImGui::Spacing();
-    ImGui::SameLine();
-    if (ImGui::Button("Open Standalone Window")) {
-        plugin_->cvarManager->executeCommand("suitespot_toggle_window");
-    }
     ImGui::EndGroup();
 
     ImGui::Spacing();

@@ -18,16 +18,12 @@ class PostMatchOverlayWindow;
 class MapManager;
 class SettingsSync;
 class AutoLoadFeature;
-class PrejumpPackManager;
+class TrainingPackManager;
 class SettingsUI;
-class PrejumpUI;
+class TrainingPackUI;
 class LoadoutUI;
 class OverlayRenderer;
 // ThemeManager is now included directly
-
-// External helpers
-void SaveTrainingMaps(std::shared_ptr<CVarManagerWrapper> cvarManager, const std::vector<TrainingEntry>& RLTraining);
-void LoadTrainingMaps(std::shared_ptr<CVarManagerWrapper> cvarManager, std::vector<TrainingEntry>& RLTraining);
 
 // Version macro carried over from the master template
 constexpr auto plugin_version =
@@ -79,34 +75,21 @@ class SuiteSpot final : public BakkesMod::Plugin::BakkesModPlugin,
                         public SettingsWindowBase
 {
     friend class SettingsUI;
-    friend class PrejumpUI;
+    friend class TrainingPackUI;
     friend class LoadoutUI;
     friend class OverlayRenderer;
 public:
     // Persistence folders and files under %APPDATA%\bakkesmod\bakkesmod\data
     void EnsureDataDirectories() const;
-    // ... (rest of persistence methods)
     std::filesystem::path GetDataRoot() const;
     std::filesystem::path GetSuiteTrainingDir() const;
-    std::filesystem::path GetTrainingFilePath() const;   // SuiteTraining\SuiteSpotTrainingMaps.txt
 
-    // Persistence API
-    void LoadTrainingMaps();
-    void SaveTrainingMaps() const;
+    // Workshop persistence API
     void LoadWorkshopMaps();
     void SaveWorkshopMaps() const; // no-op (legacy)
     void DiscoverWorkshopInDir(const std::filesystem::path& dir);
     std::filesystem::path GetWorkshopLoaderConfigPath() const;
     std::filesystem::path ResolveConfiguredWorkshopRoot() const;
-
-
-    // Shuffle bag persistence
-    std::filesystem::path GetShuffleBagPath() const;
-    void LoadShuffleBag();
-    void SaveShuffleBag() const;
-
-    // File/dir utilities
-    void EnsureReadmeFiles() const;
 
     // lifecycle
     void onLoad() override;
@@ -120,11 +103,11 @@ public:
     void LoadHooks();
     void GameEndedEvent(std::string name);
 
-    // Prejump scraper integration
-    std::filesystem::path GetPrejumpPacksPath() const;
-    void ScrapeAndLoadPrejumpPacks();
-    void LoadPrejumpPacksFromFile(const std::filesystem::path& filePath);
-    bool IsPrejumpCacheStale() const;
+    // Training Pack scraper integration
+    std::filesystem::path GetTrainingPacksPath() const;
+    void ScrapeAndLoadTrainingPacks();
+    void LoadTrainingPacksFromFile(const std::filesystem::path& filePath);
+    bool IsTrainingPackCacheStale() const;
     std::string FormatLastUpdatedTime() const;
     
     // Post-match overlay rendering
@@ -162,12 +145,10 @@ public:
 private:
     // Windows
     std::shared_ptr<PostMatchOverlayWindow> postMatchOverlayWindow;
-    std::vector<TrainingEntry> trainingShuffleBag;
-    std::set<int> selectedTrainingIndices;
 
     std::string lastGameMode = "";
 
-    // Shuffle helpers
+    // Shuffle helpers (delegates to TrainingPackManager)
     int GetRandomTrainingIndex() const;
 
     ImGuiContext* imguiCtx = nullptr;
@@ -178,9 +159,9 @@ private:
     MapManager* mapManager = nullptr;
     SettingsSync* settingsSync = nullptr;
     AutoLoadFeature* autoLoadFeature = nullptr;
-    PrejumpPackManager* prejumpMgr = nullptr;
+    TrainingPackManager* trainingPackMgr = nullptr;
     SettingsUI* settingsUI = nullptr;
-    PrejumpUI* prejumpUI = nullptr;
+    TrainingPackUI* trainingPackUI = nullptr;
     LoadoutUI* loadoutUI = nullptr;
     OverlayRenderer* overlayRenderer = nullptr;
     ThemeManager* themeManager = nullptr;

@@ -2,10 +2,11 @@
 
 #include "SettingsUI.h"
 #include "LoadoutUI.h"
-#include "PrejumpUI.h"
+#include "TrainingPackUI.h"
 #include "SuiteSpot.h"
 #include "OverlayRenderer.h"
 #include "ThemeManager.h"
+#include "TrainingPackManager.h"
 
 #include <algorithm>
 #include <fstream>
@@ -59,28 +60,16 @@ void SettingsUI::RenderMainSettingsWindow() {
             }
             mapDelayStr = std::to_string(delayTrainingSecValue) + "s";
 
-            if (trainingShuffleEnabledValue) {
-                int shuffleCount = 0;
-                if (!plugin_->trainingShuffleBag.empty()) {
-                    shuffleCount = static_cast<int>(plugin_->trainingShuffleBag.size());
-                } else if (!plugin_->selectedTrainingIndices.empty()) {
-                    shuffleCount = static_cast<int>(plugin_->selectedTrainingIndices.size());
-                }
+            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr) {
+                int shuffleCount = plugin_->trainingPackMgr->GetShuffleBagCount();
                 // Only show shuffle indicator when we have a non-empty selection/bag.
                 if (shuffleCount > 0) {
                     if (shuffleCount == 1) {
                         // Single pack in shuffle – show its name/shots.
-                        const TrainingEntry* entry = nullptr;
-                        if (!plugin_->trainingShuffleBag.empty()) {
-                            entry = &plugin_->trainingShuffleBag.front();
-                        } else if (!plugin_->selectedTrainingIndices.empty()) {
-                            int idx = *plugin_->selectedTrainingIndices.begin();
-                            if (idx >= 0 && idx < static_cast<int>(RLTraining.size())) {
-                                entry = &RLTraining[idx];
-                            }
-                        }
-                        if (entry) {
-                            currentMap = entry->name + " (Shots:" + std::to_string(entry->shotCount) + ")";
+                        auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
+                        if (!shuffleBag.empty()) {
+                            const auto& entry = shuffleBag.front();
+                            currentMap = entry.name + " (Shots:" + std::to_string(entry.shotCount) + ")";
                         }
                     } else {
                         currentMap = "Shuffle (" + std::to_string(shuffleCount) + " packs)";
@@ -160,13 +149,13 @@ void SettingsUI::RenderMainSettingsWindow() {
             ImGui::EndTabItem();
         } // End Overlay Layout tab
 
-        // ===== PREJUMP PACKS TAB =====
-        if (ImGui::BeginTabItem("Prejump Packs")) {
-            if (plugin_->prejumpUI) {
-            plugin_->prejumpUI->RenderPrejumpTab();
+        // ===== TRAINING PACKS TAB =====
+        if (ImGui::BeginTabItem("Training Packs")) {
+            if (plugin_->trainingPackUI) {
+            plugin_->trainingPackUI->RenderTrainingPackTab();
         }
             ImGui::EndTabItem();
-        } // End Prejump Packs tab
+        } // End Training Packs tab
 
         // Close the tab bar
         ImGui::EndTabBar();
@@ -331,48 +320,36 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
 
         ImGui::SameLine();
         if (ImGui::Button("Refresh Training##maps")) {
-            std::string previousCode;
-            if (currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
-                previousCode = RLTraining[currentTrainingIndexValue].code;
-            }
-            plugin_->LoadTrainingMaps();
-            if (!previousCode.empty()) {
-                auto it = std::find_if(RLTraining.begin(), RLTraining.end(),
-                    [&](const TrainingEntry& entry){ return entry.code == previousCode; });
-                if (it != RLTraining.end()) {
-                    currentTrainingIndexValue = static_cast<int>(std::distance(RLTraining.begin(), it));
-                    SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue);
-                }
+            // Training packs are now managed through TrainingPackManager
+            if (plugin_->trainingPackMgr) {
+                plugin_->trainingPackMgr->LoadPacksFromFile(plugin_->GetTrainingPacksPath());
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Refresh the training pack list from storage");
+            ImGui::SetTooltip("Reload training packs from the JSON file");
         }
 
         ImGui::SameLine();
         if (ImGui::Button("Load Now##training")) {
-            if (!RLTraining.empty()) {
-                int indexToLoad = currentTrainingIndexValue;
+            std::string packCode;
 
-                if (trainingShuffleEnabledValue) {
-                    if (plugin_->trainingShuffleBag.empty()) {
-                        plugin_->trainingShuffleBag.clear();
-                        if (!plugin_->selectedTrainingIndices.empty()) {
-                            for (int idx : plugin_->selectedTrainingIndices) {
-                                if (idx >= 0 && idx < static_cast<int>(RLTraining.size())) {
-                                    plugin_->trainingShuffleBag.push_back(RLTraining[idx]);
-                                }
-                            }
-                        }
-                    }
-
-                    if (!plugin_->trainingShuffleBag.empty()) {
-                        indexToLoad = plugin_->GetRandomTrainingIndex();
+            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr) {
+                auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
+                if (!shuffleBag.empty()) {
+                    int randomIdx = plugin_->GetRandomTrainingIndex();
+                    if (randomIdx >= 0 && randomIdx < static_cast<int>(shuffleBag.size())) {
+                        packCode = shuffleBag[randomIdx].code;
                     }
                 }
+            }
 
-                indexToLoad = std::clamp(indexToLoad, 0, (int)RLTraining.size() - 1);
-                std::string packCode = RLTraining[indexToLoad].code;
+            // Fallback to selected training pack if shuffle bag is empty
+            if (packCode.empty() && !RLTraining.empty() &&
+                currentTrainingIndexValue >= 0 && currentTrainingIndexValue < static_cast<int>(RLTraining.size())) {
+                packCode = RLTraining[currentTrainingIndexValue].code;
+            }
+
+            if (!packCode.empty()) {
                 SuiteSpot* plugin = plugin_;
                 plugin_->gameWrapper->SetTimeout([plugin, packCode](GameWrapper* gw) {
                     plugin->cvarManager->executeCommand("load_training " + packCode);
@@ -380,7 +357,7 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Load the selected training pack immediately");
+            ImGui::SetTooltip("Load a training pack (from shuffle bag if enabled, otherwise selected)");
         }
 
         ImGui::SameLine();
@@ -446,15 +423,16 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
                         addSuccess = false;
                         addSuccessTimer = 2.0f;
                     } else {
-                        const std::string nameStr(newMapName);
-                        RLTraining.push_back({ codeStr, nameStr });
-                        plugin_->SaveTrainingMaps();
-                        plugin_->LoadTrainingMaps();
-                        auto it = std::find_if(RLTraining.begin(), RLTraining.end(),
-                            [&](const TrainingEntry& entry){ return entry.code == codeStr; });
-                        if (it != RLTraining.end()) {
-                            currentTrainingIndexValue = static_cast<int>(std::distance(RLTraining.begin(), it));
-                            SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue);
+                        // Add custom pack via TrainingPackManager
+                        TrainingEntry newPack;
+                        newPack.code = codeStr;
+                        newPack.name = std::string(newMapName);
+                        newPack.source = "custom";
+
+                        if (plugin_->trainingPackMgr) {
+                            addSuccess = plugin_->trainingPackMgr->AddCustomPack(newPack);
+                        } else {
+                            addSuccess = false;
                         }
                         addSuccess = true;
                         addSuccessTimer = 3.0f;

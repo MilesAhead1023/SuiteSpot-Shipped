@@ -145,8 +145,8 @@ exit /b 0</Command>
     <ClCompile Include="LoadoutManager.cpp" />
     <ClCompile Include="MapManager.cpp" />
     <ClCompile Include="MapList.cpp" />
-    <ClCompile Include="PrejumpPackManager.cpp" />
-    <ClCompile Include="PrejumpUI.cpp" />
+    <ClCompile Include="TrainingPackManager.cpp" />
+    <ClCompile Include="TrainingPackUI.cpp" />
     <ClCompile Include="LoadoutUI.cpp" />
     <ClCompile Include="OverlayRenderer.cpp" />
     <ClCompile Include="OverlayUtils.cpp" />
@@ -181,8 +181,8 @@ exit /b 0</Command>
     <ClInclude Include="logging.h" />
     <ClInclude Include="MapManager.h" />
     <ClInclude Include="MapList.h" />
-    <ClInclude Include="PrejumpPackManager.h" />
-    <ClInclude Include="PrejumpUI.h" />
+    <ClInclude Include="TrainingPackManager.h" />
+    <ClInclude Include="TrainingPackUI.h" />
     <ClInclude Include="LoadoutUI.h" />
     <ClInclude Include="OverlayRenderer.h" />
     <ClInclude Include="OverlayTypes.h" />

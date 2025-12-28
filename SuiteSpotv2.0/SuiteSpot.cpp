@@ -4,9 +4,9 @@
 #include "MapManager.h"
 #include "SettingsSync.h"
 #include "AutoLoadFeature.h"
-#include "PrejumpPackManager.h"
+#include "TrainingPackManager.h"
 #include "SettingsUI.h"
-#include "PrejumpUI.h"
+#include "TrainingPackUI.h"
 #include "LoadoutUI.h"
 #include "OverlayRenderer.h"
 #include <fstream>
@@ -24,15 +24,11 @@
 std::filesystem::path SuiteSpot::GetDataRoot() const {
     return mapManager ? mapManager->GetDataRoot() : std::filesystem::path();
 }
+
 std::filesystem::path SuiteSpot::GetSuiteTrainingDir() const {
     return mapManager ? mapManager->GetSuiteTrainingDir() : std::filesystem::path();
 }
-std::filesystem::path SuiteSpot::GetTrainingFilePath() const {
-    return mapManager ? mapManager->GetTrainingFilePath() : std::filesystem::path();
-}
-std::filesystem::path SuiteSpot::GetShuffleBagPath() const {
-    return mapManager ? mapManager->GetShuffleBagPath() : std::filesystem::path();
-}
+
 void SuiteSpot::EnsureDataDirectories() const {
     if (mapManager) {
         mapManager->EnsureDataDirectories();
@@ -40,41 +36,9 @@ void SuiteSpot::EnsureDataDirectories() const {
 }
 
 int SuiteSpot::GetRandomTrainingIndex() const {
-    return mapManager ? mapManager->GetRandomTrainingMap(RLTraining, trainingShuffleBag) : 0;
-}
-
-void SuiteSpot::LoadTrainingMaps() {
-    if (mapManager) {
-        int index = settingsSync ? settingsSync->GetCurrentTrainingIndex() : 0;
-        mapManager->LoadTrainingMaps(RLTraining, index);
-        if (settingsSync) {
-            settingsSync->SetCurrentTrainingIndex(index);
-        }
-    }
-}
-
-void SuiteSpot::SaveTrainingMaps() const {
-    if (mapManager) {
-        mapManager->SaveTrainingMaps(RLTraining);
-    }
-}
-
-void SuiteSpot::LoadShuffleBag() {
-    if (mapManager) {
-        mapManager->LoadShuffleBag(trainingShuffleBag, selectedTrainingIndices, RLTraining);
-    }
-}
-
-void SuiteSpot::SaveShuffleBag() const {
-    if (mapManager) {
-        mapManager->SaveShuffleBag(trainingShuffleBag);
-    }
-}
-
-void SuiteSpot::EnsureReadmeFiles() const {
-    if (mapManager) {
-        mapManager->EnsureReadmeFiles();
-    }
+    if (!trainingPackMgr || !mapManager) return -1;
+    auto shuffleBag = trainingPackMgr->GetShuffleBagPacks();
+    return mapManager->GetRandomTrainingMapIndex(shuffleBag);
 }
 
 std::filesystem::path SuiteSpot::GetWorkshopLoaderConfigPath() const {
@@ -105,7 +69,7 @@ void SuiteSpot::SaveWorkshopMaps() const {
     // No-op
 }
 
-// ===== PREJUMP SCRAPER INTEGRATION =====
+// ===== TRAINING PACK SCRAPER INTEGRATION =====
 bool SuiteSpot::IsEnabled() const {
     return settingsSync ? settingsSync->IsEnabled() : false;
 }
@@ -243,32 +207,32 @@ void PostMatchOverlayWindow::RenderWindow() {
     }
 }
 
-std::filesystem::path SuiteSpot::GetPrejumpPacksPath() const {
+std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
     return GetSuiteTrainingDir() / "prejump_packs.json";
 }
 
-bool SuiteSpot::IsPrejumpCacheStale() const {
-    return prejumpMgr ? prejumpMgr->IsCacheStale(GetPrejumpPacksPath()) : true;
+bool SuiteSpot::IsTrainingPackCacheStale() const {
+    return trainingPackMgr ? trainingPackMgr->IsCacheStale(GetTrainingPacksPath()) : true;
 }
 
 std::string SuiteSpot::FormatLastUpdatedTime() const {
-    return prejumpMgr ? prejumpMgr->GetLastUpdatedTime(GetPrejumpPacksPath()) : "Unknown";
+    return trainingPackMgr ? trainingPackMgr->GetLastUpdatedTime(GetTrainingPacksPath()) : "Unknown";
 }
 
-void SuiteSpot::LoadPrejumpPacksFromFile(const std::filesystem::path& filePath) {
-    if (prejumpMgr) {
-        prejumpMgr->LoadPacksFromFile(filePath);
+void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath) {
+    if (trainingPackMgr) {
+        trainingPackMgr->LoadPacksFromFile(filePath);
     }
 }
 
-// #detailed comments: ScrapeAndLoadPrejumpPacks
-// Purpose: Launches an external PowerShell script to scrape Prejump.com
+// #detailed comments: ScrapeAndLoadTrainingPacks
+// Purpose: Launches an external PowerShell script to scrape online source
 // and write a JSON cache to disk. This is intentionally performed in a
 // background task (scheduled via gameWrapper->SetTimeout) to avoid any
 // blocking on the UI/game thread.
 //
 // Safety and behavior notes:
-//  - prejumpScrapingInProgress is a guard flag ensuring only one scrape
+//  - scrapingInProgress is a guard flag ensuring only one scrape
 //    runs at a time. It is set before scheduling and cleared when the
 //    background process finishes.
 //  - The implementation uses system() and relies on the platform's
@@ -281,9 +245,9 @@ void SuiteSpot::LoadPrejumpPacksFromFile(const std::filesystem::path& filePath) 
 // DO NOT CHANGE: Modifying timing (the 0.1f scheduling) or the way the
 // result is checked could resurface race conditions that previously
 // required this exact coordination.
-void SuiteSpot::ScrapeAndLoadPrejumpPacks() {
-    if (prejumpMgr) {
-        prejumpMgr->ScrapeAndLoadPrejumpPacks(GetPrejumpPacksPath(), gameWrapper);
+void SuiteSpot::ScrapeAndLoadTrainingPacks() {
+    if (trainingPackMgr) {
+        trainingPackMgr->ScrapeAndLoadTrainingPacks(GetTrainingPacksPath(), gameWrapper);
     }
 }
 
@@ -326,8 +290,10 @@ void SuiteSpot::GameEndedEvent(std::string name) {
     // 1. Run Auto-Load/Queue Logic first (Independent of overlay)
     if (autoLoadFeature && settingsSync) {
         LOG("SuiteSpot: Triggering AutoLoadFeature::OnMatchEnded");
+        // Get shuffle bag from TrainingPackManager
+        std::vector<TrainingEntry> shuffleBag = trainingPackMgr ? trainingPackMgr->GetShuffleBagPacks() : std::vector<TrainingEntry>();
         autoLoadFeature->OnMatchEnded(gameWrapper, cvarManager, RLMaps, RLTraining, RLWorkshop,
-            trainingShuffleBag, *settingsSync);
+            shuffleBag, *settingsSync);
     }
 
     // 2. Prepare Overlay Data
@@ -514,32 +480,29 @@ void SuiteSpot::onLoad() {
     mapManager = new MapManager();
     settingsSync = new SettingsSync();
     autoLoadFeature = new AutoLoadFeature();
-    prejumpMgr = new PrejumpPackManager();
+    trainingPackMgr = new TrainingPackManager();
     settingsUI = new SettingsUI(this);
-    prejumpUI = new PrejumpUI(this);
+    trainingPackUI = new TrainingPackUI(this);
     loadoutUI = new LoadoutUI(this);
     overlayRenderer = new OverlayRenderer(this);
     themeManager = new ThemeManager(this);
     EnsureDataDirectories();
-    EnsureReadmeFiles();
-    LoadTrainingMaps();
     LoadWorkshopMaps();
-    LoadShuffleBag();
     themeManager->LoadThemes();
     
     // Initialize LoadoutManager
     loadoutManager = std::make_unique<LoadoutManager>(gameWrapper);
     LOG("SuiteSpot: LoadoutManager initialized");
     
-    // Check Prejump cache and load if available
-    if (prejumpMgr) {
-        if (!std::filesystem::exists(GetPrejumpPacksPath())) {
-            LOG("SuiteSpot: No Prejump cache found. Schedule scraping on next opportunity.");
+    // Check Pack cache and load if available
+    if (trainingPackMgr) {
+        if (!std::filesystem::exists(GetTrainingPacksPath())) {
+            LOG("SuiteSpot: No Pack cache found. Schedule scraping on next opportunity.");
             // Will be scraped on first Settings render or user request
         } else {
-            // Load existing Prejump cache
-            prejumpMgr->LoadPacksFromFile(GetPrejumpPacksPath());
-            LOG("SuiteSpot: Prejump cache loaded");
+            // Load existing Pack cache
+            trainingPackMgr->LoadPacksFromFile(GetTrainingPacksPath());
+            LOG("SuiteSpot: Pack cache loaded");
         }
     }
     
@@ -562,7 +525,9 @@ void SuiteSpot::onLoad() {
 
     if (settingsSync) {
         settingsSync->RegisterAllCVars(cvarManager);
-        settingsSync->UpdateTrainingBagSize(static_cast<int>(trainingShuffleBag.size()), cvarManager);
+        // Shuffle bag count is now managed by TrainingPackManager
+        int shuffleBagSize = trainingPackMgr ? trainingPackMgr->GetShuffleBagCount() : 0;
+        settingsSync->UpdateTrainingBagSize(shuffleBagSize, cvarManager);
     }
     
     LOG("SuiteSpot: Plugin initialization complete");
@@ -630,12 +595,12 @@ void SuiteSpot::onUnload() {
     themeManager = nullptr;
     delete settingsUI;
     settingsUI = nullptr;
-    delete prejumpUI;
-    prejumpUI = nullptr;
+    delete trainingPackUI;
+    trainingPackUI = nullptr;
     delete loadoutUI;
     loadoutUI = nullptr;
-    delete prejumpMgr;
-    prejumpMgr = nullptr;
+    delete trainingPackMgr;
+    trainingPackMgr = nullptr;
     delete autoLoadFeature;
     autoLoadFeature = nullptr;
     delete settingsSync;

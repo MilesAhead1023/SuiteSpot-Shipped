@@ -3,8 +3,8 @@
 #include <windows.h>
 #include <shellapi.h>
 
-#include "PrejumpUI.h"
-#include "PrejumpPackManager.h"
+#include "TrainingPackUI.h"
+#include "TrainingPackManager.h"
 #include "SuiteSpot.h"
 
 #include <algorithm>
@@ -35,11 +35,11 @@ namespace {
     }
 }
 
-PrejumpUI::PrejumpUI(SuiteSpot* plugin) : plugin_(plugin) {}
+TrainingPackUI::TrainingPackUI(SuiteSpot* plugin) : plugin_(plugin) {}
 
-void PrejumpUI::RenderPrejumpTab() {
+void TrainingPackUI::RenderTrainingPackTab() {
     ImGui::Spacing();
-    const auto* manager = plugin_->prejumpMgr;
+    const auto* manager = plugin_->trainingPackMgr;
     static const std::vector<TrainingEntry> emptyPacks;
     static const std::string emptyString;
     const auto& packs = manager ? manager->GetPacks() : emptyPacks;
@@ -49,7 +49,7 @@ void PrejumpUI::RenderPrejumpTab() {
     bool trainingShuffleEnabledValue = plugin_->IsTrainingShuffleEnabled();
 
     // ===== HEADER SECTION =====
-    ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Prejump.com Training Pack Browser");
+    ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Training Pack Browser");
     ImGui::Spacing();
 
     // Status line: pack count and last updated
@@ -58,7 +58,7 @@ void PrejumpUI::RenderPrejumpTab() {
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), " | Last updated: %s", lastUpdated.c_str());
     } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No packs loaded - click 'Scrape Prejump' to download");
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No packs loaded - click 'Scrape Packs' to download");
     }
 
     // Control buttons
@@ -71,20 +71,20 @@ void PrejumpUI::RenderPrejumpTab() {
     if (scraping) {
         ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Scraping...");
     } else {
-        if (ImGui::Button("Scrape Prejump")) {
-            plugin_->ScrapeAndLoadPrejumpPacks();
+        if (ImGui::Button("Scrape Packs")) {
+            plugin_->ScrapeAndLoadTrainingPacks();
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Download latest training packs from prejump.com (~2-3 minutes)");
+            ImGui::SetTooltip("Download latest training packs from online source (~2-3 minutes)");
         }
     }
 
     ImGui::SameLine();
     if (ImGui::Button("Reload Cache")) {
-        plugin_->LoadPrejumpPacksFromFile(plugin_->GetPrejumpPacksPath());
+        plugin_->LoadTrainingPacksFromFile(plugin_->GetTrainingPacksPath());
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Reload packs from cached prejump_packs.json file");
+        ImGui::SetTooltip("Reload packs from cached json file");
     }
 
     ImGui::Separator();
@@ -92,13 +92,13 @@ void PrejumpUI::RenderPrejumpTab() {
 
     // Early return if no packs loaded
     if (packs.empty()) {
-        ImGui::TextWrapped("No packs available. Click 'Scrape Prejump' to download the training pack database from prejump.com.");
+        ImGui::TextWrapped("No packs available. Click 'Scrape Packs' to download the training pack database, or add your own custom packs below.");
         return;
     }
 
     // ===== SHUFFLE BAG STATUS & CONTROLS =====
     if (ImGui::CollapsingHeader("Shuffle Bag Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int shufflePackCount = plugin_->prejumpMgr ? plugin_->prejumpMgr->GetShuffleBagCount() : 0;
+        int shufflePackCount = plugin_->trainingPackMgr ? plugin_->trainingPackMgr->GetShuffleBagCount() : 0;
 
         if (shufflePackCount > 0) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Current Bag: %d pack%s", shufflePackCount, shufflePackCount == 1 ? "" : "s");
@@ -123,10 +123,10 @@ void PrejumpUI::RenderPrejumpTab() {
             ImGui::SameLine();
             if (ImGui::Button("Clear Bag")) {
                 // Clear shuffle bag by toggling all packs that are in it
-                if (plugin_->prejumpMgr) {
-                    auto shufflePacks = plugin_->prejumpMgr->GetShuffleBagPacks();
+                if (plugin_->trainingPackMgr) {
+                    auto shufflePacks = plugin_->trainingPackMgr->GetShuffleBagPacks();
                     for (const auto& pack : shufflePacks) {
-                        plugin_->prejumpMgr->ToggleShuffleBag(pack.code);
+                        plugin_->trainingPackMgr->ToggleShuffleBag(pack.code);
                     }
                 }
                 LOG("SuiteSpot: Shuffle bag cleared");
@@ -159,7 +159,7 @@ void PrejumpUI::RenderPrejumpTab() {
 
     // Early return if no packs loaded
     if (packs.empty()) {
-        ImGui::TextWrapped("No packs available. Click 'Scrape Prejump' to download the training pack database from prejump.com, or add your own custom packs above.");
+        ImGui::TextWrapped("No packs available. Click 'Scrape Packs' to download the training pack database, or add your own custom packs above.");
         return;
     }
 
@@ -167,16 +167,16 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::TextUnformatted("Search & Filters:");
     ImGui::Spacing();
 
-    bool filtersChanged = (strcmp(prejumpSearchText, lastSearchText) != 0) ||
-                          (prejumpDifficultyFilter != lastDifficultyFilter) ||
-                          (prejumpTagFilter != lastTagFilter) ||
-                          (prejumpMinShots != lastMinShots) ||
-                          (prejumpSortColumn != lastSortColumn) ||
-                          (prejumpSortAscending != lastSortAscending);
+    bool filtersChanged = (strcmp(packSearchText, lastSearchText) != 0) ||
+                          (packDifficultyFilter != lastDifficultyFilter) ||
+                          (packTagFilter != lastTagFilter) ||
+                          (packMinShots != lastMinShots) ||
+                          (packSortColumn != lastSortColumn) ||
+                          (packSortAscending != lastSortAscending);
 
     // Search box
     ImGui::SetNextItemWidth(300);
-    if (ImGui::InputText("##search", prejumpSearchText, IM_ARRAYSIZE(prejumpSearchText))) {
+    if (ImGui::InputText("##search", packSearchText, IM_ARRAYSIZE(packSearchText))) {
         filtersChanged = true;
     }
     if (ImGui::IsItemHovered()) {
@@ -187,11 +187,11 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::SameLine();
     ImGui::SetNextItemWidth(150);
     const char* difficulties[] = {"All", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
-    if (ImGui::BeginCombo("##difficulty", prejumpDifficultyFilter.c_str())) {
+    if (ImGui::BeginCombo("##difficulty", packDifficultyFilter.c_str())) {
         for (int i = 0; i < IM_ARRAYSIZE(difficulties); i++) {
-            bool selected = (prejumpDifficultyFilter == difficulties[i]);
+            bool selected = (packDifficultyFilter == difficulties[i]);
             if (ImGui::Selectable(difficulties[i], selected)) {
-                prejumpDifficultyFilter = difficulties[i];
+                packDifficultyFilter = difficulties[i];
                 filtersChanged = true;
             }
         }
@@ -204,7 +204,7 @@ void PrejumpUI::RenderPrejumpTab() {
     // Shot count range filter
     ImGui::SameLine();
     ImGui::SetNextItemWidth(200);
-    if (ImGui::SliderInt("Min Shots", &prejumpMinShots, 0, 50)) {
+    if (ImGui::SliderInt("Min Shots", &packMinShots, 0, 50)) {
         filtersChanged = true;
     }
     if (ImGui::IsItemHovered()) {
@@ -225,12 +225,12 @@ void PrejumpUI::RenderPrejumpTab() {
         lastPackCount = packCount;
     }
 
-    std::string displayTag = prejumpTagFilter.empty() ? "All Tags" : prejumpTagFilter;
+    std::string displayTag = packTagFilter.empty() ? "All Tags" : packTagFilter;
     if (ImGui::BeginCombo("##tagfilter", displayTag.c_str())) {
         for (const auto& tag : availableTags) {
             bool selected = (tag == displayTag);
             if (ImGui::Selectable(tag.c_str(), selected)) {
-                prejumpTagFilter = (tag == "All Tags") ? "" : tag;
+                packTagFilter = (tag == "All Tags") ? "" : tag;
                 filtersChanged = true;
             }
         }
@@ -242,11 +242,11 @@ void PrejumpUI::RenderPrejumpTab() {
 
     ImGui::SameLine();
     if (ImGui::Button("Clear Filters")) {
-        prejumpSearchText[0] = '\0';
-        prejumpDifficultyFilter = "All";
-        prejumpTagFilter = "";
-        prejumpMinShots = 0;
-        prejumpMaxShots = 100;
+        packSearchText[0] = '\0';
+        packDifficultyFilter = "All";
+        packTagFilter = "";
+        packMinShots = 0;
+        packMaxShots = 100;
         filtersChanged = true;
     }
 
@@ -259,19 +259,19 @@ void PrejumpUI::RenderPrejumpTab() {
     // Rebuild filtered list only when needed
     if (filtersChanged) {
         if (manager) {
-            manager->FilterAndSortPacks(prejumpSearchText, prejumpDifficultyFilter, prejumpTagFilter,
-                prejumpMinShots, prejumpSortColumn, prejumpSortAscending, filteredPacks);
+            manager->FilterAndSortPacks(packSearchText, packDifficultyFilter, packTagFilter,
+                packMinShots, packSortColumn, packSortAscending, filteredPacks);
         } else {
             filteredPacks.clear();
         }
 
         // Update cached filter state
-        strncpy_s(lastSearchText, prejumpSearchText, sizeof(lastSearchText) - 1);
-        lastDifficultyFilter = prejumpDifficultyFilter;
-        lastTagFilter = prejumpTagFilter;
-        lastMinShots = prejumpMinShots;
-        lastSortColumn = prejumpSortColumn;
-        lastSortAscending = prejumpSortAscending;
+        strncpy_s(lastSearchText, packSearchText, sizeof(lastSearchText) - 1);
+        lastDifficultyFilter = packDifficultyFilter;
+        lastTagFilter = packTagFilter;
+        lastMinShots = packMinShots;
+        lastSortColumn = packSortColumn;
+        lastSortAscending = packSortAscending;
     }
 
     // Display filtered count
@@ -284,7 +284,7 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::Separator();
 
     // Setup columns (ImGui 1.75 compatible)
-    ImGui::Columns(8, "PrejumpColumns", true);  // true = resizable borders
+    ImGui::Columns(8, "PackColumns", true);  // true = resizable borders
 
     // Don't set initial column widths - let ImGui auto-distribute across full tab width
     // Users can resize individual columns as needed
@@ -293,25 +293,25 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::Separator();
 
     // Name column header
-    if (SortableColumnHeader("Name", 0, prejumpSortColumn, prejumpSortAscending)) {
+    if (SortableColumnHeader("Name", 0, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
     // Creator column header
-    if (SortableColumnHeader("Creator", 1, prejumpSortColumn, prejumpSortAscending)) {
+    if (SortableColumnHeader("Creator", 1, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
     // Difficulty column header
-    if (SortableColumnHeader("Difficulty", 2, prejumpSortColumn, prejumpSortAscending)) {
+    if (SortableColumnHeader("Difficulty", 2, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
     // Shots column header
-    if (SortableColumnHeader("Shots", 3, prejumpSortColumn, prejumpSortAscending)) {
+    if (SortableColumnHeader("Shots", 3, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
@@ -321,13 +321,13 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::NextColumn();
 
     // Likes column header
-    if (SortableColumnHeader("Likes", 5, prejumpSortColumn, prejumpSortAscending)) {
+    if (SortableColumnHeader("Likes", 5, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
     // Plays column header
-    if (SortableColumnHeader("Plays", 6, prejumpSortColumn, prejumpSortAscending)) {
+    if (SortableColumnHeader("Plays", 6, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
@@ -425,7 +425,7 @@ void PrejumpUI::RenderPrejumpTab() {
             plugin_->gameWrapper->SetTimeout([plugin, pack](GameWrapper* gw) {
                 std::string cmd = "load_training " + pack.code;
                 plugin->cvarManager->executeCommand(cmd);
-                LOG("SuiteSpot: Loading prejump pack: " + pack.name);
+                LOG("SuiteSpot: Loading training pack: " + pack.name);
             }, 0.0f);
         }
         if (ImGui::IsItemHovered()) {
@@ -445,9 +445,9 @@ void PrejumpUI::RenderPrejumpTab() {
         }
 
         if (ImGui::SmallButton(shuffleLabel.c_str())) {
-            // Toggle shuffle bag membership via PrejumpPackManager
-            if (plugin_->prejumpMgr) {
-                plugin_->prejumpMgr->ToggleShuffleBag(pack.code);
+            // Toggle shuffle bag membership via TrainingPackManager
+            if (plugin_->trainingPackMgr) {
+                plugin_->trainingPackMgr->ToggleShuffleBag(pack.code);
             }
         }
 
@@ -466,8 +466,8 @@ void PrejumpUI::RenderPrejumpTab() {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
             if (ImGui::SmallButton(deleteLabel.c_str())) {
-                if (plugin_->prejumpMgr) {
-                    plugin_->prejumpMgr->DeletePack(pack.code);
+                if (plugin_->trainingPackMgr) {
+                    plugin_->trainingPackMgr->DeletePack(pack.code);
                     LOG("SuiteSpot: Deleted custom pack: " + pack.name);
                 }
             }
@@ -487,7 +487,7 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::Spacing();
 }
 
-bool PrejumpUI::ValidatePackCode(const char* code) const {
+bool TrainingPackUI::ValidatePackCode(const char* code) const {
     // Validate format: XXXX-XXXX-XXXX-XXXX (alphanumeric, 19 chars total)
     if (strlen(code) != 19) return false;
 
@@ -501,7 +501,7 @@ bool PrejumpUI::ValidatePackCode(const char* code) const {
     return true;
 }
 
-void PrejumpUI::ClearCustomPackForm() {
+void TrainingPackUI::ClearCustomPackForm() {
     customPackCode[0] = '\0';
     customPackName[0] = '\0';
     customPackCreator[0] = '\0';
@@ -514,7 +514,7 @@ void PrejumpUI::ClearCustomPackForm() {
     customPackSuccess = false;
 }
 
-void PrejumpUI::RenderCustomPackForm() {
+void TrainingPackUI::RenderCustomPackForm() {
     if (ImGui::CollapsingHeader("Add Custom Pack")) {
         ImGui::Indent(10.0f);
         ImGui::Spacing();
@@ -663,8 +663,8 @@ void PrejumpUI::RenderCustomPackForm() {
                 pack.isModified = false;
 
                 // Try to add via manager
-                if (plugin_->prejumpMgr) {
-                    if (plugin_->prejumpMgr->AddCustomPack(pack)) {
+                if (plugin_->trainingPackMgr) {
+                    if (plugin_->trainingPackMgr->AddCustomPack(pack)) {
                         customPackSuccess = true;
                         ClearCustomPackForm();
                         LOG("SuiteSpot: Added custom pack: " + pack.name);

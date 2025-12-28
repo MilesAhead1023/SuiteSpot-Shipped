@@ -108,8 +108,44 @@ function Extract-PackDataFromHtml {
 
 function Normalize-TrainingPack {
     param(
-        [PSObject]$Pack
+        [PSObject]$Pack,
+        [hashtable]$ExistingPacks = @{}
     )
+
+    $code = $Pack.code
+    $existingPack = $null
+    if ($ExistingPacks.ContainsKey($code)) {
+        $existingPack = $ExistingPacks[$code]
+    }
+
+    # If pack exists and was modified by user, preserve user's edits
+    if ($existingPack -and $existingPack.isModified -eq $true) {
+        # Keep the existing pack but update dynamic fields (likes, plays)
+        return @{
+            name = $existingPack.name
+            code = $existingPack.code
+            creator = $existingPack.creator
+            creatorSlug = if ($existingPack.creatorSlug) { $existingPack.creatorSlug } else { $Pack.creatorSlug }
+            difficulty = $existingPack.difficulty
+            shotCount = $existingPack.shotCount
+            tags = @($existingPack.tags)
+            videoUrl = $existingPack.videoUrl
+            staffComments = $existingPack.staffComments
+            notes = $existingPack.notes
+            likes = $Pack.likes  # Update dynamic stats
+            plays = $Pack.plays  # Update dynamic stats
+            status = $Pack.status
+            source = "prejump"
+            inShuffleBag = if ($existingPack.inShuffleBag) { $existingPack.inShuffleBag } else { $false }
+            isModified = $true
+        }
+    }
+
+    # Preserve shuffle bag membership from existing pack
+    $inShuffleBag = $false
+    if ($existingPack -and $existingPack.inShuffleBag) {
+        $inShuffleBag = $existingPack.inShuffleBag
+    }
 
     return @{
         name = $Pack.name
@@ -125,6 +161,87 @@ function Normalize-TrainingPack {
         likes = $Pack.likes
         plays = $Pack.plays
         status = $Pack.status
+        source = "prejump"
+        inShuffleBag = $inShuffleBag
+        isModified = $false
+    }
+}
+
+function Load-ExistingPacks {
+    param(
+        [string]$FilePath
+    )
+
+    $existingPacks = @{}
+    $customPacks = @()
+
+    if (-not (Test-Path $FilePath)) {
+        return @{
+            Packs = $existingPacks
+            CustomPacks = $customPacks
+        }
+    }
+
+    try {
+        $content = Get-Content -Path $FilePath -Raw -Encoding UTF8
+        $data = $content | ConvertFrom-Json
+
+        if ($data.packs) {
+            foreach ($pack in $data.packs) {
+                $code = $pack.code
+                if ($pack.source -eq "custom") {
+                    # Preserve custom packs entirely
+                    $customPacks += @{
+                        name = $pack.name
+                        code = $pack.code
+                        creator = $pack.creator
+                        creatorSlug = if ($pack.creatorSlug) { $pack.creatorSlug } else { "" }
+                        difficulty = $pack.difficulty
+                        shotCount = $pack.shotCount
+                        tags = @($pack.tags)
+                        videoUrl = if ($pack.videoUrl) { $pack.videoUrl } else { "" }
+                        staffComments = if ($pack.staffComments) { $pack.staffComments } else { "" }
+                        notes = if ($pack.notes) { $pack.notes } else { "" }
+                        likes = if ($pack.likes) { $pack.likes } else { 0 }
+                        plays = if ($pack.plays) { $pack.plays } else { 0 }
+                        status = if ($pack.status) { $pack.status } else { "" }
+                        source = "custom"
+                        inShuffleBag = if ($pack.inShuffleBag) { $pack.inShuffleBag } else { $false }
+                        isModified = if ($pack.isModified) { $pack.isModified } else { $false }
+                    }
+                } else {
+                    # Store prejump packs for reference during merge
+                    $existingPacks[$code] = @{
+                        name = $pack.name
+                        code = $pack.code
+                        creator = $pack.creator
+                        creatorSlug = if ($pack.creatorSlug) { $pack.creatorSlug } else { "" }
+                        difficulty = $pack.difficulty
+                        shotCount = $pack.shotCount
+                        tags = @($pack.tags)
+                        videoUrl = if ($pack.videoUrl) { $pack.videoUrl } else { "" }
+                        staffComments = if ($pack.staffComments) { $pack.staffComments } else { "" }
+                        notes = if ($pack.notes) { $pack.notes } else { "" }
+                        likes = if ($pack.likes) { $pack.likes } else { 0 }
+                        plays = if ($pack.plays) { $pack.plays } else { 0 }
+                        status = if ($pack.status) { $pack.status } else { "" }
+                        source = if ($pack.source) { $pack.source } else { "prejump" }
+                        inShuffleBag = if ($pack.inShuffleBag) { $pack.inShuffleBag } else { $false }
+                        isModified = if ($pack.isModified) { $pack.isModified } else { $false }
+                    }
+                }
+            }
+        }
+
+        Write-Log "  Loaded existing file: $($existingPacks.Count) prejump packs, $($customPacks.Count) custom packs" Info
+
+    } catch {
+        Write-Log "  [WARN] Could not load existing file: $($_.Exception.Message)" Warning
+    }
+
+    return @{
+        Packs = $existingPacks
+        CustomPacks = $customPacks
     }
 }
 
@@ -141,6 +258,13 @@ Write-Log "Output: $OutputPath" Info
 Write-Log ""
 
 try {
+    # ===== PHASE 0: Load Existing Packs =====
+    Write-Log "Phase 0: Loading existing packs for merge..." Info
+    $existingData = Load-ExistingPacks -FilePath $OutputPath
+    $existingPacks = $existingData.Packs
+    $customPacks = $existingData.CustomPacks
+    Write-Log ""
+
     # ===== PHASE 1: Initial Fetch =====
     Write-Log "Phase 1: Fetching initial page..." Info
     $htmlContent = Invoke-PrejumpPageScrape -PageNumber 1 -TotalPages 1
@@ -180,9 +304,9 @@ try {
                 $packData = $pageData.Packs
             }
 
-            # Normalize and add packs
+            # Normalize and add packs (pass existing packs for merge logic)
             foreach ($pack in $packData) {
-                $normalized = Normalize-TrainingPack -Pack $pack
+                $normalized = Normalize-TrainingPack -Pack $pack -ExistingPacks $existingPacks
                 $allPacks.Add($normalized) | Out-Null
             }
 
@@ -218,7 +342,7 @@ try {
     }
 
     Write-Log "  Total packs scraped: $($allPacks.Count)" Info
-    Write-Log "  Unique packs: $($uniquePacks.Count)" Info
+    Write-Log "  Unique prejump packs: $($uniquePacks.Count)" Info
 
     if ($failedPages.Count -gt 0) {
         Write-Log "  Failed pages: $($failedPages.Count)" Warning
@@ -232,18 +356,28 @@ try {
         Write-Log "  Continuing with available data..." Warning
     }
 
+    # Merge custom packs back in
+    if ($customPacks.Count -gt 0) {
+        Write-Log "  Preserving $($customPacks.Count) custom pack(s)" Info
+    }
+
     Write-Log ""
 
     # ===== PHASE 4: Output Generation =====
     Write-Log "Phase 4: Generating output JSON..." Info
 
+    # Combine prejump packs with preserved custom packs
+    $allFinalPacks = @()
+    $allFinalPacks += $uniquePacks
+    $allFinalPacks += $customPacks
+
     # Create output structure
     $output = @{
-        version = "1.0.0"
+        version = "1.1.0"
         lastUpdated = (Get-Date -Format "o")
         source = "https://prejump.com/training-packs"
-        totalPacks = $uniquePacks.Count
-        packs = $uniquePacks
+        totalPacks = $allFinalPacks.Count
+        packs = $allFinalPacks
     }
 
     # Convert to JSON with proper depth
@@ -305,7 +439,11 @@ try {
     Write-Log ""
     Write-Log "========================================================" Success
     Write-Log "  SUCCESS - Scraping complete!" Success
-    Write-Log "  Scraped: $($uniquePacks.Count) training packs from Prejump" Success
+    Write-Log "  Scraped: $($uniquePacks.Count) prejump packs" Success
+    if ($customPacks.Count -gt 0) {
+        Write-Log "  Preserved: $($customPacks.Count) custom pack(s)" Success
+    }
+    Write-Log "  Total: $($allFinalPacks.Count) packs in output" Success
     Write-Log "  Output: $(Split-Path -Leaf $OutputPath)" Success
     Write-Log "========================================================" Success
 

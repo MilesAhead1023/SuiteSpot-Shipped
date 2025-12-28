@@ -86,46 +86,6 @@ namespace
         return (a.size() < b.size()) ? -1 : 1;
     }
 
-    bool StartsWithCaseInsensitive(const std::string& value, const std::string& prefix)
-    {
-        if (value.size() < prefix.size()) return false;
-        for (size_t i = 0; i < prefix.size(); i++)
-        {
-            if (std::tolower(static_cast<unsigned char>(value[i])) !=
-                std::tolower(static_cast<unsigned char>(prefix[i])))
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    int ParseTrailingShots(const std::string& nameField)
-    {
-        const auto openPos = nameField.find_last_of('(');
-        const auto closePos = nameField.find_last_of(')');
-        if (openPos == std::string::npos || closePos == std::string::npos || closePos <= openPos)
-        {
-            return 0;
-        }
-        std::string inside = Trim(nameField.substr(openPos + 1, closePos - openPos - 1));
-        if (StartsWithCaseInsensitive(inside, "shots"))
-        {
-            auto colonPos = inside.find(':');
-            if (colonPos != std::string::npos)
-            {
-                inside = Trim(inside.substr(colonPos + 1));
-            }
-        }
-        try
-        {
-            return std::max(0, std::stoi(inside));
-        }
-        catch (...)
-        {
-            return 0;
-        }
-    }
 }
 
 std::filesystem::path MapManager::GetDataRoot() const
@@ -140,14 +100,9 @@ std::filesystem::path MapManager::GetSuiteTrainingDir() const
     return GetDataRoot() / "SuiteSpot" / "SuiteTraining";
 }
 
-std::filesystem::path MapManager::GetTrainingFilePath() const
+std::filesystem::path MapManager::GetTrainingPacksPath() const
 {
-    return GetSuiteTrainingDir() / "SuiteSpotTrainingMaps.txt";
-}
-
-std::filesystem::path MapManager::GetShuffleBagPath() const
-{
-    return GetSuiteTrainingDir() / "SuiteShuffleBag.txt";
+    return GetSuiteTrainingDir() / "prejump_packs.json";
 }
 
 std::filesystem::path MapManager::GetWorkshopLoaderConfigPath() const
@@ -216,231 +171,16 @@ void MapManager::EnsureDataDirectories() const
     std::filesystem::create_directories(GetSuiteTrainingDir(), ec);
 }
 
-void MapManager::LoadTrainingMaps(std::vector<TrainingEntry>& training, int& currentTrainingIndex)
-{
-    EnsureDataDirectories();
-    EnsureReadmeFiles();
-    training.clear();
-    auto f = GetTrainingFilePath();
-    std::error_code ec;
-
-    if (!std::filesystem::exists(f, ec)) return;
-
-    std::ifstream in(f.string());
-    if (!in.is_open())
-    {
-        LOG("SuiteSpot: Failed to open training maps file: {}", f.string());
-        return;
-    }
-
-    std::string line;
-    bool sawLegacyFormat = false;
-    int lineNum = 0;
-
-    while (std::getline(in, line))
-    {
-        lineNum++;
-        if (line.empty()) continue;
-
-        std::vector<std::string> parts;
-        size_t start = 0;
-        while (start <= line.size())
-        {
-            const auto commaPos = line.find(',', start);
-            if (commaPos == std::string::npos)
-            {
-                parts.push_back(Trim(line.substr(start)));
-                break;
-            }
-            parts.push_back(Trim(line.substr(start, commaPos - start)));
-            start = commaPos + 1;
-        }
-
-        if (parts.size() < 2)
-        {
-            LOG("SuiteSpot: Malformed entry on line {}: '{}' - expected 'code,name'", lineNum, line);
-            continue;
-        }
-
-        std::string code = parts[0];
-        std::string name = parts[1];
-        int shots = 0;
-
-        if (parts.size() == 2)
-        {
-            shots = ParseTrailingShots(name);
-            if (shots > 0)
-            {
-                sawLegacyFormat = true;
-            }
-            const auto openPos = name.find_last_of('(');
-            const auto closePos = name.find_last_of(')');
-            if (openPos != std::string::npos && closePos != std::string::npos && closePos > openPos)
-            {
-                name = Trim(name.substr(0, openPos));
-            }
-        }
-
-        if (parts.size() >= 3)
-        {
-            std::string shotsPart = parts[2];
-            if (StartsWithCaseInsensitive(shotsPart, "shots:"))
-            {
-                auto valStr = Trim(shotsPart.substr(6));
-                try
-                {
-                    shots = std::stoi(valStr);
-                }
-                catch (const std::invalid_argument&)
-                {
-                    LOG("SuiteSpot: Invalid shot count on line {}: '{}'", lineNum, valStr);
-                    shots = 0;
-                }
-                catch (const std::out_of_range&)
-                {
-                    LOG("SuiteSpot: Shot count out of range on line {}: '{}'", lineNum, valStr);
-                    shots = 0;
-                }
-                catch (...)
-                {
-                    LOG("SuiteSpot: Unknown error parsing shots on line {}", lineNum);
-                    shots = 0;
-                }
-            }
-        }
-
-        if (!code.empty() && !name.empty())
-        {
-            TrainingEntry entry;
-            entry.code = code;
-            entry.name = name;
-            entry.shotCount = shots;
-            training.push_back(entry);
-        }
-        else
-        {
-            LOG("SuiteSpot: Empty code or name on line {}", lineNum);
-        }
-    }
-
-    std::sort(training.begin(), training.end(),
-        [](const TrainingEntry& lhs, const TrainingEntry& rhs)
-        {
-            return CaseInsensitiveCompare(lhs.name, rhs.name) < 0;
-        });
-
-    if (training.empty())
-    {
-        currentTrainingIndex = 0;
-    }
-    else
-    {
-        currentTrainingIndex = std::clamp(currentTrainingIndex, 0, static_cast<int>(training.size() - 1));
-    }
-
-    if (sawLegacyFormat)
-    {
-        LOG("SuiteSpot: Upgrading legacy training file format...");
-        SaveTrainingMaps(training);
-    }
-}
-
-void MapManager::SaveTrainingMaps(const std::vector<TrainingEntry>& training) const
-{
-    auto f = GetTrainingFilePath();
-    EnsureDataDirectories();
-    EnsureReadmeFiles();
-    std::ofstream out(f.string(), std::ios::trunc);
-    if (!out.is_open()) {
-        LOG("SuiteSpot: Failed to open training maps file for writing: {}", f.string());
-        return;
-    }
-    auto sorted = training;
-    std::sort(sorted.begin(), sorted.end(),
-        [](const TrainingEntry& lhs, const TrainingEntry& rhs)
-        {
-            return CaseInsensitiveCompare(lhs.name, rhs.name) < 0;
-        });
-    for (const auto& e : sorted)
-    {
-        out << e.code << "," << e.name << ",Shots:" << e.shotCount << "\n";
-    }
-    if (out.fail()) {
-        LOG("SuiteSpot: Error writing training maps file: {}", f.string());
-    }
-}
-
-void MapManager::LoadShuffleBag(std::vector<TrainingEntry>& shuffleBag,
-                                std::set<int>& selectedTrainingIndices,
-                                const std::vector<TrainingEntry>& training) const
-{
-    shuffleBag.clear();
-    selectedTrainingIndices.clear();
-    auto f = GetShuffleBagPath();
-    std::error_code ec;
-    if (!std::filesystem::exists(f, ec)) return;
-    std::ifstream in(f.string());
-    if (!in.is_open()) return;
-    std::string line;
-    while (std::getline(in, line))
-    {
-        if (line.empty()) continue;
-        auto pos = line.find(',');
-        if (pos == std::string::npos) continue;
-        std::string code = Trim(line.substr(0, pos));
-        std::string name = Trim(line.substr(pos + 1));
-        if (!code.empty() && !name.empty())
-        {
-            shuffleBag.push_back({ code, name });
-            auto it = std::find_if(training.begin(), training.end(),
-                [&](const TrainingEntry& e) { return e.code == code; });
-            if (it != training.end())
-            {
-                selectedTrainingIndices.insert(static_cast<int>(std::distance(training.begin(), it)));
-            }
-        }
-    }
-}
-
-void MapManager::SaveShuffleBag(const std::vector<TrainingEntry>& shuffleBag) const
-{
-    auto f = GetShuffleBagPath();
-    EnsureDataDirectories();
-    std::ofstream out(f.string(), std::ios::trunc);
-    if (!out.is_open()) {
-        LOG("SuiteSpot: Failed to open shuffle bag file for writing: {}", f.string());
-        return;
-    }
-    for (const auto& e : shuffleBag)
-    {
-        out << e.code << "," << e.name << "\n";
-    }
-    if (out.fail()) {
-        LOG("SuiteSpot: Error writing shuffle bag file: {}", f.string());
-    }
-}
-
-int MapManager::GetRandomTrainingMap(const std::vector<TrainingEntry>& training,
-                                     const std::vector<TrainingEntry>& shuffleBag) const
+int MapManager::GetRandomTrainingMapIndex(const std::vector<TrainingEntry>& shuffleBag) const
 {
     if (shuffleBag.empty())
     {
-        return 0;
+        return -1;
     }
 
     static std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(0, static_cast<int>(shuffleBag.size()) - 1);
-    int bagIndex = dist(rng);
-
-    auto it = std::find_if(training.begin(), training.end(),
-        [&](const TrainingEntry& e) { return e.code == shuffleBag[bagIndex].code; });
-
-    if (it != training.end())
-    {
-        return static_cast<int>(std::distance(training.begin(), it));
-    }
-
-    return -1;
+    return dist(rng);
 }
 
 void MapManager::DiscoverWorkshopInDir(const std::filesystem::path& dir,
@@ -568,26 +308,6 @@ void MapManager::MirrorDirectory(const std::filesystem::path& src,
                 std::filesystem::copy_file(entry.path(), target,
                                            std::filesystem::copy_options::overwrite_existing, ec);
             }
-        }
-    }
-}
-
-void MapManager::EnsureReadmeFiles() const
-{
-    auto tr = GetSuiteTrainingDir() / "README.txt";
-    if (!std::filesystem::exists(tr))
-    {
-        std::ofstream o(tr.string(), std::ios::trunc);
-        if (!o.is_open()) {
-            LOG("SuiteSpot: Failed to create README file: {}", tr.string());
-            return;
-        }
-        o << "SuiteTraining\\SuiteSpotTrainingMaps.txt\n"
-             "CSV format:\n"
-             "    <training_code>,<display_name>\n"
-             "One entry per line. This file is read on game start and updated when you add a map in SuiteSpot.\n";
-        if (o.fail()) {
-            LOG("SuiteSpot: Error writing README file: {}", tr.string());
         }
     }
 }

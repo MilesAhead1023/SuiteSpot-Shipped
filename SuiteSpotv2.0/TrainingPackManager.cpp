@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "PrejumpPackManager.h"
+#include "TrainingPackManager.h"
 
 #include <algorithm>
 #include <chrono>
@@ -8,10 +8,10 @@
 #include <set>
 #include <sstream>
 
-void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath)
+void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePath)
 {
     if (!std::filesystem::exists(filePath)) {
-        LOG("SuiteSpot: Prejump packs file not found: {}", filePath.string());
+        LOG("SuiteSpot: Pack cache file not found: {}", filePath.string());
         RLTraining.clear();
         packCount = 0;
         lastUpdated = "Never";
@@ -21,7 +21,7 @@ void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath
     try {
         std::ifstream file(filePath);
         if (!file.is_open()) {
-            LOG("SuiteSpot: Failed to open Prejump packs file");
+            LOG("SuiteSpot: Failed to open Pack cache file");
             return;
         }
 
@@ -32,7 +32,7 @@ void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath
         RLTraining.clear();
 
         if (!jsonData.contains("packs") || !jsonData["packs"].is_array()) {
-            LOG("SuiteSpot: Invalid Prejump packs file format - missing 'packs' array");
+            LOG("SuiteSpot: Invalid Pack cache file format - missing 'packs' array");
             return;
         }
 
@@ -118,16 +118,16 @@ void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath
         packCount = static_cast<int>(RLTraining.size());
         lastUpdated = GetLastUpdatedTime(filePath);
         currentFilePath = filePath;
-        LOG("SuiteSpot: Loaded {} prejump packs from file", packCount);
+        LOG("SuiteSpot: Loaded {} training packs from file", packCount);
 
     } catch (const std::exception& e) {
-        LOG("SuiteSpot: Error loading Prejump packs: {}", std::string(e.what()));
+        LOG("SuiteSpot: Error loading training packs: {}", std::string(e.what()));
         RLTraining.clear();
         packCount = 0;
     }
 }
 
-bool PrejumpPackManager::IsCacheStale(const std::filesystem::path& filePath) const
+bool TrainingPackManager::IsCacheStale(const std::filesystem::path& filePath) const
 {
     if (!std::filesystem::exists(filePath)) {
         return true;
@@ -144,7 +144,7 @@ bool PrejumpPackManager::IsCacheStale(const std::filesystem::path& filePath) con
     }
 }
 
-std::string PrejumpPackManager::GetLastUpdatedTime(const std::filesystem::path& filePath) const
+std::string TrainingPackManager::GetLastUpdatedTime(const std::filesystem::path& filePath) const
 {
     if (!std::filesystem::exists(filePath)) {
         return "Never";
@@ -165,11 +165,11 @@ std::string PrejumpPackManager::GetLastUpdatedTime(const std::filesystem::path& 
     }
 }
 
-void PrejumpPackManager::ScrapeAndLoadPrejumpPacks(const std::filesystem::path& outputPath,
+void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path& outputPath,
                                                    const std::shared_ptr<GameWrapper>& gameWrapper)
 {
     if (scrapingInProgress) {
-        LOG("SuiteSpot: Prejump scraping already in progress");
+        LOG("SuiteSpot: Pack scraping already in progress");
         return;
     }
 
@@ -182,7 +182,7 @@ void PrejumpPackManager::ScrapeAndLoadPrejumpPacks(const std::filesystem::path& 
     }
 
     if (!std::filesystem::exists(scraperScript)) {
-        LOG("SuiteSpot: Prejump scraper script not found in data folder: {}", scraperScript.string());
+        LOG("SuiteSpot: Pack scraper script not found in data folder: {}", scraperScript.string());
         return;
     }
 
@@ -190,11 +190,11 @@ void PrejumpPackManager::ScrapeAndLoadPrejumpPacks(const std::filesystem::path& 
                     + "\" -OutputPath \"" + outputPath.string() + "\" -QuietMode:$true";
 
     scrapingInProgress = true;
-    LOG("SuiteSpot: Started Prejump scraper...");
+    LOG("SuiteSpot: Started scraper...");
 
     if (!gameWrapper) {
         scrapingInProgress = false;
-        LOG("SuiteSpot: GameWrapper unavailable for Prejump scrape");
+        LOG("SuiteSpot: GameWrapper unavailable for scrape");
         return;
     }
 
@@ -202,18 +202,18 @@ void PrejumpPackManager::ScrapeAndLoadPrejumpPacks(const std::filesystem::path& 
         int result = system(cmd.c_str());
 
         if (result == 0) {
-            LOG("SuiteSpot: Prejump scraper completed successfully");
+            LOG("SuiteSpot: Scraper completed successfully");
             LoadPacksFromFile(outputPath);
             lastUpdated = GetLastUpdatedTime(outputPath);
         } else {
-            LOG("SuiteSpot: Prejump scraper failed with exit code {}", result);
+            LOG("SuiteSpot: Scraper failed with exit code {}", result);
         }
 
         scrapingInProgress = false;
     }, 0.1f);
 }
 
-void PrejumpPackManager::FilterAndSortPacks(const std::string& searchText,
+void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
                                             const std::string& difficultyFilter,
                                             const std::string& tagFilter,
                                             int minShots,
@@ -303,7 +303,7 @@ void PrejumpPackManager::FilterAndSortPacks(const std::string& searchText,
     });
 }
 
-void PrejumpPackManager::BuildAvailableTags(std::vector<std::string>& out) const
+void TrainingPackManager::BuildAvailableTags(std::vector<std::string>& out) const
 {
     std::set<std::string> uniqueTags;
     for (const auto& pack : RLTraining) {
@@ -319,7 +319,7 @@ void PrejumpPackManager::BuildAvailableTags(std::vector<std::string>& out) const
     }
 }
 
-void PrejumpPackManager::SavePacksToFile(const std::filesystem::path& filePath)
+void TrainingPackManager::SavePacksToFile(const std::filesystem::path& filePath)
 {
     try {
         nlohmann::json output;
@@ -385,7 +385,7 @@ void PrejumpPackManager::SavePacksToFile(const std::filesystem::path& filePath)
     }
 }
 
-bool PrejumpPackManager::AddCustomPack(const TrainingEntry& pack)
+bool TrainingPackManager::AddCustomPack(const TrainingEntry& pack)
 {
     // Check for duplicate code
     for (const auto& existing : RLTraining) {
@@ -419,7 +419,7 @@ bool PrejumpPackManager::AddCustomPack(const TrainingEntry& pack)
     return true;
 }
 
-bool PrejumpPackManager::UpdatePack(const std::string& code, const TrainingEntry& updatedPack)
+bool TrainingPackManager::UpdatePack(const std::string& code, const TrainingEntry& updatedPack)
 {
     for (auto& pack : RLTraining) {
         if (pack.code == code) {
@@ -454,7 +454,7 @@ bool PrejumpPackManager::UpdatePack(const std::string& code, const TrainingEntry
     return false;
 }
 
-bool PrejumpPackManager::DeletePack(const std::string& code)
+bool TrainingPackManager::DeletePack(const std::string& code)
 {
     auto it = std::find_if(RLTraining.begin(), RLTraining.end(),
         [&code](const TrainingEntry& p) { return p.code == code; });
@@ -475,7 +475,7 @@ bool PrejumpPackManager::DeletePack(const std::string& code)
     return false;
 }
 
-void PrejumpPackManager::ToggleShuffleBag(const std::string& code)
+void TrainingPackManager::ToggleShuffleBag(const std::string& code)
 {
     for (auto& pack : RLTraining) {
         if (pack.code == code) {
@@ -492,7 +492,7 @@ void PrejumpPackManager::ToggleShuffleBag(const std::string& code)
     }
 }
 
-std::vector<TrainingEntry> PrejumpPackManager::GetShuffleBagPacks() const
+std::vector<TrainingEntry> TrainingPackManager::GetShuffleBagPacks() const
 {
     std::vector<TrainingEntry> shuffleBag;
     for (const auto& pack : RLTraining) {
@@ -503,7 +503,7 @@ std::vector<TrainingEntry> PrejumpPackManager::GetShuffleBagPacks() const
     return shuffleBag;
 }
 
-TrainingEntry* PrejumpPackManager::GetPackByCode(const std::string& code)
+TrainingEntry* TrainingPackManager::GetPackByCode(const std::string& code)
 {
     for (auto& pack : RLTraining) {
         if (pack.code == code) {
@@ -513,7 +513,7 @@ TrainingEntry* PrejumpPackManager::GetPackByCode(const std::string& code)
     return nullptr;
 }
 
-int PrejumpPackManager::GetShuffleBagCount() const
+int TrainingPackManager::GetShuffleBagCount() const
 {
     int count = 0;
     for (const auto& pack : RLTraining) {

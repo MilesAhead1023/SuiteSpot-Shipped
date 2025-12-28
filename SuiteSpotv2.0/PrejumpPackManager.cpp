@@ -11,8 +11,8 @@
 void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath)
 {
     if (!std::filesystem::exists(filePath)) {
-        LOG("SuiteSpot: Prejump packs file not found: " + filePath.string());
-        packs.clear();
+        LOG("SuiteSpot: Prejump packs file not found: {}", filePath.string());
+        RLTraining.clear();
         packCount = 0;
         lastUpdated = "Never";
         return;
@@ -29,7 +29,7 @@ void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath
         file >> jsonData;
         file.close();
 
-        packs.clear();
+        RLTraining.clear();
 
         if (!jsonData.contains("packs") || !jsonData["packs"].is_array()) {
             LOG("SuiteSpot: Invalid Prejump packs file format - missing 'packs' array");
@@ -89,16 +89,40 @@ void PrejumpPackManager::LoadPacksFromFile(const std::filesystem::path& filePath
                 }
             }
 
-            packs.push_back(entry);
+            // Unified system fields
+            if (pack.contains("source") && pack["source"].is_string()) {
+                entry.source = pack["source"].get<std::string>();
+            } else {
+                entry.source = "prejump"; // Default for backward compatibility
+            }
+            if (pack.contains("inShuffleBag") && pack["inShuffleBag"].is_boolean()) {
+                entry.inShuffleBag = pack["inShuffleBag"].get<bool>();
+            }
+            if (pack.contains("isModified") && pack["isModified"].is_boolean()) {
+                entry.isModified = pack["isModified"].get<bool>();
+            }
+
+            RLTraining.push_back(entry);
         }
 
-        packCount = static_cast<int>(packs.size());
+        // Sort RLTraining alphabetically by name
+        std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
+            // Case-insensitive comparison for names
+            std::string nameA = a.name;
+            std::string nameB = b.name;
+            std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
+            std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
+            return nameA < nameB;
+        });
+
+        packCount = static_cast<int>(RLTraining.size());
         lastUpdated = GetLastUpdatedTime(filePath);
-        LOG("SuiteSpot: Loaded " + std::to_string(packCount) + " prejump packs from file");
+        currentFilePath = filePath;
+        LOG("SuiteSpot: Loaded {} prejump packs from file", packCount);
 
     } catch (const std::exception& e) {
-        LOG("SuiteSpot: Error loading Prejump packs: " + std::string(e.what()));
-        packs.clear();
+        LOG("SuiteSpot: Error loading Prejump packs: {}", std::string(e.what()));
+        RLTraining.clear();
         packCount = 0;
     }
 }
@@ -158,7 +182,7 @@ void PrejumpPackManager::ScrapeAndLoadPrejumpPacks(const std::filesystem::path& 
     }
 
     if (!std::filesystem::exists(scraperScript)) {
-        LOG("SuiteSpot: Prejump scraper script not found in data folder: " + scraperScript.string());
+        LOG("SuiteSpot: Prejump scraper script not found in data folder: {}", scraperScript.string());
         return;
     }
 
@@ -182,7 +206,7 @@ void PrejumpPackManager::ScrapeAndLoadPrejumpPacks(const std::filesystem::path& 
             LoadPacksFromFile(outputPath);
             lastUpdated = GetLastUpdatedTime(outputPath);
         } else {
-            LOG("SuiteSpot: Prejump scraper failed with exit code " + std::to_string(result));
+            LOG("SuiteSpot: Prejump scraper failed with exit code {}", result);
         }
 
         scrapingInProgress = false;
@@ -203,7 +227,7 @@ void PrejumpPackManager::FilterAndSortPacks(const std::string& searchText,
     std::transform(searchLower.begin(), searchLower.end(), searchLower.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-    for (const auto& pack : packs) {
+    for (const auto& pack : RLTraining) {
         if (!searchLower.empty()) {
             std::string nameLower = pack.name;
             std::string creatorLower = pack.creator;
@@ -282,7 +306,7 @@ void PrejumpPackManager::FilterAndSortPacks(const std::string& searchText,
 void PrejumpPackManager::BuildAvailableTags(std::vector<std::string>& out) const
 {
     std::set<std::string> uniqueTags;
-    for (const auto& pack : packs) {
+    for (const auto& pack : RLTraining) {
         for (const auto& tag : pack.tags) {
             uniqueTags.insert(tag);
         }
@@ -293,4 +317,209 @@ void PrejumpPackManager::BuildAvailableTags(std::vector<std::string>& out) const
     for (const auto& tag : uniqueTags) {
         out.push_back(tag);
     }
+}
+
+void PrejumpPackManager::SavePacksToFile(const std::filesystem::path& filePath)
+{
+    try {
+        nlohmann::json output;
+        output["version"] = "1.0.0";
+
+        // Get current time in ISO format
+        auto now = std::chrono::system_clock::now();
+        auto tt = std::chrono::system_clock::to_time_t(now);
+        std::ostringstream oss;
+        oss << std::put_time(std::gmtime(&tt), "%Y-%m-%dT%H:%M:%SZ");
+        output["lastUpdated"] = oss.str();
+
+        output["source"] = "https://prejump.com/training-packs";
+        output["totalPacks"] = RLTraining.size();
+
+        nlohmann::json packsArray = nlohmann::json::array();
+        for (const auto& pack : RLTraining) {
+            nlohmann::json p;
+            p["name"] = pack.name;
+            p["code"] = pack.code;
+            p["creator"] = pack.creator;
+            p["creatorSlug"] = pack.creatorSlug;
+            p["difficulty"] = pack.difficulty;
+            p["shotCount"] = pack.shotCount;
+            p["tags"] = pack.tags;
+            p["videoUrl"] = pack.videoUrl;
+            p["staffComments"] = pack.staffComments;
+            p["notes"] = pack.notes;
+            p["likes"] = pack.likes;
+            p["plays"] = pack.plays;
+            p["status"] = pack.status;
+
+            // Unified system fields
+            p["source"] = pack.source;
+            p["inShuffleBag"] = pack.inShuffleBag;
+            p["isModified"] = pack.isModified;
+
+            packsArray.push_back(p);
+        }
+        output["packs"] = packsArray;
+
+        // Ensure directory exists
+        auto parentDir = filePath.parent_path();
+        if (!std::filesystem::exists(parentDir)) {
+            std::filesystem::create_directories(parentDir);
+        }
+
+        std::ofstream file(filePath);
+        if (!file.is_open()) {
+            LOG("SuiteSpot: Failed to open file for writing: {}", filePath.string());
+            return;
+        }
+
+        file << output.dump(2); // Pretty print with 2-space indent
+        file.close();
+
+        currentFilePath = filePath;
+        lastUpdated = GetLastUpdatedTime(filePath);
+        LOG("SuiteSpot: Saved {} packs to file", RLTraining.size());
+
+    } catch (const std::exception& e) {
+        LOG("SuiteSpot: Error saving packs: {}", std::string(e.what()));
+    }
+}
+
+bool PrejumpPackManager::AddCustomPack(const TrainingEntry& pack)
+{
+    // Check for duplicate code
+    for (const auto& existing : RLTraining) {
+        if (existing.code == pack.code) {
+            LOG("SuiteSpot: Pack with code {} already exists", pack.code);
+            return false;
+        }
+    }
+
+    TrainingEntry newPack = pack;
+    newPack.source = "custom";
+    RLTraining.push_back(newPack);
+
+    // Sort RLTraining alphabetically by name
+    std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
+        std::string nameA = a.name;
+        std::string nameB = b.name;
+        std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
+        return nameA < nameB;
+    });
+
+    packCount = static_cast<int>(RLTraining.size());
+
+    // Auto-save if we have a file path
+    if (!currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
+
+    LOG("SuiteSpot: Added custom pack: {}", pack.name);
+    return true;
+}
+
+bool PrejumpPackManager::UpdatePack(const std::string& code, const TrainingEntry& updatedPack)
+{
+    for (auto& pack : RLTraining) {
+        if (pack.code == code) {
+            // Preserve source and update isModified
+            std::string originalSource = pack.source;
+            pack = updatedPack;
+            pack.source = originalSource;
+
+            // Mark as modified if it was a prejump pack
+            if (originalSource == "prejump") {
+                pack.isModified = true;
+            }
+
+            // Sort RLTraining alphabetically by name
+            std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
+                std::string nameA = a.name;
+                std::string nameB = b.name;
+                std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
+                std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
+                return nameA < nameB;
+            });
+
+            // Auto-save
+            if (!currentFilePath.empty()) {
+                SavePacksToFile(currentFilePath);
+            }
+
+            LOG("SuiteSpot: Updated pack: {}", pack.name);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PrejumpPackManager::DeletePack(const std::string& code)
+{
+    auto it = std::find_if(RLTraining.begin(), RLTraining.end(),
+        [&code](const TrainingEntry& p) { return p.code == code; });
+
+    if (it != RLTraining.end()) {
+        std::string name = it->name;
+        RLTraining.erase(it);
+        packCount = static_cast<int>(RLTraining.size());
+
+        // Auto-save
+        if (!currentFilePath.empty()) {
+            SavePacksToFile(currentFilePath);
+        }
+
+        LOG("SuiteSpot: Deleted pack: {}", name);
+        return true;
+    }
+    return false;
+}
+
+void PrejumpPackManager::ToggleShuffleBag(const std::string& code)
+{
+    for (auto& pack : RLTraining) {
+        if (pack.code == code) {
+            pack.inShuffleBag = !pack.inShuffleBag;
+
+            // Auto-save
+            if (!currentFilePath.empty()) {
+                SavePacksToFile(currentFilePath);
+            }
+
+            LOG("SuiteSpot: {} pack from shuffle bag: {}", std::string(pack.inShuffleBag ? "Added" : "Removed"), pack.name);
+            return;
+        }
+    }
+}
+
+std::vector<TrainingEntry> PrejumpPackManager::GetShuffleBagPacks() const
+{
+    std::vector<TrainingEntry> shuffleBag;
+    for (const auto& pack : RLTraining) {
+        if (pack.inShuffleBag) {
+            shuffleBag.push_back(pack);
+        }
+    }
+    return shuffleBag;
+}
+
+TrainingEntry* PrejumpPackManager::GetPackByCode(const std::string& code)
+{
+    for (auto& pack : RLTraining) {
+        if (pack.code == code) {
+            return &pack;
+        }
+    }
+    return nullptr;
+}
+
+int PrejumpPackManager::GetShuffleBagCount() const
+{
+    int count = 0;
+    for (const auto& pack : RLTraining) {
+        if (pack.inShuffleBag) {
+            count++;
+        }
+    }
+    return count;
 }

@@ -98,7 +98,7 @@ void PrejumpUI::RenderPrejumpTab() {
 
     // ===== SHUFFLE BAG STATUS & CONTROLS =====
     if (ImGui::CollapsingHeader("Shuffle Bag Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int shufflePackCount = static_cast<int>(plugin_->trainingShuffleBag.size());
+        int shufflePackCount = plugin_->prejumpMgr ? plugin_->prejumpMgr->GetShuffleBagCount() : 0;
 
         if (shufflePackCount > 0) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Current Bag: %d pack%s", shufflePackCount, shufflePackCount == 1 ? "" : "s");
@@ -122,9 +122,13 @@ void PrejumpUI::RenderPrejumpTab() {
 
             ImGui::SameLine();
             if (ImGui::Button("Clear Bag")) {
-                plugin_->trainingShuffleBag.clear();
-                plugin_->selectedTrainingIndices.clear();
-                plugin_->SaveShuffleBag();
+                // Clear shuffle bag by toggling all packs that are in it
+                if (plugin_->prejumpMgr) {
+                    auto shufflePacks = plugin_->prejumpMgr->GetShuffleBagPacks();
+                    for (const auto& pack : shufflePacks) {
+                        plugin_->prejumpMgr->ToggleShuffleBag(pack.code);
+                    }
+                }
                 LOG("SuiteSpot: Shuffle bag cleared");
             }
             if (ImGui::IsItemHovered()) {
@@ -147,9 +151,15 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::Separator();
     ImGui::Spacing();
 
+    // ===== ADD CUSTOM PACK SECTION =====
+    RenderCustomPackForm();
+
+    ImGui::Separator();
+    ImGui::Spacing();
+
     // Early return if no packs loaded
     if (packs.empty()) {
-        ImGui::TextWrapped("No packs available. Click 'Scrape Prejump' to download the training pack database from prejump.com.");
+        ImGui::TextWrapped("No packs available. Click 'Scrape Prejump' to download the training pack database from prejump.com, or add your own custom packs above.");
         return;
     }
 
@@ -427,29 +437,17 @@ void PrejumpUI::RenderPrejumpTab() {
         // Add to Shuffle button with visual feedback
         std::string shuffleLabel = "+Shuffle##" + std::to_string(row);
 
-        // Check if pack already in shuffle bag
-        bool inShuffleBag = std::find_if(plugin_->trainingShuffleBag.begin(), plugin_->trainingShuffleBag.end(),
-            [&pack](const TrainingEntry& e) { return e.code == pack.code; }) != plugin_->trainingShuffleBag.end();
+        // Check if pack already in shuffle bag (using inShuffleBag field)
+        bool inShuffleBag = pack.inShuffleBag;
 
         if (inShuffleBag) {
             ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
         }
 
         if (ImGui::SmallButton(shuffleLabel.c_str())) {
-            if (!inShuffleBag) {
-                // Add to shuffle bag
-                plugin_->trainingShuffleBag.push_back(pack);
-                plugin_->SaveShuffleBag();
-                LOG("SuiteSpot: Added to shuffle: " + pack.name);
-            } else {
-                // Remove from shuffle bag
-                plugin_->trainingShuffleBag.erase(
-                    std::remove_if(plugin_->trainingShuffleBag.begin(), plugin_->trainingShuffleBag.end(),
-                        [&pack](const TrainingEntry& e) { return e.code == pack.code; }),
-                    plugin_->trainingShuffleBag.end()
-                );
-                plugin_->SaveShuffleBag();
-                LOG("SuiteSpot: Removed from shuffle: " + pack.name);
+            // Toggle shuffle bag membership via PrejumpPackManager
+            if (plugin_->prejumpMgr) {
+                plugin_->prejumpMgr->ToggleShuffleBag(pack.code);
             }
         }
 
@@ -461,6 +459,24 @@ void PrejumpUI::RenderPrejumpTab() {
             ImGui::SetTooltip(inShuffleBag ? "Remove from shuffle bag" : "Add to shuffle bag");
         }
 
+        // Delete button (only for custom packs, or with confirmation)
+        if (pack.source == "custom") {
+            ImGui::SameLine();
+            std::string deleteLabel = "X##del" + std::to_string(row);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
+            if (ImGui::SmallButton(deleteLabel.c_str())) {
+                if (plugin_->prejumpMgr) {
+                    plugin_->prejumpMgr->DeletePack(pack.code);
+                    LOG("SuiteSpot: Deleted custom pack: " + pack.name);
+                }
+            }
+            ImGui::PopStyleColor(2);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Delete this custom pack");
+            }
+        }
+
         ImGui::NextColumn();
     }
 
@@ -469,6 +485,207 @@ void PrejumpUI::RenderPrejumpTab() {
     ImGui::Separator();
 
     ImGui::Spacing();
+}
 
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 1.0f, 1.0f), "💡 Tip: Click column headers to sort | Drag column borders to resize");
+bool PrejumpUI::ValidatePackCode(const char* code) const {
+    // Validate format: XXXX-XXXX-XXXX-XXXX (alphanumeric, 19 chars total)
+    if (strlen(code) != 19) return false;
+
+    for (int i = 0; i < 19; i++) {
+        if (i == 4 || i == 9 || i == 14) {
+            if (code[i] != '-') return false;
+        } else {
+            if (!isalnum(static_cast<unsigned char>(code[i]))) return false;
+        }
+    }
+    return true;
+}
+
+void PrejumpUI::ClearCustomPackForm() {
+    customPackCode[0] = '\0';
+    customPackName[0] = '\0';
+    customPackCreator[0] = '\0';
+    customPackDifficulty = 0;
+    customPackShotCount = 10;
+    customPackTags[0] = '\0';
+    customPackNotes[0] = '\0';
+    customPackVideoUrl[0] = '\0';
+    customPackError.clear();
+    customPackSuccess = false;
+}
+
+void PrejumpUI::RenderCustomPackForm() {
+    if (ImGui::CollapsingHeader("Add Custom Pack")) {
+        ImGui::Indent(10.0f);
+        ImGui::Spacing();
+
+        // Success/error messages
+        if (customPackSuccess) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Pack added successfully!");
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Dismiss")) {
+                customPackSuccess = false;
+            }
+            ImGui::Spacing();
+        }
+        if (!customPackError.empty()) {
+            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", customPackError.c_str());
+            ImGui::Spacing();
+        }
+
+        // Code input (required)
+        ImGui::TextUnformatted("Code *");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(XXXX-XXXX-XXXX-XXXX)");
+        ImGui::SetNextItemWidth(220);
+        if (ImGui::InputText("##customcode", customPackCode, IM_ARRAYSIZE(customPackCode))) {
+            // Auto-format: insert dashes
+            std::string raw;
+            for (int i = 0; customPackCode[i]; i++) {
+                char c = customPackCode[i];
+                if (isalnum(static_cast<unsigned char>(c))) {
+                    raw += static_cast<char>(toupper(static_cast<unsigned char>(c)));
+                }
+            }
+            // Limit to 16 alphanumeric chars
+            if (raw.length() > 16) raw = raw.substr(0, 16);
+
+            // Reformat with dashes
+            std::string formatted;
+            for (size_t i = 0; i < raw.length(); i++) {
+                if (i > 0 && i % 4 == 0) formatted += '-';
+                formatted += raw[i];
+            }
+            strncpy_s(customPackCode, formatted.c_str(), sizeof(customPackCode) - 1);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Training pack code from Rocket League (auto-formatted)");
+        }
+
+        // Name input (required)
+        ImGui::TextUnformatted("Name *");
+        ImGui::SetNextItemWidth(300);
+        ImGui::InputText("##customname", customPackName, IM_ARRAYSIZE(customPackName));
+
+        // Creator input (optional)
+        ImGui::TextUnformatted("Creator");
+        ImGui::SetNextItemWidth(200);
+        ImGui::InputText("##customcreator", customPackCreator, IM_ARRAYSIZE(customPackCreator));
+
+        // Difficulty dropdown (optional)
+        ImGui::TextUnformatted("Difficulty");
+        ImGui::SetNextItemWidth(150);
+        const char* difficulties[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
+        ImGui::Combo("##customdifficulty", &customPackDifficulty, difficulties, IM_ARRAYSIZE(difficulties));
+
+        // Shot count slider
+        ImGui::TextUnformatted("Shot Count");
+        ImGui::SetNextItemWidth(200);
+        ImGui::SliderInt("##customshots", &customPackShotCount, 1, 50);
+
+        // Tags input (comma-separated)
+        ImGui::TextUnformatted("Tags");
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(comma-separated)");
+        ImGui::SetNextItemWidth(300);
+        ImGui::InputText("##customtags", customPackTags, IM_ARRAYSIZE(customPackTags));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("e.g., Aerials, Wall Shots, Redirects");
+        }
+
+        // Notes input (multiline)
+        ImGui::TextUnformatted("Notes");
+        ImGui::InputTextMultiline("##customnotes", customPackNotes, IM_ARRAYSIZE(customPackNotes), ImVec2(400, 60));
+
+        // Video URL (optional)
+        ImGui::TextUnformatted("Video URL");
+        ImGui::SetNextItemWidth(350);
+        ImGui::InputText("##customvideo", customPackVideoUrl, IM_ARRAYSIZE(customPackVideoUrl));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("YouTube or other video link (optional)");
+        }
+
+        ImGui::Spacing();
+
+        // Buttons
+        if (ImGui::Button("Add Pack", ImVec2(100, 0))) {
+            customPackError.clear();
+            customPackSuccess = false;
+
+            // Validate required fields
+            if (strlen(customPackCode) == 0) {
+                customPackError = "Pack code is required";
+            } else if (!ValidatePackCode(customPackCode)) {
+                customPackError = "Invalid code format. Expected: XXXX-XXXX-XXXX-XXXX";
+            } else if (strlen(customPackName) == 0) {
+                customPackError = "Pack name is required";
+            } else {
+                // Build TrainingEntry
+                TrainingEntry pack;
+                pack.code = customPackCode;
+                pack.name = customPackName;
+                pack.creator = strlen(customPackCreator) > 0 ? customPackCreator : "Unknown";
+
+                const char* difficultyNames[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
+                pack.difficulty = difficultyNames[customPackDifficulty];
+
+                pack.shotCount = customPackShotCount;
+
+                // Parse tags
+                if (strlen(customPackTags) > 0) {
+                    std::string tagsStr = customPackTags;
+                    size_t start = 0;
+                    size_t end = tagsStr.find(',');
+                    while (end != std::string::npos) {
+                        std::string tag = tagsStr.substr(start, end - start);
+                        // Trim whitespace
+                        size_t first = tag.find_first_not_of(" \t");
+                        size_t last = tag.find_last_not_of(" \t");
+                        if (first != std::string::npos) {
+                            pack.tags.push_back(tag.substr(first, last - first + 1));
+                        }
+                        start = end + 1;
+                        end = tagsStr.find(',', start);
+                    }
+                    // Last tag
+                    std::string tag = tagsStr.substr(start);
+                    size_t first = tag.find_first_not_of(" \t");
+                    size_t last = tag.find_last_not_of(" \t");
+                    if (first != std::string::npos) {
+                        pack.tags.push_back(tag.substr(first, last - first + 1));
+                    }
+                }
+
+                pack.staffComments = customPackNotes;
+                pack.videoUrl = customPackVideoUrl;
+                pack.source = "custom";
+                pack.inShuffleBag = false;
+                pack.isModified = false;
+
+                // Try to add via manager
+                if (plugin_->prejumpMgr) {
+                    if (plugin_->prejumpMgr->AddCustomPack(pack)) {
+                        customPackSuccess = true;
+                        ClearCustomPackForm();
+                        LOG("SuiteSpot: Added custom pack: " + pack.name);
+                    } else {
+                        customPackError = "Pack with this code already exists";
+                    }
+                } else {
+                    customPackError = "Pack manager not initialized";
+                }
+            }
+        }
+
+        ImGui::SameLine();
+        if (ImGui::Button("Clear", ImVec2(80, 0))) {
+            ClearCustomPackForm();
+        }
+
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "* Required fields");
+
+        ImGui::Unindent(10.0f);
+        ImGui::Spacing();
+    }
 }

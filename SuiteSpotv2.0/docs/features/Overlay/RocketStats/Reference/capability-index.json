@@ -1,0 +1,1367 @@
+[
+  {
+    "id": 1,
+    "title": "Toggle settings overlay",
+    "slug": "toggle-settings-overlay",
+    "control_surfaces": ["notifier", "cvar"],
+    "evidence": "RocketStats.cpp:413-415 (registerNotifier rs_toggle_menu), RocketStats.cpp:473 (CVar cl_rocketstats_settings)"
+  },
+  {
+    "id": 2,
+    "title": "Reset all statistics",
+    "slug": "reset-all-statistics",
+    "control_surfaces": ["notifier"],
+    "evidence": "RocketStats.cpp:417-419 (registerNotifier rs_reset_stats)"
+  },
+  {
+    "id": 3,
+    "title": "Reposition menu overlay",
+    "slug": "reposition-menu-overlay",
+    "control_surfaces": ["notifier"],
+    "evidence": "RocketStats.cpp:421-428 (registerNotifier rs_menu_pos)"
+  },
+  {
+    "id": 4,
+    "title": "Select aggregation mode for statistics",
+    "slug": "select-stats-aggregation-mode",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:481 (CVar rs_mode with options: session, per-playlist, all-time, all-time per-gamemode)"
+  },
+  {
+    "id": 5,
+    "title": "Select theme for menu display",
+    "slug": "select-menu-theme",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:482-485 (CVar rs_theme with addOnValueChanged to ChangeTheme)"
+  },
+  {
+    "id": 6,
+    "title": "Select theme for in-game display",
+    "slug": "select-ingame-theme",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:487-490 (CVar rs_gameTheme, dual-theme support)"
+  },
+  {
+    "id": 7,
+    "title": "Set overlay X position",
+    "slug": "set-overlay-x-position",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:492 (CVar rs_x, range 0.0-1.0)"
+  },
+  {
+    "id": 8,
+    "title": "Set overlay Y position",
+    "slug": "set-overlay-y-position",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:493 (CVar rs_y, range 0.0-1.0)"
+  },
+  {
+    "id": 9,
+    "title": "Set overlay scale",
+    "slug": "set-overlay-scale",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:494 (CVar rs_scale, range 0.001-10.0)"
+  },
+  {
+    "id": 10,
+    "title": "Set overlay rotation angle",
+    "slug": "set-overlay-rotation",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:495 (CVar rs_rotate, range -180 to 180 degrees)"
+  },
+  {
+    "id": 11,
+    "title": "Set overlay opacity",
+    "slug": "set-overlay-opacity",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:496 (CVar rs_opacity, range 0.0-1.0)"
+  },
+  {
+    "id": 12,
+    "title": "Toggle overlay display",
+    "slug": "toggle-overlay-display",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:498 (CVar rs_disp_overlay)"
+  },
+  {
+    "id": 13,
+    "title": "Show overlay in main menu",
+    "slug": "show-overlay-in-menu",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:500 (CVar rs_enable_inmenu)"
+  },
+  {
+    "id": 14,
+    "title": "Show overlay in-game",
+    "slug": "show-overlay-ingame",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:501 (CVar rs_enable_ingame)"
+  },
+  {
+    "id": 15,
+    "title": "Show overlay in scoreboard",
+    "slug": "show-overlay-in-scoreboard",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:502 (CVar rs_enable_inscoreboard)"
+  },
+  {
+    "id": 16,
+    "title": "Enable floating point MMR precision",
+    "slug": "enable-floating-point-mmr",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:503 (CVar rs_enable_float, for OBS streaming)"
+  },
+  {
+    "id": 17,
+    "title": "Preview next rank tier",
+    "slug": "preview-next-rank",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:504 (CVar rs_preview_rank)"
+  },
+  {
+    "id": 18,
+    "title": "Display rank division as Roman numerals",
+    "slug": "use-roman-numerals-division",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:505 (CVar rs_roman_numbers)"
+  },
+  {
+    "id": 19,
+    "title": "Replace MMR display with MMRChange",
+    "slug": "replace-mmr-with-mmrchange",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:507 (CVar rs_replace_mmr)"
+  },
+  {
+    "id": 20,
+    "title": "Replace MMR with MMRCumulChange",
+    "slug": "replace-mmr-with-mmrcumulchange",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:508 (CVar rs_replace_mmr_cc)"
+  },
+  {
+    "id": 21,
+    "title": "Replace MMRChange with MMR",
+    "slug": "replace-mmrchange-with-mmr",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:509 (CVar rs_replace_mmrc)"
+  },
+  {
+    "id": 22,
+    "title": "Replace MMRChange with MMRCumulChange",
+    "slug": "replace-mmrchange-with-mmrcumulchange",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:510 (CVar rs_replace_mmrc_cc)"
+  },
+  {
+    "id": 23,
+    "title": "Replace MMRCumulChange with MMR",
+    "slug": "replace-mmrcumulchange-with-mmr",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:511 (CVar rs_replace_mmrcc)"
+  },
+  {
+    "id": 24,
+    "title": "Replace MMRCumulChange with MMRChange",
+    "slug": "replace-mmrcumulchange-with-mmrchange",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:512 (CVar rs_replace_mmrcc_c)"
+  },
+  {
+    "id": 25,
+    "title": "Enable file output mode",
+    "slug": "enable-file-output",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:514 (CVar rs_in_file, master toggle for all text file outputs)"
+  },
+  {
+    "id": 26,
+    "title": "Toggle file output for games count",
+    "slug": "toggle-file-output-games",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:519 (CVar rs_file_games)"
+  },
+  {
+    "id": 27,
+    "title": "Toggle file output for game mode",
+    "slug": "toggle-file-output-gamemode",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:520 (CVar rs_file_gm)"
+  },
+  {
+    "id": 28,
+    "title": "Toggle file output for rank",
+    "slug": "toggle-file-output-rank",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:521 (CVar rs_file_rank)"
+  },
+  {
+    "id": 29,
+    "title": "Toggle file output for division",
+    "slug": "toggle-file-output-division",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:522 (CVar rs_file_div)"
+  },
+  {
+    "id": 30,
+    "title": "Toggle file output for MMR",
+    "slug": "toggle-file-output-mmr",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:523 (CVar rs_file_mmr)"
+  },
+  {
+    "id": 31,
+    "title": "Toggle file output for MMR change",
+    "slug": "toggle-file-output-mmrchange",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:524 (CVar rs_file_mmrc)"
+  },
+  {
+    "id": 32,
+    "title": "Toggle file output for cumulative MMR change",
+    "slug": "toggle-file-output-mmrcumulchange",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:525 (CVar rs_file_mmrcc)"
+  },
+  {
+    "id": 33,
+    "title": "Toggle file output for wins",
+    "slug": "toggle-file-output-wins",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:526 (CVar rs_file_win)"
+  },
+  {
+    "id": 34,
+    "title": "Toggle file output for losses",
+    "slug": "toggle-file-output-losses",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:527 (CVar rs_file_loss)"
+  },
+  {
+    "id": 35,
+    "title": "Toggle file output for winning streak",
+    "slug": "toggle-file-output-streak",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:528 (CVar rs_file_streak)"
+  },
+  {
+    "id": 36,
+    "title": "Toggle file output for win ratio",
+    "slug": "toggle-file-output-win-ratio",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:529 (CVar rs_file_winratio)"
+  },
+  {
+    "id": 37,
+    "title": "Toggle file output for win percentage",
+    "slug": "toggle-file-output-win-percentage",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:530 (CVar rs_file_winpercentage)"
+  },
+  {
+    "id": 38,
+    "title": "Toggle file output for match score",
+    "slug": "toggle-file-output-score",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:531 (CVar rs_file_score)"
+  },
+  {
+    "id": 39,
+    "title": "Toggle file output for shot statistics",
+    "slug": "toggle-file-output-shots",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:532 (CVar rs_file_shots)"
+  },
+  {
+    "id": 40,
+    "title": "Toggle file output for save statistics",
+    "slug": "toggle-file-output-saves",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:533 (CVar rs_file_saves)"
+  },
+  {
+    "id": 41,
+    "title": "Toggle file output for goal statistics",
+    "slug": "toggle-file-output-goals",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:534 (CVar rs_file_goals)"
+  },
+  {
+    "id": 42,
+    "title": "Toggle file output for dropshot statistics",
+    "slug": "toggle-file-output-dropshot",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:535 (CVar rs_file_dropshot)"
+  },
+  {
+    "id": 43,
+    "title": "Toggle file output for knockout statistics",
+    "slug": "toggle-file-output-knockout",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:536 (CVar rs_file_knockout)"
+  },
+  {
+    "id": 44,
+    "title": "Toggle file output for miscellaneous statistics",
+    "slug": "toggle-file-output-miscs",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:537 (CVar rs_file_miscs)"
+  },
+  {
+    "id": 45,
+    "title": "Toggle file output for accolades",
+    "slug": "toggle-file-output-accolades",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:538 (CVar rs_file_accolades)"
+  },
+  {
+    "id": 46,
+    "title": "Toggle file output for boost state",
+    "slug": "toggle-file-output-boost",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:539 (CVar rs_file_boost)"
+  },
+  {
+    "id": 47,
+    "title": "Hide games count from overlay",
+    "slug": "hide-games-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:541 (CVar rs_hide_games)"
+  },
+  {
+    "id": 48,
+    "title": "Hide game mode from overlay",
+    "slug": "hide-gamemode-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:542 (CVar rs_hide_gm)"
+  },
+  {
+    "id": 49,
+    "title": "Hide rank from overlay",
+    "slug": "hide-rank-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:543 (CVar rs_hide_rank)"
+  },
+  {
+    "id": 50,
+    "title": "Hide division from overlay",
+    "slug": "hide-division-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:544 (CVar rs_hide_div)"
+  },
+  {
+    "id": 51,
+    "title": "Hide MMR from overlay",
+    "slug": "hide-mmr-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:545 (CVar rs_hide_mmr)"
+  },
+  {
+    "id": 52,
+    "title": "Hide MMR change from overlay",
+    "slug": "hide-mmrchange-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:546 (CVar rs_hide_mmrc)"
+  },
+  {
+    "id": 53,
+    "title": "Hide cumulative MMR change from overlay",
+    "slug": "hide-mmrcumulchange-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:547 (CVar rs_hide_mmrcc)"
+  },
+  {
+    "id": 54,
+    "title": "Hide wins from overlay",
+    "slug": "hide-wins-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:548 (CVar rs_hide_win)"
+  },
+  {
+    "id": 55,
+    "title": "Hide losses from overlay",
+    "slug": "hide-losses-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:549 (CVar rs_hide_loss)"
+  },
+  {
+    "id": 56,
+    "title": "Hide winning streak from overlay",
+    "slug": "hide-streak-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:550 (CVar rs_hide_streak)"
+  },
+  {
+    "id": 57,
+    "title": "Hide win ratio from overlay",
+    "slug": "hide-win-ratio-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:551 (CVar rs_hide_winratio)"
+  },
+  {
+    "id": 58,
+    "title": "Hide win percentage from overlay",
+    "slug": "hide-win-percentage-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:552 (CVar rs_hide_winpercentage)"
+  },
+  {
+    "id": 59,
+    "title": "Hide match score from overlay",
+    "slug": "hide-score-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:553 (CVar rs_hide_score)"
+  },
+  {
+    "id": 60,
+    "title": "Hide shot statistics from overlay",
+    "slug": "hide-shots-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:554 (CVar rs_hide_shots)"
+  },
+  {
+    "id": 61,
+    "title": "Hide save statistics from overlay",
+    "slug": "hide-saves-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:555 (CVar rs_hide_saves)"
+  },
+  {
+    "id": 62,
+    "title": "Hide goal statistics from overlay",
+    "slug": "hide-goals-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:556 (CVar rs_hide_goals)"
+  },
+  {
+    "id": 63,
+    "title": "Hide dropshot statistics from overlay",
+    "slug": "hide-dropshot-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:557 (CVar rs_hide_dropshot)"
+  },
+  {
+    "id": 64,
+    "title": "Hide knockout statistics from overlay",
+    "slug": "hide-knockout-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:558 (CVar rs_hide_knockout)"
+  },
+  {
+    "id": 65,
+    "title": "Hide miscellaneous statistics from overlay",
+    "slug": "hide-miscs-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:559 (CVar rs_hide_miscs)"
+  },
+  {
+    "id": 66,
+    "title": "Hide accolades from overlay",
+    "slug": "hide-accolades-from-overlay",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:560 (CVar rs_hide_accolades)"
+  },
+  {
+    "id": 67,
+    "title": "Detect and track match start",
+    "slug": "game-start-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:434 (HookEvent Countdown.BeginState), GameManagement.cpp:3 (GameStart)"
+  },
+  {
+    "id": 68,
+    "title": "Detect and track match end",
+    "slug": "game-end-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:435 (HookEvent OnMatchWinnerSet), GameManagement.cpp:48 (GameEnd)"
+  },
+  {
+    "id": 69,
+    "title": "Detect mid-match quit or crash",
+    "slug": "game-destroyed-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:436 (HookEvent GameEvent_TA.Destroyed), GameManagement.cpp:128 (GameDestroyed)"
+  },
+  {
+    "id": 70,
+    "title": "Track individual match statistics",
+    "slug": "stat-event-tracking",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:449 (HookEventWithCallerPost HandleStatEvent), StatsManagement.cpp:23 (onStatEvent)"
+  },
+  {
+    "id": 71,
+    "title": "Track accolade achievements",
+    "slug": "stat-ticker-tracking",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:450 (HookEventWithCallerPost HandleStatTickerMessage), StatsManagement.cpp:533 (onStatTickerMessage)"
+  },
+  {
+    "id": 72,
+    "title": "Detect goal score events",
+    "slug": "goal-score-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:440 (HookEvent TriggerGoalScoreEvent), StatsManagement.cpp (onGoalScore)"
+  },
+  {
+    "id": 73,
+    "title": "Track boost activation",
+    "slug": "boost-activation-tracking",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:437 (HookEvent OnBoostAmountChanged.BeginState), BoostManagement.cpp:3 (OnBoostStart)"
+  },
+  {
+    "id": 74,
+    "title": "Track boost amount changes",
+    "slug": "boost-amount-tracking",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:438 (HookEvent EventBoostAmountChanged), BoostManagement.cpp:25 (OnBoostChanged)"
+  },
+  {
+    "id": 75,
+    "title": "Track boost depletion",
+    "slug": "boost-end-tracking",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:439 (HookEvent CarComponent_Boost_TA.Active.EndState), BoostManagement.cpp:48 (OnBoostEnd)"
+  },
+  {
+    "id": 76,
+    "title": "Track main menu entry",
+    "slug": "main-menu-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:441 (HookEvent OnEnteredMainMenu)"
+  },
+  {
+    "id": 77,
+    "title": "Track menu stack push",
+    "slug": "menu-push-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:442 (HookEvent GFxData_MenuStack_TA.PushMenu)"
+  },
+  {
+    "id": 78,
+    "title": "Track menu stack pop",
+    "slug": "menu-pop-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:443 (HookEvent GFxData_MenuStack_TA.PopMenu)"
+  },
+  {
+    "id": 79,
+    "title": "Track scoreboard opening",
+    "slug": "scoreboard-open-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:446 (HookEvent OnOpenScoreboard)"
+  },
+  {
+    "id": 80,
+    "title": "Track scoreboard closing",
+    "slug": "scoreboard-close-detection",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:447 (HookEvent OnCloseScoreboard)"
+  },
+  {
+    "id": 81,
+    "title": "Update UI scale on resolution change",
+    "slug": "ui-scale-update",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:432-433 (HookEvent SetUIScaleModifier, IsFullScreenViewport)"
+  },
+  {
+    "id": 82,
+    "title": "Increment clear counter",
+    "slug": "stat-clear",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent with Clear stat type), Vars/Shots.cpp::VarShotsClear"
+  },
+  {
+    "id": 83,
+    "title": "Increment assist counter",
+    "slug": "stat-assist",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent with Assist stat type), Vars/Shots.cpp::VarShotsAssist"
+  },
+  {
+    "id": 84,
+    "title": "Increment center counter",
+    "slug": "stat-center",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent with Center stat type), Vars/Shots.cpp::VarShotsCenter"
+  },
+  {
+    "id": 85,
+    "title": "Increment aerial hit counter",
+    "slug": "stat-aerial-hit",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Shots.cpp::VarShotsAerialHit"
+  },
+  {
+    "id": 86,
+    "title": "Increment bicycle hit counter",
+    "slug": "stat-bicycle-hit",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Shots.cpp::VarShotsBicycleHit"
+  },
+  {
+    "id": 87,
+    "title": "Increment shot on goal counter",
+    "slug": "stat-shot-on-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Shots.cpp::VarShotsShotOnGoal"
+  },
+  {
+    "id": 88,
+    "title": "Calculate shooting percentage",
+    "slug": "stat-shooting-percentage",
+    "control_surfaces": ["stat"],
+    "evidence": "RocketStats.h (ShootingPercentage field), Vars/Shots.cpp::VarShotsShootingPercentage"
+  },
+  {
+    "id": 89,
+    "title": "Track save counter",
+    "slug": "stat-save",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent with Save type), Vars/Saves.cpp::VarSavesSave"
+  },
+  {
+    "id": 90,
+    "title": "Track epic save counter",
+    "slug": "stat-epic-save",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Saves.cpp::VarSavesEpicSave"
+  },
+  {
+    "id": 91,
+    "title": "Track goal counter",
+    "slug": "stat-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent with Goal type), Vars/Goals.cpp::VarGoalsGoal"
+  },
+  {
+    "id": 92,
+    "title": "Track own goal counter",
+    "slug": "stat-own-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsOwnGoal"
+  },
+  {
+    "id": 93,
+    "title": "Track long goal counter",
+    "slug": "stat-long-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsLongGoal"
+  },
+  {
+    "id": 94,
+    "title": "Track pool shot counter",
+    "slug": "stat-pool-shot",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsPoolShot"
+  },
+  {
+    "id": 95,
+    "title": "Track aerial goal counter",
+    "slug": "stat-aerial-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsAerialGoal"
+  },
+  {
+    "id": 96,
+    "title": "Track turtle goal counter",
+    "slug": "stat-turtle-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsTurtleGoal"
+  },
+  {
+    "id": 97,
+    "title": "Track bicycle goal counter",
+    "slug": "stat-bicycle-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsBicycleGoal"
+  },
+  {
+    "id": 98,
+    "title": "Track overtime goal counter",
+    "slug": "stat-overtime-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsOvertimeGoal"
+  },
+  {
+    "id": 99,
+    "title": "Track backwards goal counter",
+    "slug": "stat-backwards-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsBackwardsGoal"
+  },
+  {
+    "id": 100,
+    "title": "Track hoops swish goal counter",
+    "slug": "stat-hoops-swish-goal",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Goals.cpp::VarGoalsHoopsSwishGoal"
+  },
+  {
+    "id": 101,
+    "title": "Track breakout damage counter",
+    "slug": "stat-breakout-damage",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Dropshot.cpp::VarDropshotBreakoutDamage"
+  },
+  {
+    "id": 102,
+    "title": "Track large breakout damage counter",
+    "slug": "stat-breakout-damage-large",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Dropshot.cpp::VarDropshotBreakoutDamageLarge"
+  },
+  {
+    "id": 103,
+    "title": "Track knockout counter",
+    "slug": "stat-knockout",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent with KO type), Vars/Knockout.cpp::VarKnockoutKO"
+  },
+  {
+    "id": 104,
+    "title": "Track death counter",
+    "slug": "stat-death",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Miscs.cpp::VarMiscsDeath"
+  },
+  {
+    "id": 105,
+    "title": "Track demolition counter",
+    "slug": "stat-demolition",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatEvent), Vars/Miscs.cpp::VarMiscsDemolitions"
+  },
+  {
+    "id": 106,
+    "title": "Track hat trick achievement",
+    "slug": "stat-hat-trick",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatTickerMessage), Vars/Miscs.cpp::VarMiscsHatTrick"
+  },
+  {
+    "id": 107,
+    "title": "Track playmaker achievement",
+    "slug": "stat-playmaker",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatTickerMessage), Vars/Miscs.cpp::VarMiscsPlaymaker"
+  },
+  {
+    "id": 108,
+    "title": "Track savior achievement",
+    "slug": "stat-savior",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatTickerMessage), Vars/Miscs.cpp::VarMiscsSavior"
+  },
+  {
+    "id": 109,
+    "title": "Track MVP accolade",
+    "slug": "stat-accolade-mvp",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp (onStatTickerMessage), Vars/Accolades.cpp::VarAccoladesMVP"
+  },
+  {
+    "id": 110,
+    "title": "Track win counter",
+    "slug": "stat-win",
+    "control_surfaces": ["stat"],
+    "evidence": "GameManagement.cpp::GameEnd, RocketStats.h (Stats.win)"
+  },
+  {
+    "id": 111,
+    "title": "Track loss counter",
+    "slug": "stat-loss",
+    "control_surfaces": ["stat"],
+    "evidence": "GameManagement.cpp::GameEnd, RocketStats.h (Stats.loss)"
+  },
+  {
+    "id": 112,
+    "title": "Track winning streak",
+    "slug": "stat-streak",
+    "control_surfaces": ["stat"],
+    "evidence": "GameManagement.cpp::ComputeStreak, RocketStats.h (Stats.streak)"
+  },
+  {
+    "id": 113,
+    "title": "Update player MMR",
+    "slug": "mmr-update",
+    "control_surfaces": ["hook"],
+    "evidence": "StatsManagement.cpp::UpdateMMR (updates myMMR, MMRChange, MMRCumulChange)"
+  },
+  {
+    "id": 114,
+    "title": "Track current game rank and division",
+    "slug": "track-current-rank-division",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp::MajRank, RocketStats.h (current struct with rank/division)"
+  },
+  {
+    "id": 115,
+    "title": "Render overlay text",
+    "slug": "render-overlay-text",
+    "control_surfaces": ["ui"],
+    "evidence": "OverlayManagement.cpp::RenderElement with type='text'"
+  },
+  {
+    "id": 116,
+    "title": "Render overlay rectangle",
+    "slug": "render-overlay-rectangle",
+    "control_surfaces": ["ui"],
+    "evidence": "OverlayManagement.cpp::RenderElement with type='rectangle'"
+  },
+  {
+    "id": 117,
+    "title": "Render overlay image",
+    "slug": "render-overlay-image",
+    "control_surfaces": ["ui"],
+    "evidence": "OverlayManagement.cpp::RenderElement with type='image'"
+  },
+  {
+    "id": 118,
+    "title": "Render settings ImGui menu",
+    "slug": "render-settings-menu",
+    "control_surfaces": ["ui"],
+    "evidence": "WindowManagement.cpp::RenderSettings, PluginWindow implementation"
+  },
+  {
+    "id": 119,
+    "title": "Apply element rotation transform",
+    "slug": "element-rotation-transform",
+    "control_surfaces": ["ui"],
+    "evidence": "OverlayManagement.cpp::RenderElement (uses imgui_rotate.h for rotation)"
+  },
+  {
+    "id": 120,
+    "title": "Apply element color fill",
+    "slug": "element-fill-color",
+    "control_surfaces": ["ui"],
+    "evidence": "RocketStats.h (Element struct), OverlayManagement.cpp::RenderElement"
+  },
+  {
+    "id": 121,
+    "title": "Apply element stroke color",
+    "slug": "element-stroke-color",
+    "control_surfaces": ["ui"],
+    "evidence": "RocketStats.h (Element struct with stroke field), OverlayManagement.cpp::RenderElement"
+  },
+  {
+    "id": 122,
+    "title": "Load theme configuration from JSON",
+    "slug": "load-theme-config",
+    "control_surfaces": ["file"],
+    "evidence": "OverlayManagement.cpp::LoadThemes (scans RocketStats_themes folder)"
+  },
+  {
+    "id": 123,
+    "title": "Load custom theme fonts",
+    "slug": "load-theme-fonts",
+    "control_surfaces": ["file"],
+    "evidence": "OverlayManagement.cpp::LoadThemes (loads .ttf files from theme folders)"
+  },
+  {
+    "id": 124,
+    "title": "Load theme images",
+    "slug": "load-theme-images",
+    "control_surfaces": ["file"],
+    "evidence": "OverlayManagement.cpp::LoadThemes (loads .tga images)"
+  },
+  {
+    "id": 125,
+    "title": "Parse theme element expressions",
+    "slug": "parse-element-expressions",
+    "control_surfaces": ["file"],
+    "evidence": "OverlayManagement.cpp::CalculateElement (uses TinyExpr for mathematical expressions)"
+  },
+  {
+    "id": 126,
+    "title": "Substitute theme variables",
+    "slug": "substitute-theme-variables",
+    "control_surfaces": ["file"],
+    "evidence": "VarsManagement.cpp::VarsReplace (replaces {{Variable}} with stat values)"
+  },
+  {
+    "id": 127,
+    "title": "Store per-theme overlay position override",
+    "slug": "theme-position-override",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.h (themes_values JSON), FileManagement.cpp::ReadConfig, WriteConfig"
+  },
+  {
+    "id": 128,
+    "title": "Store per-theme scale override",
+    "slug": "theme-scale-override",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.h (themes_values JSON), FileManagement.cpp::ReadConfig, WriteConfig"
+  },
+  {
+    "id": 129,
+    "title": "Store per-theme opacity override",
+    "slug": "theme-opacity-override",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.h (themes_values JSON), FileManagement.cpp::ReadConfig, WriteConfig"
+  },
+  {
+    "id": 130,
+    "title": "Write statistics to text files",
+    "slug": "write-stats-to-files",
+    "control_surfaces": ["file"],
+    "evidence": "VarsManagement.cpp (Var* functions write via WriteInFile), Vars/*.cpp"
+  },
+  {
+    "id": 131,
+    "title": "Save configuration JSON",
+    "slug": "save-config-json",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::WriteConfig (writes to data/rocketstats.json)"
+  },
+  {
+    "id": 132,
+    "title": "Load configuration JSON",
+    "slug": "load-config-json",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::ReadConfig (reads from data/rocketstats.json)"
+  },
+  {
+    "id": 133,
+    "title": "Persist session statistics in config",
+    "slug": "persist-session-stats",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::WriteConfig, VarsWrite (session stats)"
+  },
+  {
+    "id": 134,
+    "title": "Persist per-playlist statistics",
+    "slug": "persist-per-playlist-stats",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::WriteConfig (stats map by playlist ID)"
+  },
+  {
+    "id": 135,
+    "title": "Persist all-time statistics",
+    "slug": "persist-all-time-stats",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::WriteConfig (always stats)"
+  },
+  {
+    "id": 136,
+    "title": "Persist all-time per-gamemode statistics",
+    "slug": "persist-all-time-gamemode-stats",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::WriteConfig (always_gm map)"
+  },
+  {
+    "id": 137,
+    "title": "Create default text output files",
+    "slug": "create-default-text-files",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::ResetFiles (creates 50+ RocketStats_*.txt files)"
+  },
+  {
+    "id": 138,
+    "title": "Initialize WebSocket server on port 8085",
+    "slug": "websocket-server-init",
+    "control_surfaces": ["network"],
+    "evidence": "SocketManagement.cpp::InitWebSocket (listens on port 8085)"
+  },
+  {
+    "id": 139,
+    "title": "Handle WebSocket client connections",
+    "slug": "websocket-client-connection",
+    "control_surfaces": ["network"],
+    "evidence": "SocketManagement.cpp::SocketOpen (adds connection to m_connections set)"
+  },
+  {
+    "id": 140,
+    "title": "Handle WebSocket client disconnections",
+    "slug": "websocket-client-disconnection",
+    "control_surfaces": ["network"],
+    "evidence": "SocketManagement.cpp::SocketClose (removes connection from set)"
+  },
+  {
+    "id": 141,
+    "title": "Broadcast game state to WebSocket clients",
+    "slug": "websocket-broadcast-game-state",
+    "control_surfaces": ["network"],
+    "evidence": "SocketManagement.cpp::SocketBroadcast, GameManagement.cpp::SendGameState"
+  },
+  {
+    "id": 142,
+    "title": "Send game start notification via WebSocket",
+    "slug": "websocket-game-start-notification",
+    "control_surfaces": ["network"],
+    "evidence": "GameManagement.cpp (SocketSend 'GameStart' message)"
+  },
+  {
+    "id": 143,
+    "title": "Send game win notification via WebSocket",
+    "slug": "websocket-game-won-notification",
+    "control_surfaces": ["network"],
+    "evidence": "GameManagement.cpp::GameEnd (SocketSend 'GameWon')"
+  },
+  {
+    "id": 144,
+    "title": "Send game loss notification via WebSocket",
+    "slug": "websocket-game-lost-notification",
+    "control_surfaces": ["network"],
+    "evidence": "GameManagement.cpp::GameEnd (SocketSend 'GameLost')"
+  },
+  {
+    "id": 145,
+    "title": "Send game end notification via WebSocket",
+    "slug": "websocket-game-end-notification",
+    "control_surfaces": ["network"],
+    "evidence": "GameManagement.cpp (SocketSend 'GameEnd')"
+  },
+  {
+    "id": 146,
+    "title": "Send boost state updates via WebSocket",
+    "slug": "websocket-boost-update",
+    "control_surfaces": ["network"],
+    "evidence": "BoostManagement.cpp (SocketSend 'Boost' messages)"
+  },
+  {
+    "id": 147,
+    "title": "Send stat event updates via WebSocket",
+    "slug": "websocket-stat-event",
+    "control_surfaces": ["network"],
+    "evidence": "StatsManagement.cpp::onStatEvent (SocketSend updates)"
+  },
+  {
+    "id": 148,
+    "title": "Handle WebSocket client 'request' message",
+    "slug": "websocket-request-handler",
+    "control_surfaces": ["network"],
+    "evidence": "SocketManagement.cpp::SocketReceive (responds to 'request' with GameState)"
+  },
+  {
+    "id": 149,
+    "title": "Include game context state in WebSocket messages",
+    "slug": "websocket-game-context",
+    "control_surfaces": ["network"],
+    "evidence": "SocketManagement.cpp::SocketData (includes IsInGame, IsInMenu, IsInFreeplay, IsInScoreboard, IsOnlineGame, IsOfflineGame)"
+  },
+  {
+    "id": 150,
+    "title": "Change plugin language to English (INT)",
+    "slug": "change-language-english",
+    "control_surfaces": ["lang"],
+    "evidence": "LangManagement.cpp::ChangeLang (IDB_LANG_INT), RocketStats.cpp:342"
+  },
+  {
+    "id": 151,
+    "title": "Change plugin language to French (FRA)",
+    "slug": "change-language-french",
+    "control_surfaces": ["lang"],
+    "evidence": "LangManagement.cpp::ChangeLang (IDB_LANG_FRA), RocketStats.cpp:342"
+  },
+  {
+    "id": 152,
+    "title": "Extract embedded logo image resource",
+    "slug": "extract-logo-resource",
+    "control_surfaces": ["resource"],
+    "evidence": "RocketStats.cpp:394-398 (WriteResInFile with IDB_LOGO resource)"
+  },
+  {
+    "id": 153,
+    "title": "Extract embedded title image resource",
+    "slug": "extract-title-resource",
+    "control_surfaces": ["resource"],
+    "evidence": "RocketStats.cpp:394-398 (WriteResInFile with IDB_TITLE resource)"
+  },
+  {
+    "id": 154,
+    "title": "Extract embedded welcome screen resource",
+    "slug": "extract-welcome-resource",
+    "control_surfaces": ["resource"],
+    "evidence": "RocketStats.cpp:568 (WriteResInFile with IDB_WEL_INT or IDB_WEL_FRA)"
+  },
+  {
+    "id": 155,
+    "title": "Register custom URL protocol handler",
+    "slug": "register-custom-protocol",
+    "control_surfaces": ["windows"],
+    "evidence": "RocketStats.cpp::SetCustomProtocol (registers RocketStats:// protocol in registry)"
+  },
+  {
+    "id": 156,
+    "title": "Migrate configuration from v3 to v4",
+    "slug": "migrate-old-config",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.cpp::RecoveryOldVars (converts RS_* CVars to rs_* format)"
+  },
+  {
+    "id": 157,
+    "title": "Detect main menu UI language",
+    "slug": "detect-ui-language",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:341 (gameWrapper->GetUILanguage())"
+  },
+  {
+    "id": 158,
+    "title": "Load rank tier images",
+    "slug": "load-rank-images",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.cpp::LoadImgs, RocketStats.cpp::InitRank"
+  },
+  {
+    "id": 159,
+    "title": "Load casual playlist image",
+    "slug": "load-casual-image",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.cpp::LoadImgs (loads Casual.tga)"
+  },
+  {
+    "id": 160,
+    "title": "Track cumulative statistics across all matches",
+    "slug": "track-cumulative-stats",
+    "control_surfaces": ["stat"],
+    "evidence": "RocketStats.h (Cumul stat fields), VarsManagement.cpp (CumulChange tracking)"
+  },
+  {
+    "id": 161,
+    "title": "Track team statistics separately",
+    "slug": "track-team-stats",
+    "control_surfaces": ["stat"],
+    "evidence": "RocketStats.h (Team* fields), StatsManagement.cpp::onStatEvent"
+  },
+  {
+    "id": 162,
+    "title": "Track total statistics including teammates",
+    "slug": "track-total-stats",
+    "control_surfaces": ["stat"],
+    "evidence": "RocketStats.h (Total* fields), StatsManagement.cpp::onStatEvent"
+  },
+  {
+    "id": 163,
+    "title": "Track match-specific statistics only",
+    "slug": "track-match-specific-stats",
+    "control_surfaces": ["stat"],
+    "evidence": "RocketStats.h (Match fields for goals/saves), Vars/Goals.cpp"
+  },
+  {
+    "id": 164,
+    "title": "Refresh overlay on setting change",
+    "slug": "refresh-overlay-on-change",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp (RefreshTheme callback on multiple CVars)"
+  },
+  {
+    "id": 165,
+    "title": "Update file outputs on setting change",
+    "slug": "update-files-on-change",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp (RefreshFiles callback)"
+  },
+  {
+    "id": 166,
+    "title": "Timer for 30 FPS rendering",
+    "slug": "30fps-timer",
+    "control_surfaces": ["timer"],
+    "evidence": "RocketStats.h::FPSTimer (timer_30fps)"
+  },
+  {
+    "id": 167,
+    "title": "Timeout callback for MMR update delay",
+    "slug": "mmr-update-delay",
+    "control_surfaces": ["timer"],
+    "evidence": "GameManagement.cpp::GameEnd (3 second delay before UpdateMMR)"
+  },
+  {
+    "id": 168,
+    "title": "Background WebSocket server thread",
+    "slug": "websocket-background-thread",
+    "control_surfaces": ["thread"],
+    "evidence": "RocketStats.cpp:362 (server_thread spawned in onLoad)"
+  },
+  {
+    "id": 169,
+    "title": "Calculate win/loss ratio",
+    "slug": "calculate-win-ratio",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarWinRatio (Games vs Win count)"
+  },
+  {
+    "id": 170,
+    "title": "Calculate win percentage",
+    "slug": "calculate-win-percentage",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarWinPercentage (100 * Win / Games)"
+  },
+  {
+    "id": 171,
+    "title": "Detect player team affiliation",
+    "slug": "detect-player-team",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp::isPrimaryPlayer, GameManagement.cpp::GetTeam"
+  },
+  {
+    "id": 172,
+    "title": "Detect primary player",
+    "slug": "detect-primary-player",
+    "control_surfaces": ["stat"],
+    "evidence": "StatsManagement.cpp::isPrimaryPlayer (only tracks own stats)"
+  },
+  {
+    "id": 173,
+    "title": "Export statistics in JSON format",
+    "slug": "export-stats-json",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::WriteConfig (nlohmann::json dump)"
+  },
+  {
+    "id": 174,
+    "title": "Apply theme element scale factor",
+    "slug": "apply-element-scale",
+    "control_surfaces": ["ui"],
+    "evidence": "RocketStats.h (Element.scale field), OverlayManagement.cpp::RenderElement"
+  },
+  {
+    "id": 175,
+    "title": "Apply theme text alignment",
+    "slug": "apply-text-alignment",
+    "control_surfaces": ["ui"],
+    "evidence": "Default/config.json (align: left/center/right)"
+  },
+  {
+    "id": 176,
+    "title": "Apply theme text vertical alignment",
+    "slug": "apply-text-valign",
+    "control_surfaces": ["ui"],
+    "evidence": "Default/config.json (valign: top/center/bottom)"
+  },
+  {
+    "id": 177,
+    "title": "Display player score in match",
+    "slug": "display-player-score",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarScorePlayer"
+  },
+  {
+    "id": 178,
+    "title": "Display opponent score in match",
+    "slug": "display-opponent-score",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarScoreOpposite"
+  },
+  {
+    "id": 179,
+    "title": "Display boost amount percentage",
+    "slug": "display-boost-amount",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarBoost"
+  },
+  {
+    "id": 180,
+    "title": "Detect freeplay mode",
+    "slug": "detect-freeplay-mode",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:439, RocketStats.h (is_in_freeplay flag)"
+  },
+  {
+    "id": 181,
+    "title": "Detect offline game mode",
+    "slug": "detect-offline-game",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.h (is_offline_game flag), SocketManagement.cpp"
+  },
+  {
+    "id": 182,
+    "title": "Detect online ranked game",
+    "slug": "detect-online-ranked-game",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.h (is_online_game, current.ranked flags)"
+  },
+  {
+    "id": 183,
+    "title": "Display MMR with conditional rounding",
+    "slug": "display-mmr-conditional-rounding",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarMMR (rs_enable_float controls precision)"
+  },
+  {
+    "id": 184,
+    "title": "Display rank name with division number",
+    "slug": "display-rank-name-with-division",
+    "control_surfaces": ["stat"],
+    "evidence": "Vars/Other.cpp::VarRank (returns rank name + optional division)"
+  },
+  {
+    "id": 185,
+    "title": "Apply chameleon color to statistics",
+    "slug": "apply-chameleon-color",
+    "control_surfaces": ["ui"],
+    "evidence": "Default/config.json (chameleon field for dynamic coloring)"
+  },
+  {
+    "id": 186,
+    "title": "Apply sign color to statistics",
+    "slug": "apply-sign-color",
+    "control_surfaces": ["ui"],
+    "evidence": "Default/config.json (sign field for +/- coloring)"
+  },
+  {
+    "id": 187,
+    "title": "Load element custom fonts",
+    "slug": "load-element-custom-fonts",
+    "control_surfaces": ["file"],
+    "evidence": "OverlayManagement.cpp::LoadThemes (loads fonts array from theme config)"
+  },
+  {
+    "id": 188,
+    "title": "Render text with custom font",
+    "slug": "render-text-custom-font",
+    "control_surfaces": ["ui"],
+    "evidence": "OverlayManagement.cpp::RenderElement (Element.font field)"
+  },
+  {
+    "id": 189,
+    "title": "Render element with rounding on rectangle",
+    "slug": "render-rectangle-with-rounding",
+    "control_surfaces": ["ui"],
+    "evidence": "Default/config.json (rounding: 5)"
+  },
+  {
+    "id": 190,
+    "title": "Apply transparency to overlay",
+    "slug": "apply-overlay-transparency",
+    "control_surfaces": ["ui"],
+    "evidence": "RocketStats.cpp:496 (rs_opacity affects all elements)"
+  },
+  {
+    "id": 191,
+    "title": "Support dual-theme menu vs in-game display",
+    "slug": "dual-theme-support",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.h (dualtheme flag, rs_theme vs rs_gameTheme)"
+  },
+  {
+    "id": 192,
+    "title": "Switch theme based on menu state",
+    "slug": "auto-theme-switch-on-menu",
+    "control_surfaces": ["hook"],
+    "evidence": "RocketStats.cpp:434, OverlayManagement.cpp::InGameTheme"
+  },
+  {
+    "id": 193,
+    "title": "Recover from plugin crash/upgrade",
+    "slug": "recovery-mode",
+    "control_surfaces": ["file"],
+    "evidence": "RocketStats.cpp:245-256 (RecoveryFlags state machine)"
+  },
+  {
+    "id": 194,
+    "title": "Save configuration on settings close",
+    "slug": "auto-save-on-settings-close",
+    "control_surfaces": ["cvar"],
+    "evidence": "RocketStats.cpp:478 (WriteConfig on cl_rocketstats_settings change)"
+  },
+  {
+    "id": 195,
+    "title": "Support 50+ output text files for OBS",
+    "slug": "obs-text-file-export",
+    "control_surfaces": ["file"],
+    "evidence": "FileManagement.cpp::ResetFiles, Vars/*.cpp (WriteInFile calls)"
+  }
+]

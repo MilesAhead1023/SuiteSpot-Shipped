@@ -1,0 +1,92 @@
+﻿[
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imguivariouscontrols.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imguivariouscontrols.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_additions.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_additions.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_demo.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_demo.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_draw.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_draw.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_impl_dx11.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_impl_dx11.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_impl_win32.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_impl_win32.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_rangeslider.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_rangeslider.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_searchablecombo.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_searchablecombo.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/IMGUI/imgui_stdlib.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/IMGUI/imgui_stdlib.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_timeline.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_timeline.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_widgets.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\"  \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/imgui/imgui_widgets.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/LoadoutManager.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\" /Yu\"pch.h\" \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/LoadoutManager.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/MapList.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\" /Yu\"pch.h\" \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/MapList.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/pch.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\" /Yc\"pch.h\" \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/pch.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/SuiteSpot.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\" /Yu\"pch.h\" \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/SuiteSpot.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/GuiBase.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\" /Yu\"pch.h\" \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/GuiBase.cpp\""
+    },
+    {
+        "directory":  "C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0",
+        "file":  "C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/Source.cpp",
+        "command":  "cl.exe /c /std:c++20 /EHsc /MT /W3 /DNDEBUG /D_CONSOLE /DUNICODE /D_UNICODE /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\" /I\"C:\\Users\\bmile\\AppData\\Roaming\\bakkesmod\\bakkesmod\\bakkesmodsdk\\include\" /I\"C:\\Users\\bmile\\SuiteSpotProject\\SuiteSpotv2.0\\imgui\" /I\"C:\\Users\\bmile\\vcpkg\\installed\\x64-windows\\include\" /Yu\"pch.h\" \"C:/Users/bmile/SuiteSpotProject/SuiteSpotv2.0/Source.cpp\""
+    }
+]

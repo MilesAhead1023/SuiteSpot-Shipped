@@ -263,6 +263,11 @@ void SuiteSpot::LoadHooks() {
     // Re-queue/transition at match end or when main menu appears after a match
     gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
     gameWrapper->HookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
+    
+    // Hook UI loop for standalone overlay rendering
+    gameWrapper->HookEvent("Function TAGame.GFxData_Menu_TA.Execute", [this](std::string name) {
+        RenderPostMatchOverlay();
+    });
 }
 
 // #detailed comments: GameEndedEvent
@@ -512,8 +517,10 @@ void SuiteSpot::onLoad() {
     postMatchOverlayWindow = std::make_shared<PostMatchOverlayWindow>(this);
 
     // Register drawing callback for overlay (HUD pass)
+    // The actual rendering happens through the GFxData_Menu_TA.Execute hook
+    // This callback is kept for compatibility but does nothing since ImGui handles the rendering
     gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) {
-        RenderPostMatchOverlay();
+        // No-op: ImGui window handles all rendering
     });
 
     // Register test overlay toggle
@@ -587,6 +594,7 @@ void SuiteSpot::RenderPostMatchOverlay() {
 void SuiteSpot::onUnload() {
     gameWrapper->UnhookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded");
     gameWrapper->UnhookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded");
+    gameWrapper->UnhookEvent("Function TAGame.GFxData_Menu_TA.Execute");
     delete overlayRenderer;
     overlayRenderer = nullptr;
     delete themeManager;

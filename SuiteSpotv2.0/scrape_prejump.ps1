@@ -23,6 +23,10 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
+# Load System.Web for HTML decoding and set TLS 1.2
+Add-Type -AssemblyName System.Web
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
 # =====================================================================
 # Helper Functions
 # =====================================================================
@@ -60,6 +64,7 @@ function Invoke-PrejumpPageScrape {
         $response = Invoke-WebRequest -Uri $url `
             -UserAgent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" `
             -TimeoutSec $TimeoutSec `
+            -UseBasicParsing `
             -ErrorAction Stop
 
         return $response.Content
@@ -83,8 +88,8 @@ function Extract-PackDataFromHtml {
 
     $jsonString = $match.Groups[1].Value
 
-    # Decode HTML entities
-    $decoded = [System.Net.WebUtility]::HtmlDecode($jsonString)
+    # Decode HTML entities (must use System.Web.HttpUtility for full entity support)
+    $decoded = [System.Web.HttpUtility]::HtmlDecode($jsonString)
 
     # Parse JSON
     $pageData = $decoded | ConvertFrom-Json
@@ -201,7 +206,16 @@ try {
     # ===== PHASE 3: Validation & Reporting =====
     Write-Log "Phase 3: Validating and preparing output..." Info
 
-    $uniquePacks = $allPacks | Group-Object -Property code | Where-Object { $_.Count -eq 1 } | Select-Object -ExpandProperty Group
+    # Deduplicate by code (keep first occurrence of each pack)
+    $seenCodes = @{}
+    $uniquePacks = @()
+    foreach ($pack in $allPacks) {
+        $code = $pack.code
+        if (-not $seenCodes.ContainsKey($code)) {
+            $seenCodes[$code] = $true
+            $uniquePacks += $pack
+        }
+    }
 
     Write-Log "  Total packs scraped: $($allPacks.Count)" Info
     Write-Log "  Unique packs: $($uniquePacks.Count)" Info

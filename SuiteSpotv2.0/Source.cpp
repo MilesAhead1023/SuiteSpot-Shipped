@@ -35,12 +35,7 @@ void SuiteSpot::SetImGuiContext(uintptr_t ctx) {
 // relied upon by external automation and saved settings; altering them
 // will change user-visible state persistence and CLI integrations.
 void SuiteSpot::RenderSettings() {
-    // 1. Render the post-match overlay HUD
-    if (postMatchOverlayWindow) {
-        postMatchOverlayWindow->Render();
-    }
-
-    // 2. Render the main settings UI
+    // 1. Render the main settings UI
     if (settingsUI) {
         settingsUI->RenderMainSettingsWindow();
     }

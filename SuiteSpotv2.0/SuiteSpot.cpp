@@ -512,10 +512,8 @@ void SuiteSpot::onLoad() {
     postMatchOverlayWindow = std::make_shared<PostMatchOverlayWindow>(this);
 
     // Register drawing callback for overlay (HUD pass)
-    // The actual rendering happens through PostMatchOverlayWindow's ImGui rendering
-    // This callback is kept for compatibility but does nothing since ImGui handles the rendering
     gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) {
-        // No-op: ImGui window handles all rendering
+        RenderPostMatchOverlay();
     });
 
     // Register test overlay toggle

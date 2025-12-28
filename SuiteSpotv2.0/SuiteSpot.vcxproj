@@ -98,8 +98,8 @@ setlocal
 set "BM=%25AppData%25\bakkesmod\bakkesmod"
 set "PATCH=%25BM%25\bakkesmodsdk\bakkesmod-patch.exe"
 set "DLL=$(TargetPath)"
-mkdir "%25BM%25\data\SuiteTraining" 2&gt;nul
 mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
+mkdir "%25BM%25\data\SuiteSpot\SuiteTraining" 2&gt;nul
 mkdir "%25BM%25\plugins\settings" 2&gt;nul
 if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
@@ -107,7 +107,7 @@ if not exist "%25DLL%25" (
 )
 copy /y "$(ProjectDir)scrape_prejump.ps1" "%25BM%25\data\SuiteSpot\scrape_prejump.ps1"
 if exist "$(ProjectDir)themes" (
-  xcopy /i /y /e "$(ProjectDir)themes" "%25BM%25\data\SuiteTraining\themes"
+  xcopy /i /y /e "$(ProjectDir)themes" "%25BM%25\data\SuiteSpot\themes"
 )
 powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File "$(ProjectDir)generate_settings.ps1"
 if errorlevel 1 (

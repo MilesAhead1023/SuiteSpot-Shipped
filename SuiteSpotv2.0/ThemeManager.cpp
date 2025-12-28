@@ -10,7 +10,7 @@ ThemeManager::ThemeManager(SuiteSpot* plugin) : plugin_(plugin) {}
 
 void ThemeManager::LoadThemes() {
     themes.clear();
-    fs::path themeDir = plugin_->GetSuiteTrainingDir() / "themes";
+    fs::path themeDir = plugin_->GetDataRoot() / "SuiteSpot" / "themes";
     
     if (!fs::exists(themeDir)) {
         fs::create_directories(themeDir);

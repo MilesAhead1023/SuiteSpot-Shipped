@@ -137,7 +137,7 @@ std::filesystem::path MapManager::GetDataRoot() const
 
 std::filesystem::path MapManager::GetSuiteTrainingDir() const
 {
-    return GetDataRoot() / "SuiteTraining";
+    return GetDataRoot() / "SuiteSpot" / "SuiteTraining";
 }
 
 std::filesystem::path MapManager::GetTrainingFilePath() const

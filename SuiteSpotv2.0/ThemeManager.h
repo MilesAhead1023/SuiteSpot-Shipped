@@ -32,17 +32,44 @@ public:
 
     void LoadThemes();
     bool ChangeTheme(const std::string& themeName);
-    
+    bool ChangeTheme(int themeIndex);
+
+    // Dual-theme support (RocketStats pattern)
+    void SwitchToMenuTheme();
+    void SwitchToGameTheme();
+    void SetMenuThemeIndex(int index) { menuThemeIndex = index; }
+    void SetGameThemeIndex(int index) { gameThemeIndex = index; }
+    int GetMenuThemeIndex() const { return menuThemeIndex; }
+    int GetGameThemeIndex() const { return gameThemeIndex; }
+    bool IsDualThemeEnabled() const { return dualThemeEnabled; }
+    void SetDualThemeEnabled(bool enabled) { dualThemeEnabled = enabled; }
+
     // Called every frame or when data changes to update element positions/values
     void UpdateThemeElements(const RSOptions& options, std::map<std::string, std::string>& vars, const struct PostMatchInfo& pm);
 
     Theme& GetActiveTheme() { return activeTheme; }
+    const std::vector<Theme>& GetThemes() const { return themes; }
     std::vector<std::string> GetThemeNames() const;
+    int GetActiveThemeIndex() const { return activeThemeIndex; }
+
+    // Refresh trigger (RocketStats pattern)
+    void SetRefresh(bool full = false) { needsRefresh = true; needsFullRefresh = full; }
+    bool NeedsRefresh() const { return needsRefresh; }
 
 private:
     SuiteSpot* plugin_;
     std::vector<Theme> themes;
     Theme activeTheme;
+    int activeThemeIndex = 0;
+
+    // Dual-theme state (RocketStats pattern)
+    int menuThemeIndex = 0;
+    int gameThemeIndex = 0;
+    bool dualThemeEnabled = false;
+
+    // Refresh state
+    bool needsRefresh = false;
+    bool needsFullRefresh = false;
     
     // Caches loaded images to prevent disk spam
     std::map<std::string, std::shared_ptr<ImageWrapper>> imageCache;

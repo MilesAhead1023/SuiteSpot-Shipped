@@ -1,6 +1,7 @@
 #pragma once
 #include "OverlayTypes.h"
 #include "OverlayUtils.h"
+#include <chrono>
 
 class SuiteSpot;
 
@@ -8,12 +9,16 @@ class OverlayRenderer {
 public:
     explicit OverlayRenderer(SuiteSpot* plugin);
 
-    void RenderPostMatchOverlay();
+    // Main render entry point (RocketStats pattern)
+    void Render(const ImVec2& displaySize);
 
-    float GetOverlayOffsetX() const { return overlayOffsetX; }
-    float GetOverlayOffsetY() const { return overlayOffsetY; }
-    void SetOverlayOffsetX(float value) { overlayOffsetX = value; }
-    void SetOverlayOffsetY(float value) { overlayOffsetY = value; }
+    // Specific render functions
+    void RenderOverlayContent(ImDrawList* dl, ImVec2 pos, ImVec2 size, float opacity);
+    void RenderMoveHandle(ImDrawList* dl, const ImVec2& pos, const ImVec2& overlaySize);
+
+    // Overlay state
+    bool IsOverlayMoving() const { return overlayMoving; }
+    void SetOverlayMoving(bool value) { overlayMoving = value; }
 
     float GetTeamHeaderHeight() const { return teamHeaderHeight; }
     void SetTeamHeaderHeight(float value) { teamHeaderHeight = value; }
@@ -105,8 +110,19 @@ private:
 
     SuiteSpot* plugin_;
 
-    float overlayOffsetX = 0.0f;
-    float overlayOffsetY = 0.0f;
+    float spawnOpacity = 0.0f;  // RocketStats' rs_launch equivalent
+
+    // Overlay move state (RocketStats pattern)
+    bool overlayMoving = false;
+    ImVec2 moveOrigin = {0, 0};
+    ImVec2 moveCursor = {0, 0};
+
+    // Display state cache
+    ImVec2 displaySize = {0, 0};
+
+    // Frame rate limiter (RocketStats pattern)
+    std::chrono::steady_clock::time_point lastFrameTime;
+    int frameCounter = 0;
 
     float teamHeaderHeight = 28.0f;
     float playerRowHeight = 24.0f;

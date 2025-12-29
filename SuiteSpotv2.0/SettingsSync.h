@@ -35,6 +35,11 @@ public:
     float GetOverlayOffsetY() const { return overlayOffsetY; }
     int GetOverlayMode() const { return overlayMode; }
 
+    // Overlay visibility settings (RocketStats pattern)
+    bool IsOverlayEnabledInMenu() const { return overlayEnabledInMenu; }
+    bool IsOverlayEnabledInGame() const { return overlayEnabledInGame; }
+    bool IsOverlayEnabledInScoreboard() const { return overlayEnabledInScoreboard; }
+
     void SetCurrentIndex(int value);
     void SetCurrentTrainingIndex(int value);
     void SetCurrentWorkshopIndex(int value);
@@ -65,4 +70,9 @@ private:
     float overlayOffsetX = 0.0f;
     float overlayOffsetY = 0.0f;
     int overlayMode = 0; // 0=LastMatch, 1=SessionStats
+
+    // Overlay visibility settings (RocketStats pattern)
+    bool overlayEnabledInMenu = true;
+    bool overlayEnabledInGame = true;
+    bool overlayEnabledInScoreboard = false;
 };

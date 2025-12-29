@@ -7,14 +7,12 @@
     {
       "type": "rectangle",
       "x": 0, "y": 0, "width": "100%", "height": "100%",
-      "color": [0, 0, 0, 100],
       "fill": [0, 0, 0, 100],
       "rounding": 8
     },
     {
       "type": "rectangle",
       "x": 0, "y": 0, "width": "100%", "height": 34,
-      "color": [0, 0, 0, 200],
       "fill": [0, 0, 0, 200],
       "rounding": 8
     },
@@ -34,8 +32,6 @@
       "scale": 1.0,
       "color": [255, 255, 255, 255]
     },
-    
-    // Column Headers
     { "type": "text", "value": "Player", "x": 50, "y": 70, "scale": 0.9, "color": [180, 180, 180, 255] },
     { "type": "text", "value": "Score", "x": 230, "y": 70, "scale": 0.9, "color": [180, 180, 180, 255] },
     { "type": "text", "value": "Goals", "x": 290, "y": 70, "scale": 0.9, "color": [180, 180, 180, 255] },
@@ -43,8 +39,6 @@
     { "type": "text", "value": "Saves", "x": 410, "y": 70, "scale": 0.9, "color": [180, 180, 180, 255] },
     { "type": "text", "value": "Shots", "x": 470, "y": 70, "scale": 0.9, "color": [180, 180, 180, 255] },
     { "type": "text", "value": "Ping", "x": 530, "y": 70, "scale": 0.9, "color": [180, 180, 180, 255] },
-
-    // My Team Players
     {
       "type": "text", "value": "{{Name}}",
       "repeat": "players", "team": "my_team", "spacing": 24,
@@ -80,8 +74,6 @@
       "repeat": "players", "team": "my_team", "spacing": 24,
       "x": 530, "y": 100, "scale": 1.0, "color": [255, 255, 255, 255]
     },
-
-    // Opponent Team Players (Offset by 150px approx for now, ideally dynamic)
     {
       "type": "text", "value": "{{Name}}",
       "repeat": "players", "team": "opp_team", "spacing": 24,

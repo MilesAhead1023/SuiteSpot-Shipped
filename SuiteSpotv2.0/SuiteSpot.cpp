@@ -154,59 +154,6 @@ int SuiteSpot::GetOverlayMode() const {
     return settingsSync ? settingsSync->GetOverlayMode() : 0;
 }
 
-PostMatchOverlayWindow::PostMatchOverlayWindow(SuiteSpot* plugin) : plugin_(plugin) {
-    isWindowOpen_ = false;
-}
-
-void PostMatchOverlayWindow::Open() {
-    isWindowOpen_ = true;
-}
-
-void PostMatchOverlayWindow::Close() {
-    isWindowOpen_ = false;
-}
-
-void PostMatchOverlayWindow::Render() {
-    if (!isWindowOpen_) return;
-
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration |
-                             ImGuiWindowFlags_NoScrollbar |
-                             ImGuiWindowFlags_NoSavedSettings |
-                             ImGuiWindowFlags_NoFocusOnAppearing |
-                             ImGuiWindowFlags_NoInputs |
-                             ImGuiWindowFlags_NoNavFocus |
-                             ImGuiWindowFlags_NoBackground;
-
-    float offsetX = 0.0f;
-    float offsetY = 0.0f;
-    if (plugin_->GetOverlayRenderer()) {
-        offsetX = plugin_->GetOverlayRenderer()->GetOverlayOffsetX();
-        offsetY = plugin_->GetOverlayRenderer()->GetOverlayOffsetY();
-    }
-    ImVec2 display = ImGui::GetIO().DisplaySize;
-    const ImVec2 overlaySize = ImVec2(std::max(400.0f, plugin_->GetOverlayWidth()),
-                                      std::max(180.0f, plugin_->GetOverlayHeight()));
-    ImVec2 pos = ImVec2((display.x - overlaySize.x) * 0.5f + offsetX, display.y * 0.08f + offsetY);
-
-    ImGui::SetNextWindowPos(pos, ImGuiCond_Always);
-    ImGui::SetNextWindowSize(overlaySize, ImGuiCond_Always);
-    ImGui::SetNextWindowBgAlpha(0.0f);
-    
-    if (!ImGui::Begin(GetMenuTitle().c_str(), &isWindowOpen_, flags)) {
-        ImGui::End();
-        return;
-    }
-
-    RenderWindow();
-    ImGui::End();
-}
-
-void PostMatchOverlayWindow::RenderWindow() {
-    if (plugin_->GetOverlayRenderer()) {
-        plugin_->GetOverlayRenderer()->RenderPostMatchOverlay();
-    }
-}
-
 std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
     return GetSuiteTrainingDir() / "prejump_packs.json";
 }
@@ -260,14 +207,124 @@ BAKKESMOD_PLUGIN(SuiteSpot, "SuiteSpot", plugin_version, PLUGINTYPE_FREEPLAY)
 shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 void SuiteSpot::LoadHooks() {
+    // ===== MATCH EVENT HOOKS =====
     // Re-queue/transition at match end or when main menu appears after a match
     gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
     gameWrapper->HookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
-    
-    // Hook UI loop for standalone overlay rendering
-    gameWrapper->HookEvent("Function TAGame.GFxData_Menu_TA.Execute", [this](std::string name) {
-        RenderPostMatchOverlay();
+
+    // ===== MENU STATE HOOKS (RocketStats pattern) =====
+    // Main menu detection - fires when player enters main menu
+    gameWrapper->HookEvent("Function TAGame.GFxData_MainMenu_TA.OnEnteredMainMenu", [this](std::string) {
+        OnEnteredMainMenu();
     });
+
+    // Menu stack tracking - tracks menu depth for overlay visibility
+    gameWrapper->HookEvent("Function TAGame.GFxData_MenuStack_TA.PushMenu", [this](std::string) {
+        OnPushMenu();
+    });
+
+    gameWrapper->HookEvent("Function TAGame.GFxData_MenuStack_TA.PopMenu", [this](std::string) {
+        OnPopMenu();
+    });
+
+    // Game start detection - countdown begins (note: no TAGame. prefix)
+    gameWrapper->HookEvent("Function GameEvent_TA.Countdown.BeginState", [this](std::string) {
+        OnGameStart();
+    });
+
+    // Scoreboard hooks
+    gameWrapper->HookEvent("Function TAGame.GFxData_GameEvent_TA.OnOpenScoreboard", [this](std::string) {
+        OnOpenScoreboard();
+    });
+
+    gameWrapper->HookEvent("Function TAGame.GFxData_GameEvent_TA.OnCloseScoreboard", [this](std::string) {
+        OnCloseScoreboard();
+    });
+
+}
+
+// ===== MENU STATE HANDLERS (RocketStats pattern) =====
+void SuiteSpot::OnEnteredMainMenu() {
+    menuState.menu_stack = 0;
+    menuState.is_in_menu = true;
+    menuState.is_in_MainMenu = true;
+    menuState.is_in_game = false;
+    menuState.is_in_freeplay = false;
+    menuState.is_in_scoreboard = false;
+
+    // Switch to menu theme if dual-theme enabled (RocketStats pattern)
+    if (themeManager) {
+        themeManager->SwitchToMenuTheme();
+    }
+
+    LOG("SuiteSpot: Entered main menu");
+}
+
+void SuiteSpot::OnPushMenu() {
+    menuState.menu_stack++;
+    menuState.is_in_menu = true;
+}
+
+void SuiteSpot::OnPopMenu() {
+    menuState.menu_stack--;
+    if (menuState.menu_stack <= 0) {
+        menuState.menu_stack = 0;
+        menuState.is_in_menu = false;
+    }
+}
+
+void SuiteSpot::OnGameStart() {
+    menuState.is_in_MainMenu = false;
+    menuState.is_in_menu = false;
+    menuState.is_in_game = true;
+    menuState.is_in_freeplay = gameWrapper->IsInFreeplay();
+    menuState.is_online_game = gameWrapper->IsInOnlineGame();
+    menuState.is_offline_game = gameWrapper->IsInGame() && !menuState.is_online_game;
+
+    // Switch to game theme if dual-theme enabled (RocketStats pattern)
+    if (themeManager) {
+        themeManager->SwitchToGameTheme();
+    }
+
+    LOG("SuiteSpot: Game started (online={}, freeplay={})", menuState.is_online_game, menuState.is_in_freeplay);
+}
+
+void SuiteSpot::OnOpenScoreboard() {
+    menuState.is_in_scoreboard = true;
+}
+
+void SuiteSpot::OnCloseScoreboard() {
+    menuState.is_in_scoreboard = false;
+}
+
+// ===== OVERLAY VISIBILITY LOGIC (RocketStats pattern) =====
+bool SuiteSpot::ShouldShowOverlay() const {
+    // Post-match overlay has its own active flag
+    if (!postMatch.active) return false;
+
+    // Test mode bypasses menu state checks
+    if (testOverlayActive) return true;
+
+    // Check visibility settings based on current state
+    bool showInMenu = IsOverlayEnabledInMenu() && menuState.is_in_menu;
+    bool showInGame = IsOverlayEnabledInGame() && menuState.is_in_game &&
+                      (!menuState.is_in_scoreboard || menuState.is_in_freeplay);
+    bool showInScoreboard = IsOverlayEnabledInScoreboard() && menuState.is_in_scoreboard &&
+                            !menuState.is_in_freeplay;
+
+    return showInMenu || showInGame || showInScoreboard;
+}
+
+bool SuiteSpot::IsOverlayEnabledInMenu() const {
+    return settingsSync ? settingsSync->IsOverlayEnabledInMenu() : true;
+}
+
+bool SuiteSpot::IsOverlayEnabledInGame() const {
+    return settingsSync ? settingsSync->IsOverlayEnabledInGame() : true;
+}
+
+bool SuiteSpot::IsOverlayEnabledInScoreboard() const {
+    return settingsSync ? settingsSync->IsOverlayEnabledInScoreboard() : false;
 }
 
 // #detailed comments: GameEndedEvent
@@ -465,10 +522,6 @@ void SuiteSpot::GameEndedEvent(std::string name) {
         postMatch.start = std::chrono::steady_clock::now();
         postMatch.active = true;
         
-        if (postMatchOverlayWindow) {
-            postMatchOverlayWindow->Open();
-        }
-        
         LOG("SuiteSpot: Post-match overlay activated - {} ({}) vs {} ({})",
             postMatch.myTeamName, postMatch.myScore, postMatch.oppTeamName, postMatch.oppScore);
 
@@ -513,15 +566,8 @@ void SuiteSpot::onLoad() {
     
     LoadHooks();
 
-    // Initialize windows
-    postMatchOverlayWindow = std::make_shared<PostMatchOverlayWindow>(this);
-
-    // Register drawing callback for overlay (HUD pass)
-    // The actual rendering happens through the GFxData_Menu_TA.Execute hook
-    // This callback is kept for compatibility but does nothing since ImGui handles the rendering
-    gameWrapper->RegisterDrawable([this](CanvasWrapper canvas) {
-        // No-op: ImGui window handles all rendering
-    });
+    // NOTE: Overlay rendering is handled through PluginWindow::Render()
+    // Do NOT use RegisterDrawable for ImGui overlays (causes crashes)
 
     // Register test overlay toggle
     cvarManager->registerNotifier("ss_testoverlay", [this](std::vector<std::string> args) {
@@ -572,29 +618,44 @@ void SuiteSpot::ToggleTestOverlay() {
     if (!postMatch.active) {
         postMatch.start = std::chrono::steady_clock::now();
         postMatch.active = true;
-        if (postMatchOverlayWindow) {
-            postMatchOverlayWindow->Open();
-        }
+        testOverlayActive = true;  // Bypass menu state checks
         LOG("SuiteSpot: Test overlay state -> ACTIVE");
     } else {
         postMatch.active = false;
-        if (postMatchOverlayWindow) {
-            postMatchOverlayWindow->Close();
-        }
+        testOverlayActive = false;
         LOG("SuiteSpot: Test overlay state -> INACTIVE");
     }
 }
 
-void SuiteSpot::RenderPostMatchOverlay() {
-    if (postMatchOverlayWindow) {
-        postMatchOverlayWindow->Render();
+// PluginWindow::Render() - Called every frame by BakkesMod (RocketStats pattern)
+void SuiteSpot::Render() {
+    // 1. Update display size FIRST (RocketStats line 6)
+    ImVec2 displaySize = ImGui::GetIO().DisplaySize;
+
+    // 2. Update game state flags (RocketStats lines 8-11)
+    menuState.is_online_game = gameWrapper->IsInOnlineGame();
+    menuState.is_offline_game = gameWrapper->IsInGame();
+    menuState.is_in_freeplay = gameWrapper->IsInFreeplay();
+    menuState.is_in_game = (menuState.is_online_game || menuState.is_offline_game);
+
+    // 3. ALWAYS call overlay renderer (visibility check inside)
+    if (overlayRenderer) {
+        overlayRenderer->Render(displaySize);  // Pass display size
     }
 }
 
 void SuiteSpot::onUnload() {
+    // Match events
     gameWrapper->UnhookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded");
     gameWrapper->UnhookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded");
-    gameWrapper->UnhookEvent("Function TAGame.GFxData_Menu_TA.Execute");
+
+    // Menu state events (RocketStats pattern)
+    gameWrapper->UnhookEvent("Function TAGame.GFxData_MainMenu_TA.OnEnteredMainMenu");
+    gameWrapper->UnhookEvent("Function TAGame.GFxData_MenuStack_TA.PushMenu");
+    gameWrapper->UnhookEvent("Function TAGame.GFxData_MenuStack_TA.PopMenu");
+    gameWrapper->UnhookEvent("Function TAGame.GameEvent_TA.Countdown.BeginState");
+    gameWrapper->UnhookEvent("Function TAGame.GFxData_GameEvent_TA.OnOpenScoreboard");
+    gameWrapper->UnhookEvent("Function TAGame.GFxData_GameEvent_TA.OnCloseScoreboard");
     delete overlayRenderer;
     overlayRenderer = nullptr;
     delete themeManager;

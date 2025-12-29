@@ -87,6 +87,14 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->registerCvar("ss_overlay_mode", "0", "Overlay view mode: 0=Last Match, 1=Session Stats", true, true, 0, true, 1)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) { overlayMode = cvar.getIntValue(); });
 
+    // Overlay visibility settings (RocketStats pattern)
+    cvarManager->registerCvar("ss_overlay_in_menu", "1", "Show overlay in menu", true, true, 0, true, 1)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) { overlayEnabledInMenu = cvar.getBoolValue(); });
+    cvarManager->registerCvar("ss_overlay_in_game", "1", "Show overlay in game", true, true, 0, true, 1)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) { overlayEnabledInGame = cvar.getBoolValue(); });
+    cvarManager->registerCvar("ss_overlay_in_scoreboard", "0", "Show overlay on scoreboard", true, true, 0, true, 1)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) { overlayEnabledInScoreboard = cvar.getBoolValue(); });
+
     cvarManager->registerCvar("ss_training_maps", "", "Stored training maps", true, false, 0, false, 0);
 
     cvarManager->getCvar("suitespot_enabled").setValue(enabled ? 1 : 0);
@@ -110,6 +118,9 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->getCvar("overlay_offset_x").setValue(overlayOffsetX);
     cvarManager->getCvar("overlay_offset_y").setValue(overlayOffsetY);
     cvarManager->getCvar("ss_overlay_mode").setValue(overlayMode);
+    cvarManager->getCvar("ss_overlay_in_menu").setValue(overlayEnabledInMenu ? 1 : 0);
+    cvarManager->getCvar("ss_overlay_in_game").setValue(overlayEnabledInGame ? 1 : 0);
+    cvarManager->getCvar("ss_overlay_in_scoreboard").setValue(overlayEnabledInScoreboard ? 1 : 0);
 }
 
 void SettingsSync::UpdateTrainingBagSize(int bagSize, const std::shared_ptr<CVarManagerWrapper>& cvarManager)

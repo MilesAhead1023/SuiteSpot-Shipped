@@ -70,9 +70,22 @@ struct SessionStats {
     int mvps = 0;
 };
 
-// NOTE: inherit from SettingsWindowBase (not “GuiBase”)
+// Menu state tracking (RocketStats pattern)
+struct MenuState {
+    bool is_in_menu = false;       // Player is in any menu
+    bool is_in_MainMenu = true;    // Player is at main menu
+    bool is_in_game = false;       // Player is in a match
+    bool is_in_freeplay = false;   // Player is in freeplay
+    bool is_in_scoreboard = false; // Scoreboard is open
+    bool is_online_game = false;   // Online match
+    bool is_offline_game = false;  // Offline match (bots/freeplay)
+    int menu_stack = 0;            // Menu depth counter
+};
+
+// NOTE: inherit from SettingsWindowBase AND PluginWindow for overlay rendering
 class SuiteSpot final : public BakkesMod::Plugin::BakkesModPlugin,
-                        public SettingsWindowBase
+                        public SettingsWindowBase,
+                        public BakkesMod::Plugin::PluginWindow
 {
     friend class SettingsUI;
     friend class TrainingPackUI;
@@ -95,9 +108,22 @@ public:
     void onLoad() override;
     void onUnload() override;
 
-    // settings UI
+    // settings UI (PluginSettingsWindow)
     void RenderSettings() override;
+
+    // PluginWindow interface for overlay rendering
+    void Render() override;
+    std::string GetMenuName() override { return "suitespot_overlay"; }
+    std::string GetMenuTitle() override { return "SuiteSpot Overlay"; }
     void SetImGuiContext(uintptr_t ctx) override;
+    bool ShouldBlockInput() override {
+        return ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;
+    }
+    bool IsActiveOverlay() override {
+        return testOverlayActive || postMatch.active;
+    }
+    void OnOpen() override {}
+    void OnClose() override {}
 
     // hooks
     void LoadHooks();
@@ -111,7 +137,6 @@ public:
     std::string FormatLastUpdatedTime() const;
     
     // Post-match overlay rendering
-    void RenderPostMatchOverlay();
     void ToggleTestOverlay();
     
     PostMatchInfo& GetPostMatchInfo() { return postMatch; }
@@ -141,10 +166,31 @@ public:
 
     PostMatchInfo postMatch;
     SessionStats sessionStats;
+    MenuState menuState;
+    bool testOverlayActive = false;  // Bypass menu state checks for testing
+
+    // Menu state accessors (RocketStats pattern)
+    bool IsInMenu() const { return menuState.is_in_menu; }
+    bool IsInMainMenu() const { return menuState.is_in_MainMenu; }
+    bool IsInGame() const { return menuState.is_in_game; }
+    bool IsInFreeplay() const { return menuState.is_in_freeplay; }
+    bool IsInScoreboard() const { return menuState.is_in_scoreboard; }
+
+    // Overlay visibility settings
+    bool ShouldShowOverlay() const;
+    bool IsOverlayEnabledInMenu() const;
+    bool IsOverlayEnabledInGame() const;
+    bool IsOverlayEnabledInScoreboard() const;
 
 private:
+    // Menu state event handlers (RocketStats pattern)
+    void OnEnteredMainMenu();
+    void OnPushMenu();
+    void OnPopMenu();
+    void OnGameStart();
+    void OnOpenScoreboard();
+    void OnCloseScoreboard();
     // Windows
-    std::shared_ptr<PostMatchOverlayWindow> postMatchOverlayWindow;
 
     std::string lastGameMode = "";
 
@@ -165,21 +211,4 @@ private:
     LoadoutUI* loadoutUI = nullptr;
     OverlayRenderer* overlayRenderer = nullptr;
     ThemeManager* themeManager = nullptr;
-};
-
-class PostMatchOverlayWindow : public PluginWindowBase {
-public:
-    PostMatchOverlayWindow(SuiteSpot* plugin);
-    void Render() override;
-    void RenderWindow() override;
-    void Open();
-    void Close();
-    
-    std::string GetMenuName() override { return "SuiteSpotPostMatchOverlay"; }
-    std::string GetMenuTitle() override { return "SuiteSpot Post-Match Overlay"; }
-    bool IsActiveOverlay() override { return true; }
-    bool ShouldBlockInput() override { return false; }
-
-private:
-    SuiteSpot* plugin_;
 };

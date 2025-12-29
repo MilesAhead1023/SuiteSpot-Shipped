@@ -49,14 +49,45 @@ void ThemeManager::LoadThemes() {
 }
 
 bool ThemeManager::ChangeTheme(const std::string& themeName) {
-    for (const auto& t : themes) {
-        if (t.name == themeName) {
-            activeTheme = t;
-            // TODO: Load fonts
-            return true;
+    for (int i = 0; i < themes.size(); ++i) {
+        if (themes[i].name == themeName) {
+            return ChangeTheme(i);
         }
     }
     return false;
+}
+
+bool ThemeManager::ChangeTheme(int themeIndex) {
+    if (themeIndex < 0 || themeIndex >= static_cast<int>(themes.size())) {
+        return false;
+    }
+
+    activeTheme = themes[themeIndex];
+    activeThemeIndex = themeIndex;
+    needsRefresh = true;
+    needsFullRefresh = true;
+
+    LOG("SuiteSpot: Theme changed to '{}' (index {})", activeTheme.name, themeIndex);
+    return true;
+}
+
+// ===== DUAL-THEME SUPPORT (RocketStats pattern) =====
+void ThemeManager::SwitchToMenuTheme() {
+    if (!dualThemeEnabled) return;
+
+    if (activeThemeIndex != menuThemeIndex) {
+        ChangeTheme(menuThemeIndex);
+        LOG("SuiteSpot: Switched to menu theme '{}'", activeTheme.name);
+    }
+}
+
+void ThemeManager::SwitchToGameTheme() {
+    if (!dualThemeEnabled) return;
+
+    if (activeThemeIndex != gameThemeIndex) {
+        ChangeTheme(gameThemeIndex);
+        LOG("SuiteSpot: Switched to game theme '{}'", activeTheme.name);
+    }
 }
 
 void ThemeManager::UpdateThemeElements(const RSOptions& options, std::map<std::string, std::string>& vars, const PostMatchInfo& pm) {

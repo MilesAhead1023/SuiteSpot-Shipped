@@ -25,21 +25,6 @@ public:
     int GetCurrentTrainingIndex() const { return currentTrainingIndex; }
     int GetCurrentWorkshopIndex() const { return currentWorkshopIndex; }
 
-    float GetPostMatchDurationSec() const { return postMatchDurationSec; }
-    float GetOverlayWidth() const { return overlayWidth; }
-    float GetOverlayHeight() const { return overlayHeight; }
-    float GetOverlayAlpha() const { return overlayAlpha; }
-    float GetBlueTeamHue() const { return blueTeamHue; }
-    float GetOrangeTeamHue() const { return orangeTeamHue; }
-    float GetOverlayOffsetX() const { return overlayOffsetX; }
-    float GetOverlayOffsetY() const { return overlayOffsetY; }
-    int GetOverlayMode() const { return overlayMode; }
-
-    // Overlay visibility settings (RocketStats pattern)
-    bool IsOverlayEnabledInMenu() const { return overlayEnabledInMenu; }
-    bool IsOverlayEnabledInGame() const { return overlayEnabledInGame; }
-    bool IsOverlayEnabledInScoreboard() const { return overlayEnabledInScoreboard; }
-
     void SetCurrentIndex(int value);
     void SetCurrentTrainingIndex(int value);
     void SetCurrentWorkshopIndex(int value);
@@ -60,19 +45,4 @@ private:
 
     bool trainingShuffleEnabled = false;
     int  trainingBagSize = 1;
-
-    float postMatchDurationSec = 15.0f;
-    float overlayWidth = 880.0f;
-    float overlayHeight = 400.0f;
-    float overlayAlpha = 0.85f;
-    float blueTeamHue = 240.0f;
-    float orangeTeamHue = 25.0f;
-    float overlayOffsetX = 0.0f;
-    float overlayOffsetY = 0.0f;
-    int overlayMode = 0; // 0=LastMatch, 1=SessionStats
-
-    // Overlay visibility settings (RocketStats pattern)
-    bool overlayEnabledInMenu = true;
-    bool overlayEnabledInGame = true;
-    bool overlayEnabledInScoreboard = false;
 };

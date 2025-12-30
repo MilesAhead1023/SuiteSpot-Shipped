@@ -26,17 +26,6 @@ SuiteSpot
 3|Training Delay|suitespot_delay_training_sec|0|300
 3|Workshop Delay|suitespot_delay_workshop_sec|0|300
 8|
-9|Overlay Settings
-1|Show Test Overlay|ss_testoverlay
-3|Overlay Width|overlay_width|400|1600
-3|Overlay Height|overlay_height|200|800
-3|Overlay Transparency|overlay_alpha|0|1
-3|Display Duration|overlay_duration|5|60
-8|
-9|Team Colors (Hue)
-3|Blue Team Hue|blue_team_hue|0|360
-3|Orange Team Hue|orange_team_hue|0|360
-8|
 9|Use 'togglemenu SuiteSpot' to open the control window
 9|Author: Flicks Creations
 "@

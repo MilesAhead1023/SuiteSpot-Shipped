@@ -2,21 +2,6 @@
 #include "SuiteSpot.h"
 #include "SettingsUI.h"
 
-// #detailed comments: SetImGuiContext
-// Purpose: Hook the plugin's ImGui context into the Settings/UI code.
-// The pointer is stored in imguiCtx (retrieved via GetCurrentContext())
-// so that non-UI threads or deferred render paths can re-establish
-// the ImGui context before drawing. This is necessary when the plugin
-// must render outside the main ImGui entry point.
-//
-// DO NOT CHANGE: Incorrect context handling leads to hard-to-diagnose
-// rendering issues or asserts inside ImGui when a null/incorrect
-// context is active.
-void SuiteSpot::SetImGuiContext(uintptr_t ctx) {
-    ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
-    imguiCtx = ImGui::GetCurrentContext();
-}
-
 // #detailed comments: RenderSettings
 // Purpose: Build the Settings UI using ImGui. This method is called on
 // the UI thread and must complete quickly — avoid heavy computation

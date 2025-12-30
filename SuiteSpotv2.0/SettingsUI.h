@@ -22,7 +22,6 @@ private:
 		int& delayFreeplaySecValue,
 		int& delayTrainingSecValue,
 		int& delayWorkshopSecValue);
-	void RenderOverlayTab();
 
 	// Helper function to safely set CVar values with null checks
 	template<typename T>

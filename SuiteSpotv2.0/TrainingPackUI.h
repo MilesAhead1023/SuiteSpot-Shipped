@@ -50,4 +50,9 @@ private:
     void RenderCustomPackForm();
     bool ValidatePackCode(const char* code) const;
     void ClearCustomPackForm();
+    void CalculateOptimalColumnWidths();
+
+    // Column sizing state
+    std::vector<float> columnWidths;
+    bool columnWidthsDirty = true;
 };

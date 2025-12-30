@@ -272,6 +272,9 @@ void TrainingPackUI::RenderTrainingPackTab() {
         lastMinShots = packMinShots;
         lastSortColumn = packSortColumn;
         lastSortAscending = packSortAscending;
+        
+        // Flag to recalculate column widths
+        columnWidthsDirty = true;
     }
 
     // Display filtered count
@@ -279,15 +282,18 @@ void TrainingPackUI::RenderTrainingPackTab() {
     ImGui::Spacing();
 
     // ===== TABLE WITH RESIZABLE COLUMNS (ImGui 1.75 Columns API) =====
-    // No BeginChild needed - we're already inside the settings tab
-
     ImGui::Separator();
 
-    // Setup columns (ImGui 1.75 compatible)
-    ImGui::Columns(8, "PackColumns", true);  // true = resizable borders
+    ImGui::Columns(8, "PackColumns", true);
 
-    // Don't set initial column widths - let ImGui auto-distribute across full tab width
-    // Users can resize individual columns as needed
+    // Apply optimal column widths if dirty
+    if (columnWidthsDirty) {
+        CalculateOptimalColumnWidths();
+        for (int i = 0; i < 8 && i < (int)columnWidths.size(); i++) {
+            ImGui::SetColumnWidth(i, columnWidths[i]);
+        }
+        columnWidthsDirty = false;
+    }
 
     // ===== HEADER ROW WITH SORT INDICATORS =====
     ImGui::Separator();
@@ -339,145 +345,146 @@ void TrainingPackUI::RenderTrainingPackTab() {
     ImGui::Separator();
 
     // ===== RENDER PACK ROWS =====
-    for (size_t row = 0; row < filteredPacks.size(); row++) {
-        const auto& pack = filteredPacks[row];
+    ImGuiListClipper clipper;
+    clipper.Begin((int)filteredPacks.size());
 
-        // Name column
-        ImGui::TextUnformatted(pack.name.c_str());
-        if (ImGui::IsItemHovered() && !pack.staffComments.empty()) {
-            ImGui::SetTooltip("%s", pack.staffComments.c_str());
-        }
-        ImGui::NextColumn();
+    while (clipper.Step())
+    {
+        for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
+        {
+            const auto& pack = filteredPacks[row];
 
-        // Creator column
-        ImGui::TextUnformatted(pack.creator.c_str());
-        ImGui::NextColumn();
-
-        // Difficulty column with color coding
-        ImVec4 diffColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-        if (pack.difficulty == "Bronze") diffColor = ImVec4(0.8f, 0.5f, 0.2f, 1.0f);
-        else if (pack.difficulty == "Silver") diffColor = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
-        else if (pack.difficulty == "Gold") diffColor = ImVec4(1.0f, 0.84f, 0.0f, 1.0f);
-        else if (pack.difficulty == "Platinum") diffColor = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
-        else if (pack.difficulty == "Diamond") diffColor = ImVec4(0.4f, 0.4f, 1.0f, 1.0f);
-        else if (pack.difficulty == "Champion") diffColor = ImVec4(0.8f, 0.3f, 0.8f, 1.0f);
-        else if (pack.difficulty == "Grand Champion") diffColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-        else if (pack.difficulty == "Supersonic Legend") diffColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
-        ImGui::TextColored(diffColor, "%s", pack.difficulty.c_str());
-        ImGui::NextColumn();
-
-        // Shots column
-        ImGui::Text("%d", pack.shotCount);
-        ImGui::NextColumn();
-
-        // Tags column (truncated)
-        if (!pack.tags.empty()) {
-            std::string tagsStr;
-            for (size_t i = 0; i < std::min(size_t(2), pack.tags.size()); i++) {
-                if (i > 0) tagsStr += ", ";
-                tagsStr += pack.tags[i];
+            // Name column
+            ImGui::TextUnformatted(pack.name.c_str());
+            if (ImGui::IsItemHovered() && !pack.staffComments.empty()) {
+                ImGui::SetTooltip("%s", pack.staffComments.c_str());
             }
-            if (pack.tags.size() > 2) {
-                tagsStr += "...";
-            }
-            ImGui::TextUnformatted(tagsStr.c_str());
+            ImGui::NextColumn();
 
-            if (ImGui::IsItemHovered() && pack.tags.size() > 2) {
-                std::string allTags;
-                for (size_t i = 0; i < pack.tags.size(); i++) {
-                    if (i > 0) allTags += ", ";
-                    allTags += pack.tags[i];
+            // Creator column
+            ImGui::TextUnformatted(pack.creator.c_str());
+            ImGui::NextColumn();
+
+            // Difficulty column with color coding
+            ImVec4 diffColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+            if (pack.difficulty == "Bronze") diffColor = ImVec4(0.8f, 0.5f, 0.2f, 1.0f);
+            else if (pack.difficulty == "Silver") diffColor = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
+            else if (pack.difficulty == "Gold") diffColor = ImVec4(1.0f, 0.84f, 0.0f, 1.0f);
+            else if (pack.difficulty == "Platinum") diffColor = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
+            else if (pack.difficulty == "Diamond") diffColor = ImVec4(0.4f, 0.4f, 1.0f, 1.0f);
+            else if (pack.difficulty == "Champion") diffColor = ImVec4(0.8f, 0.3f, 0.8f, 1.0f);
+            else if (pack.difficulty == "Grand Champion") diffColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+            else if (pack.difficulty == "Supersonic Legend") diffColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
+            ImGui::TextColored(diffColor, "%s", pack.difficulty.c_str());
+            ImGui::NextColumn();
+
+            // Shots column
+            ImGui::Text("%d", pack.shotCount);
+            ImGui::NextColumn();
+
+            // Tags column (truncated)
+            if (!pack.tags.empty()) {
+                std::string tagsStr;
+                for (size_t i = 0; i < std::min(size_t(2), pack.tags.size()); i++) {
+                    if (i > 0) tagsStr += ", ";
+                    tagsStr += pack.tags[i];
                 }
-                ImGui::SetTooltip("%s", allTags.c_str());
+                if (pack.tags.size() > 2) {
+                    tagsStr += "...";
+                }
+                ImGui::TextUnformatted(tagsStr.c_str());
+
+                if (ImGui::IsItemHovered() && pack.tags.size() > 2) {
+                    std::string allTags;
+                    for (size_t i = 0; i < pack.tags.size(); i++) {
+                        if (i > 0) allTags += ", ";
+                        allTags += pack.tags[i];
+                    }
+                    ImGui::SetTooltip("%s", allTags.c_str());
+                }
             }
-        }
-        ImGui::NextColumn();
+            ImGui::NextColumn();
 
-        // Likes column
-        ImGui::Text("%d", pack.likes);
-        ImGui::NextColumn();
+            // Likes column
+            ImGui::Text("%d", pack.likes);
+            ImGui::NextColumn();
 
-        // Plays column
-        ImGui::Text("%d", pack.plays);
-        ImGui::NextColumn();
+            // Plays column
+            ImGui::Text("%d", pack.plays);
+            ImGui::NextColumn();
 
-        // Actions column - NEW: Watch Video, Load Now and Add to Shuffle
+            // Actions column
 
-        // Watch Video button
-        if (!pack.videoUrl.empty()) {
-            std::string watchLabel = "Watch##" + std::to_string(row);
-            if (ImGui::SmallButton(watchLabel.c_str())) {
-                // Open URL in default browser
-                // ShellExecute is available via Windows headers in pch.h
-                ShellExecuteA(NULL, "open", pack.videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
+            // Vid button
+            if (!pack.videoUrl.empty()) {
+                std::string watchLabel = "Vid##" + std::to_string(row);
+                if (ImGui::SmallButton(watchLabel.c_str())) {
+                    ShellExecuteA(NULL, "open", pack.videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Watch preview video");
+                }
+                ImGui::SameLine();
+            }
+
+            // Play button
+            std::string loadLabel = "Play##" + std::to_string(row);
+            if (ImGui::SmallButton(loadLabel.c_str())) {
+                SuiteSpot* plugin = plugin_;
+                plugin_->gameWrapper->SetTimeout([plugin, pack](GameWrapper* gw) {
+                    std::string cmd = "load_training " + pack.code;
+                    plugin->cvarManager->executeCommand(cmd);
+                    LOG("SuiteSpot: Loading training pack: " + pack.name);
+                }, 0.0f);
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Watch preview video");
+                ImGui::SetTooltip("Load this pack now");
             }
+
             ImGui::SameLine();
-        }
 
-        // Load Now button
-        std::string loadLabel = "Load##" + std::to_string(row);
-        if (ImGui::SmallButton(loadLabel.c_str())) {
-            // Directly load the training pack
-            SuiteSpot* plugin = plugin_;
-            plugin_->gameWrapper->SetTimeout([plugin, pack](GameWrapper* gw) {
-                std::string cmd = "load_training " + pack.code;
-                plugin->cvarManager->executeCommand(cmd);
-                LOG("SuiteSpot: Loading training pack: " + pack.name);
-            }, 0.0f);
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Load this pack now");
-        }
+            // +Bag button
+            std::string shuffleLabel = "+Bag##" + std::to_string(row);
+            bool inShuffleBag = pack.inShuffleBag;
 
-        ImGui::SameLine();
-
-        // Add to Shuffle button with visual feedback
-        std::string shuffleLabel = "+Shuffle##" + std::to_string(row);
-
-        // Check if pack already in shuffle bag (using inShuffleBag field)
-        bool inShuffleBag = pack.inShuffleBag;
-
-        if (inShuffleBag) {
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
-        }
-
-        if (ImGui::SmallButton(shuffleLabel.c_str())) {
-            // Toggle shuffle bag membership via TrainingPackManager
-            if (plugin_->trainingPackMgr) {
-                plugin_->trainingPackMgr->ToggleShuffleBag(pack.code);
+            if (inShuffleBag) {
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
             }
-        }
 
-        if (inShuffleBag) {
-            ImGui::PopStyleColor();
-        }
-
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip(inShuffleBag ? "Remove from shuffle bag" : "Add to shuffle bag");
-        }
-
-        // Delete button (only for custom packs, or with confirmation)
-        if (pack.source == "custom") {
-            ImGui::SameLine();
-            std::string deleteLabel = "X##del" + std::to_string(row);
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
-            if (ImGui::SmallButton(deleteLabel.c_str())) {
+            if (ImGui::SmallButton(shuffleLabel.c_str())) {
                 if (plugin_->trainingPackMgr) {
-                    plugin_->trainingPackMgr->DeletePack(pack.code);
-                    LOG("SuiteSpot: Deleted custom pack: " + pack.name);
+                    plugin_->trainingPackMgr->ToggleShuffleBag(pack.code);
                 }
             }
-            ImGui::PopStyleColor(2);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Delete this custom pack");
-            }
-        }
 
-        ImGui::NextColumn();
+            if (inShuffleBag) {
+                ImGui::PopStyleColor();
+            }
+
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(inShuffleBag ? "Remove from shuffle bag" : "Add to shuffle bag");
+            }
+
+            // Delete button
+            if (pack.source == "custom") {
+                ImGui::SameLine();
+                std::string deleteLabel = "X##del" + std::to_string(row);
+                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
+                if (ImGui::SmallButton(deleteLabel.c_str())) {
+                    if (plugin_->trainingPackMgr) {
+                        plugin_->trainingPackMgr->DeletePack(pack.code);
+                        LOG("SuiteSpot: Deleted custom pack: " + pack.name);
+                    }
+                }
+                ImGui::PopStyleColor(2);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Delete this custom pack");
+                }
+            }
+
+            ImGui::NextColumn();
+        }
     }
 
     // End columns
@@ -488,9 +495,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
 }
 
 bool TrainingPackUI::ValidatePackCode(const char* code) const {
-    // Validate format: XXXX-XXXX-XXXX-XXXX (alphanumeric, 19 chars total)
     if (strlen(code) != 19) return false;
-
     for (int i = 0; i < 19; i++) {
         if (i == 4 || i == 9 || i == 14) {
             if (code[i] != '-') return false;
@@ -519,7 +524,6 @@ void TrainingPackUI::RenderCustomPackForm() {
         ImGui::Indent(10.0f);
         ImGui::Spacing();
 
-        // Success/error messages
         if (customPackSuccess) {
             ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Pack added successfully!");
             ImGui::SameLine();
@@ -533,13 +537,11 @@ void TrainingPackUI::RenderCustomPackForm() {
             ImGui::Spacing();
         }
 
-        // Code input (required)
         ImGui::TextUnformatted("Code *");
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(XXXX-XXXX-XXXX-XXXX)");
         ImGui::SetNextItemWidth(220);
         if (ImGui::InputText("##customcode", customPackCode, IM_ARRAYSIZE(customPackCode))) {
-            // Auto-format: insert dashes
             std::string raw;
             for (int i = 0; customPackCode[i]; i++) {
                 char c = customPackCode[i];
@@ -547,10 +549,7 @@ void TrainingPackUI::RenderCustomPackForm() {
                     raw += static_cast<char>(toupper(static_cast<unsigned char>(c)));
                 }
             }
-            // Limit to 16 alphanumeric chars
             if (raw.length() > 16) raw = raw.substr(0, 16);
-
-            // Reformat with dashes
             std::string formatted;
             for (size_t i = 0; i < raw.length(); i++) {
                 if (i > 0 && i % 4 == 0) formatted += '-';
@@ -558,61 +557,42 @@ void TrainingPackUI::RenderCustomPackForm() {
             }
             strncpy_s(customPackCode, formatted.c_str(), sizeof(customPackCode) - 1);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Training pack code from Rocket League (auto-formatted)");
-        }
 
-        // Name input (required)
         ImGui::TextUnformatted("Name *");
         ImGui::SetNextItemWidth(300);
         ImGui::InputText("##customname", customPackName, IM_ARRAYSIZE(customPackName));
 
-        // Creator input (optional)
         ImGui::TextUnformatted("Creator");
         ImGui::SetNextItemWidth(200);
         ImGui::InputText("##customcreator", customPackCreator, IM_ARRAYSIZE(customPackCreator));
 
-        // Difficulty dropdown (optional)
         ImGui::TextUnformatted("Difficulty");
         ImGui::SetNextItemWidth(150);
         const char* difficulties[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
         ImGui::Combo("##customdifficulty", &customPackDifficulty, difficulties, IM_ARRAYSIZE(difficulties));
 
-        // Shot count slider
         ImGui::TextUnformatted("Shot Count");
         ImGui::SetNextItemWidth(200);
         ImGui::SliderInt("##customshots", &customPackShotCount, 1, 50);
 
-        // Tags input (comma-separated)
         ImGui::TextUnformatted("Tags");
         ImGui::SameLine();
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(comma-separated)");
         ImGui::SetNextItemWidth(300);
         ImGui::InputText("##customtags", customPackTags, IM_ARRAYSIZE(customPackTags));
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("e.g., Aerials, Wall Shots, Redirects");
-        }
 
-        // Notes input (multiline)
         ImGui::TextUnformatted("Notes");
         ImGui::InputTextMultiline("##customnotes", customPackNotes, IM_ARRAYSIZE(customPackNotes), ImVec2(400, 60));
 
-        // Video URL (optional)
         ImGui::TextUnformatted("Video URL");
         ImGui::SetNextItemWidth(350);
         ImGui::InputText("##customvideo", customPackVideoUrl, IM_ARRAYSIZE(customPackVideoUrl));
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("YouTube or other video link (optional)");
-        }
 
         ImGui::Spacing();
 
-        // Buttons
         if (ImGui::Button("Add Pack", ImVec2(100, 0))) {
             customPackError.clear();
             customPackSuccess = false;
-
-            // Validate required fields
             if (strlen(customPackCode) == 0) {
                 customPackError = "Pack code is required";
             } else if (!ValidatePackCode(customPackCode)) {
@@ -620,25 +600,19 @@ void TrainingPackUI::RenderCustomPackForm() {
             } else if (strlen(customPackName) == 0) {
                 customPackError = "Pack name is required";
             } else {
-                // Build TrainingEntry
                 TrainingEntry pack;
                 pack.code = customPackCode;
                 pack.name = customPackName;
                 pack.creator = strlen(customPackCreator) > 0 ? customPackCreator : "Unknown";
-
                 const char* difficultyNames[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
                 pack.difficulty = difficultyNames[customPackDifficulty];
-
                 pack.shotCount = customPackShotCount;
-
-                // Parse tags
                 if (strlen(customPackTags) > 0) {
                     std::string tagsStr = customPackTags;
                     size_t start = 0;
                     size_t end = tagsStr.find(',');
                     while (end != std::string::npos) {
                         std::string tag = tagsStr.substr(start, end - start);
-                        // Trim whitespace
                         size_t first = tag.find_first_not_of(" \t");
                         size_t last = tag.find_last_not_of(" \t");
                         if (first != std::string::npos) {
@@ -647,7 +621,6 @@ void TrainingPackUI::RenderCustomPackForm() {
                         start = end + 1;
                         end = tagsStr.find(',', start);
                     }
-                    // Last tag
                     std::string tag = tagsStr.substr(start);
                     size_t first = tag.find_first_not_of(" \t");
                     size_t last = tag.find_last_not_of(" \t");
@@ -655,14 +628,11 @@ void TrainingPackUI::RenderCustomPackForm() {
                         pack.tags.push_back(tag.substr(first, last - first + 1));
                     }
                 }
-
                 pack.staffComments = customPackNotes;
                 pack.videoUrl = customPackVideoUrl;
                 pack.source = "custom";
                 pack.inShuffleBag = false;
                 pack.isModified = false;
-
-                // Try to add via manager
                 if (plugin_->trainingPackMgr) {
                     if (plugin_->trainingPackMgr->AddCustomPack(pack)) {
                         customPackSuccess = true;
@@ -676,16 +646,65 @@ void TrainingPackUI::RenderCustomPackForm() {
                 }
             }
         }
-
         ImGui::SameLine();
         if (ImGui::Button("Clear", ImVec2(80, 0))) {
             ClearCustomPackForm();
         }
-
         ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "* Required fields");
-
         ImGui::Unindent(10.0f);
         ImGui::Spacing();
     }
+}
+
+void TrainingPackUI::CalculateOptimalColumnWidths() {
+    // Initialize widths with header widths + padding
+    columnWidths.assign(8, 40.0f); // Minimum base width
+
+    auto UpdateMax = [&](int col, const char* text) {
+        float w = ImGui::CalcTextSize(text).x + 20.0f; // + Padding
+        if (w > columnWidths[col]) columnWidths[col] = w;
+    };
+
+    // Headers
+    UpdateMax(0, "Name");
+    UpdateMax(1, "Creator");
+    UpdateMax(2, "Difficulty");
+    UpdateMax(3, "Shots");
+    UpdateMax(4, "Tags");
+    UpdateMax(5, "Likes");
+    UpdateMax(6, "Plays");
+    UpdateMax(7, "Actions");
+
+    // Content
+    for (const auto& pack : filteredPacks) {
+        UpdateMax(0, pack.name.c_str());
+        UpdateMax(1, pack.creator.c_str());
+        UpdateMax(2, pack.difficulty.c_str());
+        UpdateMax(3, std::to_string(pack.shotCount).c_str());
+        
+        // Tags (truncated logic simulation)
+        if (!pack.tags.empty()) {
+            std::string tagsStr;
+            for (size_t i = 0; i < std::min(size_t(2), pack.tags.size()); i++) {
+                if (i > 0) tagsStr += ", ";
+                tagsStr += pack.tags[i];
+            }
+            if (pack.tags.size() > 2) tagsStr += "...";
+            UpdateMax(4, tagsStr.c_str());
+        }
+
+        UpdateMax(5, std::to_string(pack.likes).c_str());
+        UpdateMax(6, std::to_string(pack.plays).c_str());
+        
+        // Actions column approximation
+        // Vid (30) + Spacing(8) + Play(30) + Spacing(8) + +Bag(30) + Spacing(8) + Padding(20)
+        float actionsW = 150.0f; 
+        if (actionsW > columnWidths[7]) columnWidths[7] = actionsW;
+    }
+    
+    // Safety clamp for very long names/descriptions
+    if (columnWidths[0] > 400.0f) columnWidths[0] = 400.0f;
+    if (columnWidths[1] > 200.0f) columnWidths[1] = 200.0f;
+    if (columnWidths[4] > 300.0f) columnWidths[4] = 300.0f;
 }

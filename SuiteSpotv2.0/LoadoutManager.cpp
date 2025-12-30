@@ -29,51 +29,49 @@ LoadoutManager::LoadoutManager(std::shared_ptr<GameWrapper> gameWrapper)
     // Use deferred initialization to ensure game state is ready
     if (gameWrapper_) {
         gameWrapper_->SetTimeout([this](GameWrapper* gw) {
-            QueryLoadoutNamesInternal();
-            initialized_.store(true);
-            // Thread-safe access to cache size for logging
-            size_t cacheSize;
-            {
-                std::lock_guard<std::mutex> lock(cacheMutex_);
-                cacheSize = cachedLoadoutNames_.size();
-            }
-            LOG("[LoadoutManager] Initialization complete, found {} loadout(s)", cacheSize);
+            QueryLoadoutNamesInternal([this](size_t count) {
+                 initialized_.store(true);
+                 LOG("[LoadoutManager] Initialization complete, found {} loadout(s)", count);
+            });
         }, 0.5f); // Small delay to ensure BakkesMod is fully loaded
     } else {
         LOG("[LoadoutManager] ERROR: GameWrapper is null during construction");
     }
 }
 
-void LoadoutManager::QueryLoadoutNamesInternal()
+void LoadoutManager::QueryLoadoutNamesInternal(std::function<void(size_t)> onComplete)
 {
     // Internal helper that queries LoadoutSaveWrapper for all loadout preset names
     // Populates cachedLoadoutNames_ for use by GetLoadoutNames() and SwitchLoadout(index)
     
     if (!gameWrapper_) {
         LOG("[LoadoutManager] Cannot query loadouts: GameWrapper is null");
+        if (onComplete) onComplete(0);
         return;
     }
 
     // Execute on game thread for thread-safe wrapper access
-    gameWrapper_->Execute([this](GameWrapper* gw) {
+    gameWrapper_->Execute([this, onComplete](GameWrapper* gw) {
         std::vector<std::string> tempNames;
         
         try {
             auto loadoutSave = gw->GetUserLoadoutSave();
             if (loadoutSave.IsNull()) {
                 LOG("[LoadoutManager] GetUserLoadoutSave() returned null");
+                if (onComplete) onComplete(0);
                 return;
             }
 
             auto presets = loadoutSave.GetPresets();
             if (presets.IsNull()) {
                 LOG("[LoadoutManager] GetPresets() returned null");
+                if (onComplete) onComplete(0);
                 return;
             }
 
             // Iterate through presets and extract names
             int presetCount = presets.Count();
-            LOG("[LoadoutManager] Found {} preset(s)", presetCount);
+            // LOG("[LoadoutManager] Found {} preset(s)", presetCount); // Moved to caller or end
             
             // Reserve capacity to avoid reallocations
             tempNames.reserve(presetCount);
@@ -85,24 +83,29 @@ void LoadoutManager::QueryLoadoutNamesInternal()
                     if (!name.empty()) {
                         tempNames.push_back(name);
                     } else {
-                        LOG("[LoadoutManager] Preset at index {} has empty name", i);
+                        // LOG("[LoadoutManager] Preset at index {} has empty name", i);
                     }
-                } else {
-                    LOG("[LoadoutManager] Preset at index {} is null", i);
                 }
             }
             
+            size_t newSize = tempNames.size();
             // Update cache with thread safety (inside Execute to ensure completion)
             {
                 std::lock_guard<std::mutex> lock(cacheMutex_);
                 cachedLoadoutNames_ = std::move(tempNames);
             }
+            
+            if (onComplete) {
+                onComplete(newSize);
+            }
         }
         catch (const std::exception& e) {
             LOG("[LoadoutManager] Exception in QueryLoadoutNamesInternal: {}", e.what());
+            if (onComplete) onComplete(0);
         }
         catch (...) {
             LOG("[LoadoutManager] Unknown exception in QueryLoadoutNamesInternal");
+            if (onComplete) onComplete(0);
         }
     });
 }
@@ -123,27 +126,27 @@ std::vector<std::string> LoadoutManager::GetLoadoutNames()
     return cachedLoadoutNames_;
 }
 
-std::string LoadoutManager::GetCurrentLoadoutName()
+void LoadoutManager::GetCurrentLoadoutName(std::function<void(std::string)> onComplete)
 {
     // Safely queries BakkesMod for the currently equipped loadout name
     // Returns empty string if unable to determine current loadout or if no preset is active
 
     if (!gameWrapper_) {
         LOG("[LoadoutManager] GetCurrentLoadoutName: GameWrapper is null");
-        return "";
+        if (onComplete) onComplete("");
+        return;
     }
 
-    std::string currentName;
+    if (!onComplete) return;
 
     // Execute on game thread for thread-safe wrapper access
-    // IMPORTANT: Capture currentName by value through a shared_ptr to avoid reference issues
-    auto result = std::make_shared<std::string>();
-
-    gameWrapper_->Execute([this, result](GameWrapper* gw) {
+    gameWrapper_->Execute([this, onComplete](GameWrapper* gw) {
+        std::string resultName = "";
         try {
             auto loadoutSave = gw->GetUserLoadoutSave();
             if (loadoutSave.IsNull()) {
                 LOG("[LoadoutManager] GetCurrentLoadoutName: GetUserLoadoutSave() returned null");
+                onComplete("");
                 return;
             }
 
@@ -151,61 +154,62 @@ std::string LoadoutManager::GetCurrentLoadoutName()
             auto equippedLoadout = loadoutSave.GetEquippedLoadout();
             if (equippedLoadout.IsNull()) {
                 LOG("[LoadoutManager] GetCurrentLoadoutName: GetEquippedLoadout() returned null");
+                onComplete("");
                 return;
             }
 
             // Get the name of the equipped loadout preset
-            std::string equippedName = equippedLoadout.GetName();
-            if (equippedName.empty()) {
+            resultName = equippedLoadout.GetName();
+            if (resultName.empty()) {
                 LOG("[LoadoutManager] GetCurrentLoadoutName: Equipped loadout has empty name");
-                return;
             }
-
-            // Store result in shared_ptr (safe across thread boundaries)
-            *result = equippedName;
+            
+            onComplete(resultName);
         }
         catch (const std::exception& e) {
             LOG("[LoadoutManager] Exception in GetCurrentLoadoutName: {}", e.what());
+            onComplete("");
         }
         catch (...) {
             LOG("[LoadoutManager] Unknown exception in GetCurrentLoadoutName");
+            onComplete("");
         }
     });
-
-    return *result;
 }
 
-bool LoadoutManager::SwitchLoadout(const std::string& loadoutName)
+void LoadoutManager::SwitchLoadout(const std::string& loadoutName, std::function<void(bool)> onComplete)
 {
     if (!gameWrapper_) {
         LOG("[LoadoutManager] SwitchLoadout: GameWrapper is null");
-        return false;
+        if (onComplete) onComplete(false);
+        return;
     }
     
     if (loadoutName.empty()) {
         LOG("[LoadoutManager] SwitchLoadout: Loadout name is empty");
-        return false;
+        if (onComplete) onComplete(false);
+        return;
     }
 
-    bool success = false;
-
     // Capture by value to prevent reference issues
-    gameWrapper_->Execute([this, loadoutName, &success](GameWrapper* gw) {
+    gameWrapper_->Execute([this, loadoutName, onComplete](GameWrapper* gw) {
+        bool success = false;
         try {
             auto loadoutSave = gw->GetUserLoadoutSave();
             if (loadoutSave.IsNull()) {
                 LOG("[LoadoutManager] SwitchLoadout: GetUserLoadoutSave() returned null");
+                if (onComplete) onComplete(false);
                 return;
             }
 
             auto presets = loadoutSave.GetPresets();
             if (presets.IsNull()) {
                 LOG("[LoadoutManager] SwitchLoadout: GetPresets() returned null");
+                if (onComplete) onComplete(false);
                 return;
             }
 
             // Search for matching preset by name
-            bool found = false;
             for (int i = 0; i < presets.Count(); ++i) {
                 auto preset = presets.Get(i);
                 if (!preset.IsNull()) {
@@ -213,32 +217,34 @@ bool LoadoutManager::SwitchLoadout(const std::string& loadoutName)
                     if (presetName == loadoutName) {
                         loadoutSave.EquipPreset(preset);
                         success = true;
-                        found = true;
                         LOG("[LoadoutManager] Successfully switched to loadout: '{}'", loadoutName);
-                        return;
+                        break;
                     }
                 }
             }
             
-            if (!found) {
+            if (!success) {
                 LOG("[LoadoutManager] SwitchLoadout: Loadout '{}' not found in presets", loadoutName);
+            }
+            
+            if (onComplete) {
+                onComplete(success);
             }
         }
         catch (const std::exception& e) {
             LOG("[LoadoutManager] Exception in SwitchLoadout: {}", e.what());
+            if (onComplete) onComplete(false);
         }
         catch (...) {
             LOG("[LoadoutManager] Unknown exception in SwitchLoadout");
+            if (onComplete) onComplete(false);
         }
     });
-
-    return success;
 }
 
-bool LoadoutManager::SwitchLoadout(int index)
+void LoadoutManager::SwitchLoadout(int index, std::function<void(bool)> onComplete)
 {
     // Switches to the loadout at the specified index in cachedLoadoutNames_
-    // Returns true if successful, false otherwise
     // Index must be valid (0 <= index < cachedLoadoutNames_.size())
     
     std::string loadoutName;
@@ -249,14 +255,15 @@ bool LoadoutManager::SwitchLoadout(int index)
         
         if (index < 0 || index >= static_cast<int>(cachedLoadoutNames_.size())) {
             LOG("[LoadoutManager] Invalid loadout index: {} (cache size: {})", index, cachedLoadoutNames_.size());
-            return false;
+            if (onComplete) onComplete(false);
+            return;
         }
         
         loadoutName = cachedLoadoutNames_[index];
     }
 
     // Use the by-name method with the cached name
-    return SwitchLoadout(loadoutName);
+    SwitchLoadout(loadoutName, onComplete);
 }
 
 bool LoadoutManager::RefreshLoadoutCache()
@@ -273,15 +280,9 @@ bool LoadoutManager::RefreshLoadoutCache()
     LOG("[LoadoutManager] Refreshing loadout cache...");
     
     // Re-query the loadout names
-    QueryLoadoutNamesInternal();
-    
-    // Log the results (capture size outside mutex for minimal lock time)
-    size_t cacheSize;
-    {
-        std::lock_guard<std::mutex> lock(cacheMutex_);
-        cacheSize = cachedLoadoutNames_.size();
-    }
-    LOG("[LoadoutManager] Cache refresh complete, found {} loadout(s)", cacheSize);
+    QueryLoadoutNamesInternal([this](size_t count) {
+        LOG("[LoadoutManager] Cache refresh complete, found {} loadout(s)", count);
+    });
     
     // Success if we have a valid gameWrapper (QueryLoadoutNamesInternal logs its own errors)
     return true;

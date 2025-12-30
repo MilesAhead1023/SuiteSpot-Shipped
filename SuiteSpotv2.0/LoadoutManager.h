@@ -45,21 +45,23 @@ public:
     std::vector<std::string> GetLoadoutNames();
     
     // Get the currently active loadout name
-    // Returns: Current loadout name (empty string if not available)
-    std::string GetCurrentLoadoutName();
+    // Parameters:
+    //   onComplete - Callback receiving the current loadout name
+    void GetCurrentLoadoutName(std::function<void(std::string)> onComplete);
     
     // Switch to a loadout by name
     // Parameters:
     //   loadoutName - Name of the loadout to switch to
-    // Returns: true if successful, false otherwise
+    //   onComplete - Optional callback receiving success status
+    // Returns: void (async operation)
     // Note: Uses gameWrapper->Execute() for thread safety
-    bool SwitchLoadout(const std::string& loadoutName);
+    void SwitchLoadout(const std::string& loadoutName, std::function<void(bool)> onComplete = nullptr);
     
     // Switch to a loadout by index
     // Parameters:
     //   index - Index in the loadout names list (0-based)
-    // Returns: true if successful, false otherwise
-    bool SwitchLoadout(int index);
+    //   onComplete - Optional callback receiving success status
+    void SwitchLoadout(int index, std::function<void(bool)> onComplete = nullptr);
     
     // Refresh the cached loadout list
     // Returns: true if refresh successful, false otherwise
@@ -82,5 +84,6 @@ private:
     
     // Internal helper: Query loadout names from LoadoutSaveWrapper
     // Populates cachedLoadoutNames_
-    void QueryLoadoutNamesInternal();
+    // Optional callback receives the new count
+    void QueryLoadoutNamesInternal(std::function<void(size_t)> onComplete = nullptr);
 };

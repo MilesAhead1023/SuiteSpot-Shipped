@@ -12,7 +12,9 @@ void LoadoutUI::RenderLoadoutControls() {
     if (loadoutManager) {
         if (!loadoutsInitialized) {
             loadoutNames = loadoutManager->GetLoadoutNames();
-            currentLoadoutName = loadoutManager->GetCurrentLoadoutName();
+            loadoutManager->GetCurrentLoadoutName([this](std::string name) {
+                currentLoadoutName = name;
+            });
             loadoutsInitialized = true;
         }
 
@@ -58,16 +60,23 @@ void LoadoutUI::RenderLoadoutControls() {
             if (ImGui::Button("Apply Loadout")) {
                 if (selectedLoadoutIndex >= 0 && selectedLoadoutIndex < (int)loadoutNames.size()) {
                     std::string selectedName = loadoutNames[selectedLoadoutIndex];
-                    bool success = loadoutManager->SwitchLoadout(selectedName);
-                    if (success) {
-                        currentLoadoutName = selectedName;
-                        loadoutStatusText = "Applied \"" + selectedName + "\"";
-                        loadoutStatusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
-                    } else {
-                        loadoutStatusText = "Failed to apply loadout";
-                        loadoutStatusColor = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
-                    }
-                    loadoutStatusTimer = 3.0f;
+                    // Set immediate feedback or wait?
+                    // Let's set a "Applying..." state if desired, or just wait for callback.
+                    loadoutStatusText = "Applying...";
+                    loadoutStatusColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
+                    loadoutStatusTimer = 5.0f; // Give it some time
+
+                    loadoutManager->SwitchLoadout(selectedName, [this, selectedName](bool success) {
+                        if (success) {
+                            currentLoadoutName = selectedName;
+                            loadoutStatusText = "Applied \"" + selectedName + "\"";
+                            loadoutStatusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                        } else {
+                            loadoutStatusText = "Failed to apply loadout";
+                            loadoutStatusColor = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
+                        }
+                        loadoutStatusTimer = 3.0f;
+                    });
                 }
             }
             if (ImGui::IsItemHovered()) {
@@ -80,7 +89,9 @@ void LoadoutUI::RenderLoadoutControls() {
             loadoutsInitialized = false;
             loadoutManager->RefreshLoadoutCache();
             loadoutNames = loadoutManager->GetLoadoutNames();
-            currentLoadoutName = loadoutManager->GetCurrentLoadoutName();
+            loadoutManager->GetCurrentLoadoutName([this](std::string name) {
+                currentLoadoutName = name;
+            });
             selectedLoadoutIndex = 0;
             loadoutStatusText = "Loadouts refreshed";
             loadoutStatusColor = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);

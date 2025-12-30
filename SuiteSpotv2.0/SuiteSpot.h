@@ -79,14 +79,8 @@ public:
     int GetTrainingBagSize() const;
 
 private:
-    bool isBakkesMenuOpen = false;
-
-    std::string lastGameMode = "";
-
     // Shuffle helpers (delegates to TrainingPackManager)
     int GetRandomTrainingIndex() const;
-
-    ImGuiContext* imguiCtx = nullptr;
     
     // Loadout management
     std::unique_ptr<LoadoutManager> loadoutManager;

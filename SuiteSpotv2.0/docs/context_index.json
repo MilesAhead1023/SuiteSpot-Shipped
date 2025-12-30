@@ -1,0 +1,22 @@
+{
+  "capsules": [
+    {
+      "name": "backend",
+      "path": "docs/context/backend.md",
+      "keywords": ["Workshop", "Training Pack", "Scrape", "Shuffle", "UPK"],
+      "patterns": ["MapManager.*", "TrainingPackManager.*", "MapList.*"]
+    },
+    {
+      "name": "ui",
+      "path": "docs/context/ui.md",
+      "keywords": ["ImGui", "Tab", "Button", "UI", "Render"],
+      "patterns": ["*UI.*", "Source.cpp"]
+    },
+    {
+      "name": "lifecycle",
+      "path": "docs/context/lifecycle.md",
+      "keywords": ["onLoad", "onUnload", "Hook", "CVar", "MatchEnded"],
+      "patterns": ["SuiteSpot.*", "SettingsSync.*", "AutoLoadFeature.*"]
+    }
+  ]
+}

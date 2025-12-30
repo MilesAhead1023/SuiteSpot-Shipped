@@ -78,9 +78,6 @@
     <ClCompile Include="SuiteSpot.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
-    <ClCompile Include="GuiBase.cpp">
-      <Filter>Plugin\src</Filter>
-    </ClCompile>
     <ClCompile Include="Source.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
@@ -141,14 +138,6 @@
       <Filter>PCH</Filter>
     </ClInclude>
     <ClInclude Include="SuiteSpot.h">
-      <Filter>Plugin\header</Filter>
-    </ClInclude>
-    <ClInclude Include="logging.h">
-      <Filter>Plugin\header</Filter>
-    </ClInclude>
-    <ClInclude Include="GuiBase.h">
-      <Filter>Plugin\header</Filter>
-    </ClInclude>
     <ClInclude Include="MapList.h">
       <Filter>Plugin\header</Filter>
     </ClInclude>

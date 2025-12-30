@@ -24,7 +24,4 @@ public:
 
     // Random selection helper (works with shuffle bag from TrainingPackManager)
     int GetRandomTrainingMapIndex(const std::vector<TrainingEntry>& shuffleBag) const;
-
-private:
-    void MirrorDirectory(const std::filesystem::path& src, const std::filesystem::path& dst) const;
 };

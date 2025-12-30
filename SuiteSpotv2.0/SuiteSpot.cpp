@@ -34,12 +34,6 @@ void SuiteSpot::EnsureDataDirectories() const {
     }
 }
 
-int SuiteSpot::GetRandomTrainingIndex() const {
-    if (!trainingPackMgr || !mapManager) return -1;
-    auto shuffleBag = trainingPackMgr->GetShuffleBagPacks();
-    return mapManager->GetRandomTrainingMapIndex(shuffleBag);
-}
-
 std::filesystem::path SuiteSpot::GetWorkshopLoaderConfigPath() const {
     return mapManager ? mapManager->GetWorkshopLoaderConfigPath() : std::filesystem::path();
 }
@@ -62,10 +56,6 @@ void SuiteSpot::LoadWorkshopMaps() {
             settingsSync->SetCurrentWorkshopIndex(index);
         }
     }
-}
-
-void SuiteSpot::SaveWorkshopMaps() const {
-    // No-op
 }
 
 // ===== TRAINING PACK SCRAPER INTEGRATION =====

@@ -4,6 +4,7 @@
 #include "LoadoutUI.h"
 #include "TrainingPackUI.h"
 #include "SuiteSpot.h"
+#include "MapManager.h"
 #include "TrainingPackManager.h"
 
 #include <algorithm>
@@ -318,10 +319,10 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
         if (ImGui::Button("Load Now##training")) {
             std::string packCode;
 
-            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr) {
+            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr && plugin_->mapManager) {
                 auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
                 if (!shuffleBag.empty()) {
-                    int randomIdx = plugin_->GetRandomTrainingIndex();
+                    int randomIdx = plugin_->mapManager->GetRandomTrainingMapIndex(shuffleBag);
                     if (randomIdx >= 0 && randomIdx < static_cast<int>(shuffleBag.size())) {
                         packCode = shuffleBag[randomIdx].code;
                     }

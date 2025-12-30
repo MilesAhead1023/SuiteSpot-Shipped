@@ -1,5 +1,4 @@
 #pragma once
-#include "GuiBase.h" // defines SettingsWindowBase
 #include "bakkesmod/plugin/bakkesmodplugin.h"
 #include "bakkesmod/plugin/pluginwindow.h"
 #include "bakkesmod/plugin/PluginSettingsWindow.h"
@@ -10,9 +9,17 @@
 #include <set>
 #include <memory>
 
-// Forward declarations for additional windows
-class SuiteSpotSettingsWindow2;
-class SuiteSpotTestWindow;
+class SettingsWindowBase : public BakkesMod::Plugin::PluginSettingsWindow
+{
+public:
+    virtual ~SettingsWindowBase() = default;
+    std::string GetPluginName() override { return "SuiteSpot"; }
+    void SetImGuiContext(uintptr_t ctx) override {
+        ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
+    }
+};
+
+// Forward declarations
 class MapManager;
 class SettingsSync;
 class AutoLoadFeature;
@@ -42,7 +49,6 @@ public:
 
     // Workshop persistence API
     void LoadWorkshopMaps();
-    void SaveWorkshopMaps() const; // no-op (legacy)
     void DiscoverWorkshopInDir(const std::filesystem::path& dir);
     std::filesystem::path GetWorkshopLoaderConfigPath() const;
     std::filesystem::path ResolveConfiguredWorkshopRoot() const;
@@ -79,9 +85,6 @@ public:
     int GetTrainingBagSize() const;
 
 private:
-    // Shuffle helpers (delegates to TrainingPackManager)
-    int GetRandomTrainingIndex() const;
-    
     // Loadout management
     std::unique_ptr<LoadoutManager> loadoutManager;
 

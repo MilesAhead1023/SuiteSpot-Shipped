@@ -152,7 +152,6 @@ exit /b 0</Command>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="SuiteSpot.cpp" />
-    <ClCompile Include="GuiBase.cpp" />
     <ClCompile Include="Source.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -181,7 +180,6 @@ exit /b 0</Command>
     <ClInclude Include="SettingsUI.h" />
     <ClInclude Include="SettingsSync.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="GuiBase.h" />
     <ClInclude Include="SuiteSpot.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>

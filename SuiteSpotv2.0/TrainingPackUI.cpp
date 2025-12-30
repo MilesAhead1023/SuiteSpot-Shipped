@@ -174,8 +174,23 @@ void TrainingPackUI::RenderTrainingPackTab() {
                           (packSortColumn != lastSortColumn) ||
                           (packSortAscending != lastSortAscending);
 
+    // Dynamic width calculation for filters
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
+    
+    // Allocate widths: Search (40%), Difficulty (25%), Shots (35%)
+    // Adjust logic to ensure they fit on one line if possible
+    float searchW = (availWidth * 0.40f) - itemSpacing;
+    float diffW = (availWidth * 0.25f) - itemSpacing;
+    float shotsW = (availWidth * 0.35f) - itemSpacing;
+
+    // Minimum constraints
+    if (searchW < 150) searchW = 150;
+    if (diffW < 120) diffW = 120;
+    if (shotsW < 150) shotsW = 150;
+
     // Search box
-    ImGui::SetNextItemWidth(300);
+    ImGui::SetNextItemWidth(searchW);
     if (ImGui::InputText("##search", packSearchText, IM_ARRAYSIZE(packSearchText))) {
         filtersChanged = true;
     }
@@ -185,7 +200,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
     // Difficulty filter
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(150);
+    ImGui::SetNextItemWidth(diffW);
     const char* difficulties[] = {"All", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
     if (ImGui::BeginCombo("##difficulty", packDifficultyFilter.c_str())) {
         for (int i = 0; i < IM_ARRAYSIZE(difficulties); i++) {
@@ -203,7 +218,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
     // Shot count range filter
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(200);
+    ImGui::SetNextItemWidth(shotsW);
     if (ImGui::SliderInt("Min Shots", &packMinShots, 0, 50)) {
         filtersChanged = true;
     }

@@ -299,12 +299,13 @@ void TrainingPackUI::RenderTrainingPackTab() {
     // ===== TABLE WITH RESIZABLE COLUMNS (ImGui 1.75 Columns API) =====
     ImGui::Separator();
 
-    ImGui::Columns(8, "PackColumns", true);
+    // Reduced columns to 6 (Removed Creator and Tags)
+    ImGui::Columns(6, "PackColumns", true);
 
     // Apply optimal column widths if dirty
     if (columnWidthsDirty) {
         CalculateOptimalColumnWidths();
-        for (int i = 0; i < 8 && i < (int)columnWidths.size(); i++) {
+        for (int i = 0; i < 6 && i < (int)columnWidths.size(); i++) {
             ImGui::SetColumnWidth(i, columnWidths[i]);
         }
         columnWidthsDirty = false;
@@ -313,42 +314,32 @@ void TrainingPackUI::RenderTrainingPackTab() {
     // ===== HEADER ROW WITH SORT INDICATORS =====
     ImGui::Separator();
 
-    // Name column header
+    // Name column header (Sort ID 0)
     if (SortableColumnHeader("Name", 0, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
-    // Creator column header
-    if (SortableColumnHeader("Creator", 1, packSortColumn, packSortAscending)) {
-        filtersChanged = true;
-    }
-    ImGui::NextColumn();
-
-    // Difficulty column header
+    // Difficulty column header (Sort ID 2)
     if (SortableColumnHeader("Difficulty", 2, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
-    // Shots column header
+    // Shots column header (Sort ID 3)
     if (SortableColumnHeader("Shots", 3, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
-    // Tags column header (non-sortable)
-    ImGui::TextUnformatted("Tags");
-    ImGui::NextColumn();
-
-    // Likes column header
-    if (SortableColumnHeader("Likes", 5, packSortColumn, packSortAscending)) {
+    // Likes column header (Sort ID 4)
+    if (SortableColumnHeader("Likes", 4, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
 
-    // Plays column header
-    if (SortableColumnHeader("Plays", 6, packSortColumn, packSortAscending)) {
+    // Plays column header (Sort ID 5)
+    if (SortableColumnHeader("Plays", 5, packSortColumn, packSortAscending)) {
         filtersChanged = true;
     }
     ImGui::NextColumn();
@@ -371,13 +362,19 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
             // Name column
             ImGui::TextUnformatted(pack.name.c_str());
-            if (ImGui::IsItemHovered() && !pack.staffComments.empty()) {
-                ImGui::SetTooltip("%s", pack.staffComments.c_str());
+            if (ImGui::IsItemHovered()) {
+                std::string tooltip = "";
+                if (!pack.staffComments.empty()) tooltip += pack.staffComments + "\n";
+                if (!pack.creator.empty()) tooltip += "Creator: " + pack.creator + "\n"; // Moved creator to tooltip
+                if (!pack.tags.empty()) {
+                    tooltip += "Tags: ";
+                    for (size_t i = 0; i < pack.tags.size(); i++) {
+                        if (i > 0) tooltip += ", ";
+                        tooltip += pack.tags[i];
+                    }
+                }
+                if (!tooltip.empty()) ImGui::SetTooltip("%s", tooltip.c_str());
             }
-            ImGui::NextColumn();
-
-            // Creator column
-            ImGui::TextUnformatted(pack.creator.c_str());
             ImGui::NextColumn();
 
             // Difficulty column with color coding
@@ -395,29 +392,6 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
             // Shots column
             ImGui::Text("%d", pack.shotCount);
-            ImGui::NextColumn();
-
-            // Tags column (truncated)
-            if (!pack.tags.empty()) {
-                std::string tagsStr;
-                for (size_t i = 0; i < std::min(size_t(2), pack.tags.size()); i++) {
-                    if (i > 0) tagsStr += ", ";
-                    tagsStr += pack.tags[i];
-                }
-                if (pack.tags.size() > 2) {
-                    tagsStr += "...";
-                }
-                ImGui::TextUnformatted(tagsStr.c_str());
-
-                if (ImGui::IsItemHovered() && pack.tags.size() > 2) {
-                    std::string allTags;
-                    for (size_t i = 0; i < pack.tags.size(); i++) {
-                        if (i > 0) allTags += ", ";
-                        allTags += pack.tags[i];
-                    }
-                    ImGui::SetTooltip("%s", allTags.c_str());
-                }
-            }
             ImGui::NextColumn();
 
             // Likes column
@@ -674,7 +648,7 @@ void TrainingPackUI::RenderCustomPackForm() {
 
 void TrainingPackUI::CalculateOptimalColumnWidths() {
     // Initialize widths with header widths + padding
-    columnWidths.assign(8, 40.0f); // Minimum base width
+    columnWidths.assign(6, 40.0f); // Minimum base width
 
     auto UpdateMax = [&](int col, const char* text) {
         float w = ImGui::CalcTextSize(text).x + 20.0f; // + Padding
@@ -683,43 +657,26 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
 
     // Headers
     UpdateMax(0, "Name");
-    UpdateMax(1, "Creator");
-    UpdateMax(2, "Difficulty");
-    UpdateMax(3, "Shots");
-    UpdateMax(4, "Tags");
-    UpdateMax(5, "Likes");
-    UpdateMax(6, "Plays");
-    UpdateMax(7, "Actions");
+    UpdateMax(1, "Difficulty");
+    UpdateMax(2, "Shots");
+    UpdateMax(3, "Likes");
+    UpdateMax(4, "Plays");
+    UpdateMax(5, "Actions");
 
     // Content
     for (const auto& pack : filteredPacks) {
         UpdateMax(0, pack.name.c_str());
-        UpdateMax(1, pack.creator.c_str());
-        UpdateMax(2, pack.difficulty.c_str());
-        UpdateMax(3, std::to_string(pack.shotCount).c_str());
-        
-        // Tags (truncated logic simulation)
-        if (!pack.tags.empty()) {
-            std::string tagsStr;
-            for (size_t i = 0; i < std::min(size_t(2), pack.tags.size()); i++) {
-                if (i > 0) tagsStr += ", ";
-                tagsStr += pack.tags[i];
-            }
-            if (pack.tags.size() > 2) tagsStr += "...";
-            UpdateMax(4, tagsStr.c_str());
-        }
-
-        UpdateMax(5, std::to_string(pack.likes).c_str());
-        UpdateMax(6, std::to_string(pack.plays).c_str());
+        UpdateMax(1, pack.difficulty.c_str());
+        UpdateMax(2, std::to_string(pack.shotCount).c_str());
+        UpdateMax(3, std::to_string(pack.likes).c_str());
+        UpdateMax(4, std::to_string(pack.plays).c_str());
         
         // Actions column approximation
         // Vid (30) + Spacing(8) + Play(30) + Spacing(8) + +Bag(30) + Spacing(8) + Padding(20)
         float actionsW = 150.0f; 
-        if (actionsW > columnWidths[7]) columnWidths[7] = actionsW;
+        if (actionsW > columnWidths[5]) columnWidths[5] = actionsW;
     }
     
-    // Safety clamp for very long names/descriptions
+    // Safety clamp for very long names
     if (columnWidths[0] > 400.0f) columnWidths[0] = 400.0f;
-    if (columnWidths[1] > 200.0f) columnWidths[1] = 200.0f;
-    if (columnWidths[4] > 300.0f) columnWidths[4] = 300.0f;
 }

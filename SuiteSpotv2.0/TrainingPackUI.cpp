@@ -404,9 +404,9 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
             // Actions column
 
-            // Vid button
+            // Watch Video button
             if (!pack.videoUrl.empty()) {
-                std::string watchLabel = "Vid##" + std::to_string(row);
+                std::string watchLabel = "Watch##" + std::to_string(row);
                 if (ImGui::SmallButton(watchLabel.c_str())) {
                     ShellExecuteA(NULL, "open", pack.videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
                 }
@@ -416,8 +416,8 @@ void TrainingPackUI::RenderTrainingPackTab() {
                 ImGui::SameLine();
             }
 
-            // Play button
-            std::string loadLabel = "Play##" + std::to_string(row);
+            // Load Now button
+            std::string loadLabel = "Load##" + std::to_string(row);
             if (ImGui::SmallButton(loadLabel.c_str())) {
                 SuiteSpot* plugin = plugin_;
                 plugin_->gameWrapper->SetTimeout([plugin, pack](GameWrapper* gw) {
@@ -432,8 +432,8 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
             ImGui::SameLine();
 
-            // +Bag button
-            std::string shuffleLabel = "+Bag##" + std::to_string(row);
+            // Add to Shuffle button with visual feedback
+            std::string shuffleLabel = "+Shuffle##" + std::to_string(row);
             bool inShuffleBag = pack.inShuffleBag;
 
             if (inShuffleBag) {
@@ -488,7 +488,8 @@ bool TrainingPackUI::ValidatePackCode(const char* code) const {
     for (int i = 0; i < 19; i++) {
         if (i == 4 || i == 9 || i == 14) {
             if (code[i] != '-') return false;
-        } else {
+        }
+        else {
             if (!isalnum(static_cast<unsigned char>(code[i]))) return false;
         }
     }
@@ -584,11 +585,14 @@ void TrainingPackUI::RenderCustomPackForm() {
             customPackSuccess = false;
             if (strlen(customPackCode) == 0) {
                 customPackError = "Pack code is required";
-            } else if (!ValidatePackCode(customPackCode)) {
+            }
+            else if (!ValidatePackCode(customPackCode)) {
                 customPackError = "Invalid code format. Expected: XXXX-XXXX-XXXX-XXXX";
-            } else if (strlen(customPackName) == 0) {
+            }
+            else if (strlen(customPackName) == 0) {
                 customPackError = "Pack name is required";
-            } else {
+            }
+            else {
                 TrainingEntry pack;
                 pack.code = customPackCode;
                 pack.name = customPackName;
@@ -672,8 +676,8 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
         UpdateMax(4, std::to_string(pack.plays).c_str());
         
         // Actions column approximation
-        // Vid (30) + Spacing(8) + Play(30) + Spacing(8) + +Bag(30) + Spacing(8) + Padding(20)
-        float actionsW = 150.0f; 
+        // Watch (40) + Spacing + Load (40) + Spacing + +Shuffle (60) + Spacing + Padding
+        float actionsW = 200.0f; 
         if (actionsW > columnWidths[5]) columnWidths[5] = actionsW;
     }
     

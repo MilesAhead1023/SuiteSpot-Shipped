@@ -6,10 +6,10 @@ Current plugin improvements, refactoring tasks, and technical debt.
 
 ## High Priority - Code Quality
 
-- [ ] **Split RenderMapSelectionTab()** *(SettingsUI.cpp:212-585)*
-  - Extract `RenderFreeplayMode()` (~60 lines)
-  - Extract `RenderTrainingMode()` (~170 lines)
-  - Extract `RenderWorkshopMode()` (~140 lines)
+- [x] **Split RenderMapSelectionTab()** *(SettingsUI.cpp:212-230)*
+  - Extracted `RenderFreeplayMode()` (~53 lines)
+  - Extracted `RenderTrainingMode()` (~161 lines)
+  - Extracted `RenderWorkshopMode()` (~138 lines)
   - Benefit: Each mode independently maintainable
 
 - [ ] **Create UI Helper Functions** *(New: UIHelpers.h/cpp)*

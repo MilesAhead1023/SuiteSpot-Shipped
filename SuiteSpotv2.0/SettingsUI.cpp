@@ -221,366 +221,366 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
     ImGui::Spacing();
 
     if (mapTypeValue == 0) {
-        // Freeplay maps
-        if (!RLMaps.empty()) {
-            currentIndexValue = std::clamp(currentIndexValue, 0, static_cast<int>(RLMaps.size() - 1));
-        } else {
-            currentIndexValue = 0;
-        }
+        RenderFreeplayMode(currentIndexValue, delayFreeplaySecValue);
+    } else if (mapTypeValue == 1) {
+        RenderTrainingMode(trainingShuffleEnabledValue, currentTrainingIndexValue, delayTrainingSecValue);
+    } else if (mapTypeValue == 2) {
+        RenderWorkshopMode(currentWorkshopIndexValue, delayWorkshopSecValue);
+    }
+}
 
-        const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndexValue].name.c_str();
-        ImGui::SetNextItemWidth(260);
-        if (ImGui::BeginCombo("Freeplay Maps", freeplayLabel)) {
-            for (int i = 0; i < (int)RLMaps.size(); ++i) {
-                bool selected = (i == currentIndexValue);
-                if (ImGui::Selectable(RLMaps[i].name.c_str(), selected)) {
-                    currentIndexValue = i;
-                    SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue);
-                }
-            }
-            ImGui::EndCombo();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select which stadium to load after matches");
-        }
+void SettingsUI::RenderFreeplayMode(int& currentIndexValue, int& delayFreeplaySecValue) {
+    if (!RLMaps.empty()) {
+        currentIndexValue = std::clamp(currentIndexValue, 0, static_cast<int>(RLMaps.size() - 1));
+    } else {
+        currentIndexValue = 0;
+    }
 
-        float rightEdge = ImGui::GetWindowContentRegionMax().x;
-        float loadBtnWidth = ImGui::CalcTextSize("Load Now").x + ImGui::GetStyle().FramePadding.x * 2.0f;
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), rightEdge - loadBtnWidth));
-        if (ImGui::Button("Load Now##freeplay")) {
-            if (!RLMaps.empty() && currentIndexValue >= 0 && currentIndexValue < (int)RLMaps.size()) {
-                std::string mapCode = RLMaps[currentIndexValue].code;
-                SuiteSpot* plugin = plugin_;
-                plugin_->gameWrapper->SetTimeout([plugin, mapCode](GameWrapper* gw) {
-                    plugin->cvarManager->executeCommand("load_freeplay " + mapCode);
-                }, 0.0f);
+    const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndexValue].name.c_str();
+    ImGui::SetNextItemWidth(260);
+    if (ImGui::BeginCombo("Freeplay Maps", freeplayLabel)) {
+        for (int i = 0; i < (int)RLMaps.size(); ++i) {
+            bool selected = (i == currentIndexValue);
+            if (ImGui::Selectable(RLMaps[i].name.c_str(), selected)) {
+                currentIndexValue = i;
+                SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue);
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Load the selected freeplay map immediately");
-        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Select which stadium to load after matches");
+    }
 
-        ImGui::Spacing();
-        ImGui::TextUnformatted("Freeplay Settings:");
-        ImGui::SetNextItemWidth(220);
-        if (ImGui::InputInt("Delay Freeplay (sec)", &delayFreeplaySecValue)) {
-            delayFreeplaySecValue = std::clamp(delayFreeplaySecValue, 0, 300);
-            SetCVarSafely("suitespot_delay_freeplay_sec", delayFreeplaySecValue);
-        }
-        ImGui::SameLine();
-        ImGui::TextDisabled("0-300s");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Wait this many seconds after match ends before loading Freeplay. Range: 0-300s");
+    float rightEdge = ImGui::GetWindowContentRegionMax().x;
+    float loadBtnWidth = ImGui::CalcTextSize("Load Now").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(std::max(ImGui::GetCursorPosX(), rightEdge - loadBtnWidth));
+    if (ImGui::Button("Load Now##freeplay")) {
+        if (!RLMaps.empty() && currentIndexValue >= 0 && currentIndexValue < (int)RLMaps.size()) {
+            std::string mapCode = RLMaps[currentIndexValue].code;
+            SuiteSpot* plugin = plugin_;
+            plugin_->gameWrapper->SetTimeout([plugin, mapCode](GameWrapper* gw) {
+                plugin->cvarManager->executeCommand("load_freeplay " + mapCode);
+            }, 0.0f);
         }
     }
-    else if (mapTypeValue == 1) {
-        // Training maps
-        if (!RLTraining.empty()) {
-            currentTrainingIndexValue = std::clamp(currentTrainingIndexValue, 0, static_cast<int>(RLTraining.size() - 1));
-        } else {
-            currentTrainingIndexValue = 0;
-        }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Load the selected freeplay map immediately");
+    }
 
-        const char* trainingLabel = "<none>";
-        if (!RLTraining.empty() && currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
-            trainingLabelBuf = RLTraining[currentTrainingIndexValue].name + " (Shots:" + std::to_string(RLTraining[currentTrainingIndexValue].shotCount) + ")";
-            trainingLabel = trainingLabelBuf.c_str();
-        }
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Freeplay Settings:");
+    ImGui::SetNextItemWidth(220);
+    if (ImGui::InputInt("Delay Freeplay (sec)", &delayFreeplaySecValue)) {
+        delayFreeplaySecValue = std::clamp(delayFreeplaySecValue, 0, 300);
+        SetCVarSafely("suitespot_delay_freeplay_sec", delayFreeplaySecValue);
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("0-300s");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Wait this many seconds after match ends before loading Freeplay. Range: 0-300s");
+    }
+}
 
-        ImGui::SetNextItemWidth(260);
-        if (ImGui::BeginCombo("Training Packs", trainingLabel)) {
-            for (int i = 0; i < (int)RLTraining.size(); ++i) {
-                bool selected = (i == currentTrainingIndexValue);
-                std::string itemLabel = RLTraining[i].name + " (Shots:" + std::to_string(RLTraining[i].shotCount) + ")";
-                if (ImGui::Selectable(itemLabel.c_str(), selected)) {
-                    currentTrainingIndexValue = i;
-                    SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue);
+void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue, int& delayTrainingSecValue) {
+    if (!RLTraining.empty()) {
+        currentTrainingIndexValue = std::clamp(currentTrainingIndexValue, 0, static_cast<int>(RLTraining.size() - 1));
+    } else {
+        currentTrainingIndexValue = 0;
+    }
+
+    const char* trainingLabel = "<none>";
+    if (!RLTraining.empty() && currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
+        trainingLabelBuf = RLTraining[currentTrainingIndexValue].name + " (Shots:" + std::to_string(RLTraining[currentTrainingIndexValue].shotCount) + ")";
+        trainingLabel = trainingLabelBuf.c_str();
+    }
+
+    ImGui::SetNextItemWidth(260);
+    if (ImGui::BeginCombo("Training Packs", trainingLabel)) {
+        for (int i = 0; i < (int)RLTraining.size(); ++i) {
+            bool selected = (i == currentTrainingIndexValue);
+            std::string itemLabel = RLTraining[i].name + " (Shots:" + std::to_string(RLTraining[i].shotCount) + ")";
+            if (ImGui::Selectable(itemLabel.c_str(), selected)) {
+                currentTrainingIndexValue = i;
+                SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue);
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Select which training pack to load after matches");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh Training##maps")) {
+        if (plugin_->trainingPackMgr) {
+            plugin_->trainingPackMgr->LoadPacksFromFile(plugin_->GetTrainingPacksPath());
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Reload training packs from the JSON file");
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Load Now##training")) {
+        std::string packCode;
+
+        if (trainingShuffleEnabledValue && plugin_->trainingPackMgr && plugin_->mapManager) {
+            auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
+            if (!shuffleBag.empty()) {
+                int randomIdx = plugin_->mapManager->GetRandomTrainingMapIndex(shuffleBag);
+                if (randomIdx >= 0 && randomIdx < static_cast<int>(shuffleBag.size())) {
+                    packCode = shuffleBag[randomIdx].code;
                 }
             }
-            ImGui::EndCombo();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select which training pack to load after matches");
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Refresh Training##maps")) {
-            // Training packs are now managed through TrainingPackManager
-            if (plugin_->trainingPackMgr) {
-                plugin_->trainingPackMgr->LoadPacksFromFile(plugin_->GetTrainingPacksPath());
-            }
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Reload training packs from the JSON file");
+        if (packCode.empty() && !RLTraining.empty() &&
+            currentTrainingIndexValue >= 0 && currentTrainingIndexValue < static_cast<int>(RLTraining.size())) {
+            packCode = RLTraining[currentTrainingIndexValue].code;
         }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Load Now##training")) {
-            std::string packCode;
-
-            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr && plugin_->mapManager) {
-                auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
-                if (!shuffleBag.empty()) {
-                    int randomIdx = plugin_->mapManager->GetRandomTrainingMapIndex(shuffleBag);
-                    if (randomIdx >= 0 && randomIdx < static_cast<int>(shuffleBag.size())) {
-                        packCode = shuffleBag[randomIdx].code;
-                    }
-                }
-            }
-
-            // Fallback to selected training pack if shuffle bag is empty
-            if (packCode.empty() && !RLTraining.empty() &&
-                currentTrainingIndexValue >= 0 && currentTrainingIndexValue < static_cast<int>(RLTraining.size())) {
-                packCode = RLTraining[currentTrainingIndexValue].code;
-            }
-
-            if (!packCode.empty()) {
-                SuiteSpot* plugin = plugin_;
-                plugin_->gameWrapper->SetTimeout([plugin, packCode](GameWrapper* gw) {
-                    plugin->cvarManager->executeCommand("load_training " + packCode);
-                }, 0.0f);
-            }
+        if (!packCode.empty()) {
+            SuiteSpot* plugin = plugin_;
+            plugin_->gameWrapper->SetTimeout([plugin, packCode](GameWrapper* gw) {
+                plugin->cvarManager->executeCommand("load_training " + packCode);
+            }, 0.0f);
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Load a training pack (from shuffle bag if enabled, otherwise selected)");
-        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Load a training pack (from shuffle bag if enabled, otherwise selected)");
+    }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Add Pack##training_toggle")) {
-            showAddTrainingForm = !showAddTrainingForm;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Show or hide the custom training pack form");
-        }
+    ImGui::SameLine();
+    if (ImGui::Button("Add Pack##training_toggle")) {
+        showAddTrainingForm = !showAddTrainingForm;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Show or hide the custom training pack form");
+    }
 
+    ImGui::Spacing();
+    ImGui::Separator();
+
+    ImGui::TextUnformatted("Training Settings:");
+    ImGui::SetNextItemWidth(220);
+    if (ImGui::InputInt("Delay Training (sec)", &delayTrainingSecValue)) {
+        delayTrainingSecValue = std::clamp(delayTrainingSecValue, 0, 300);
+        SetCVarSafely("suitespot_delay_training_sec", delayTrainingSecValue);
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("0-300s");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Wait this many seconds after match ends before loading Training. Range: 0-300s");
+    }
+
+    if (showAddTrainingForm) {
         ImGui::Spacing();
         ImGui::Separator();
+        ImGui::TextUnformatted("Add Custom Training Pack:");
+        ImGui::Spacing();
 
-        ImGui::TextUnformatted("Training Settings:");
-        ImGui::SetNextItemWidth(220);
-        if (ImGui::InputInt("Delay Training (sec)", &delayTrainingSecValue)) {
-            delayTrainingSecValue = std::clamp(delayTrainingSecValue, 0, 300);
-            SetCVarSafely("suitespot_delay_training_sec", delayTrainingSecValue);
-        }
-        ImGui::SameLine();
-        ImGui::TextDisabled("0-300s");
+        ImGui::InputText("Training Map Code##input", newMapCode, IM_ARRAYSIZE(newMapCode), 0);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Wait this many seconds after match ends before loading Training. Range: 0-300s");
+            ImGui::SetTooltip("Enter the code (e.g., 555F-7503-BBB9-E1E3)");
         }
 
-        if (showAddTrainingForm) {
-            ImGui::Spacing();
-            ImGui::Separator();
-            ImGui::TextUnformatted("Add Custom Training Pack:");
-            ImGui::Spacing();
+        ImGui::InputText("Training Map Name##input", newMapName, IM_ARRAYSIZE(newMapName), 0);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Enter a custom name for this pack");
+        }
 
-            ImGui::InputText("Training Map Code##input", newMapCode, IM_ARRAYSIZE(newMapCode), 0);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enter the code (e.g., 555F-7503-BBB9-E1E3)");
-            }
+        if (ImGui::Button("Add Training Map")) {
+            if (strlen(newMapCode) > 0 && strlen(newMapName) > 0) {
+                std::string codeStr(newMapCode);
+                bool isValidCode = true;
 
-            ImGui::InputText("Training Map Name##input", newMapName, IM_ARRAYSIZE(newMapName), 0);
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enter a custom name for this pack");
-            }
-
-            if (ImGui::Button("Add Training Map")) {
-                if (strlen(newMapCode) > 0 && strlen(newMapName) > 0) {
-                    // Validate training pack code format (should be like: 555F-7503-BBB9-E1E3)
-                    std::string codeStr(newMapCode);
-                    bool isValidCode = true;
-
-                    // Basic validation: should contain 3 dashes and alphanumeric characters
-                    int dashCount = 0;
-                    for (char c : codeStr) {
-                        if (c == '-') {
-                            dashCount++;
-                        } else if (!isxdigit(static_cast<unsigned char>(c))) {
-                            isValidCode = false;
-                            break;
-                        }
-                    }
-                    if (dashCount != 3) {
+                int dashCount = 0;
+                for (char c : codeStr) {
+                    if (c == '-') {
+                        dashCount++;
+                    } else if (!isxdigit(static_cast<unsigned char>(c))) {
                         isValidCode = false;
-                    }
-
-                    if (!isValidCode) {
-                        addSuccess = false;
-                        addSuccessTimer = 2.0f;
-                    } else {
-                        // Add custom pack via TrainingPackManager
-                        TrainingEntry newPack;
-                        newPack.code = codeStr;
-                        newPack.name = std::string(newMapName);
-                        newPack.source = "custom";
-
-                        if (plugin_->trainingPackMgr) {
-                            addSuccess = plugin_->trainingPackMgr->AddCustomPack(newPack);
-                        } else {
-                            addSuccess = false;
-                        }
-                        addSuccess = true;
-                        addSuccessTimer = 3.0f;
-                        newMapCode[0] = 0;
-                        newMapName[0] = 0;
+                        break;
                     }
                 }
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Add this training pack to your collection");
-            }
+                if (dashCount != 3) {
+                    isValidCode = false;
+                }
 
-            if (addSuccess && addSuccessTimer > 0.0f) {
-                ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, addSuccessTimer / 3.0f), "Pack added!");
-                addSuccessTimer -= ImGui::GetIO().DeltaTime;
-                if (addSuccessTimer <= 0.0f) {
+                if (!isValidCode) {
                     addSuccess = false;
+                    addSuccessTimer = 2.0f;
+                } else {
+                    TrainingEntry newPack;
+                    newPack.code = codeStr;
+                    newPack.name = std::string(newMapName);
+                    newPack.source = "custom";
+
+                    if (plugin_->trainingPackMgr) {
+                        addSuccess = plugin_->trainingPackMgr->AddCustomPack(newPack);
+                    } else {
+                        addSuccess = false;
+                    }
+                    addSuccess = true;
+                    addSuccessTimer = 3.0f;
+                    newMapCode[0] = 0;
+                    newMapName[0] = 0;
                 }
+            }
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Add this training pack to your collection");
+        }
+
+        if (addSuccess && addSuccessTimer > 0.0f) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, addSuccessTimer / 3.0f), "Pack added!");
+            addSuccessTimer -= ImGui::GetIO().DeltaTime;
+            if (addSuccessTimer <= 0.0f) {
+                addSuccess = false;
             }
         }
     }
-    else if (mapTypeValue == 2) {
-        // Workshop maps
-        if (!RLWorkshop.empty()) {
-            currentWorkshopIndexValue = std::clamp(currentWorkshopIndexValue, 0, static_cast<int>(RLWorkshop.size() - 1));
-        } else {
-            currentWorkshopIndexValue = 0;
-        }
+}
 
-        const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentWorkshopIndexValue].name.c_str();
-        ImGui::SetNextItemWidth(260);
-        if (ImGui::BeginCombo("Workshop Maps", workshopLabel)) {
-            for (int i = 0; i < (int)RLWorkshop.size(); ++i) {
-                bool selected = (i == currentWorkshopIndexValue);
-                if (ImGui::Selectable(RLWorkshop[i].name.c_str(), selected)) {
-                    currentWorkshopIndexValue = i;
-                    SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue);
-                }
-            }
-            ImGui::EndCombo();
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Select which workshop map to load after matches");
-        }
+void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWorkshopSecValue) {
+    if (!RLWorkshop.empty()) {
+        currentWorkshopIndexValue = std::clamp(currentWorkshopIndexValue, 0, static_cast<int>(RLWorkshop.size() - 1));
+    } else {
+        currentWorkshopIndexValue = 0;
+    }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Refresh Workshop##maps")) {
-            std::string previousPath;
-            if (currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
-                previousPath = RLWorkshop[currentWorkshopIndexValue].filePath;
-            }
-            plugin_->LoadWorkshopMaps();
-            if (!previousPath.empty()) {
-                auto it = std::find_if(RLWorkshop.begin(), RLWorkshop.end(),
-                    [&](const WorkshopEntry& entry){ return entry.filePath == previousPath; });
-                if (it != RLWorkshop.end()) {
-                    currentWorkshopIndexValue = static_cast<int>(std::distance(RLWorkshop.begin(), it));
-                    SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue);
-                }
+    const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentWorkshopIndexValue].name.c_str();
+    ImGui::SetNextItemWidth(260);
+    if (ImGui::BeginCombo("Workshop Maps", workshopLabel)) {
+        for (int i = 0; i < (int)RLWorkshop.size(); ++i) {
+            bool selected = (i == currentWorkshopIndexValue);
+            if (ImGui::Selectable(RLWorkshop[i].name.c_str(), selected)) {
+                currentWorkshopIndexValue = i;
+                SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue);
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Refresh the workshop map list");
-        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Select which workshop map to load after matches");
+    }
 
-        ImGui::SameLine();
-        if (ImGui::Button("Load Now##workshop")) {
-            if (!RLWorkshop.empty() && currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
-                std::string filePath = RLWorkshop[currentWorkshopIndexValue].filePath;
-                SuiteSpot* plugin = plugin_;
-                plugin_->gameWrapper->SetTimeout([plugin, filePath](GameWrapper* gw) {
-                    plugin->cvarManager->executeCommand("load_workshop \"" + filePath + "\"");
-                }, 0.0f);
+    ImGui::SameLine();
+    if (ImGui::Button("Refresh Workshop##maps")) {
+        std::string previousPath;
+        if (currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
+            previousPath = RLWorkshop[currentWorkshopIndexValue].filePath;
+        }
+        plugin_->LoadWorkshopMaps();
+        if (!previousPath.empty()) {
+            auto it = std::find_if(RLWorkshop.begin(), RLWorkshop.end(),
+                [&](const WorkshopEntry& entry){ return entry.filePath == previousPath; });
+            if (it != RLWorkshop.end()) {
+                currentWorkshopIndexValue = static_cast<int>(std::distance(RLWorkshop.begin(), it));
+                SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue);
             }
         }
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Load the selected workshop map immediately");
-        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Refresh the workshop map list");
+    }
 
-        ImGui::Spacing();
-        if (ImGui::TreeNodeEx("Workshop Source", ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (!workshopPathInit) {
-                auto resolved = plugin_->ResolveConfiguredWorkshopRoot();
-                if (resolved.empty()) {
-                    const char* pfx86 = std::getenv("ProgramFiles(x86)");
-                    if (pfx86) {
-                        workshopPathCache = (std::filesystem::path(pfx86) / "Steam" / "steamapps" / "common" / "rocketleague" / "TAGame" / "CookedPCConsole" / "mods").string();
-                    } else {
-                        workshopPathCache = "";
-                    }
+    ImGui::SameLine();
+    if (ImGui::Button("Load Now##workshop")) {
+        if (!RLWorkshop.empty() && currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
+            std::string filePath = RLWorkshop[currentWorkshopIndexValue].filePath;
+            SuiteSpot* plugin = plugin_;
+            plugin_->gameWrapper->SetTimeout([plugin, filePath](GameWrapper* gw) {
+                plugin->cvarManager->executeCommand("load_workshop \"" + filePath + "\"");
+            }, 0.0f);
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Load the selected workshop map immediately");
+    }
+
+    ImGui::Spacing();
+    if (ImGui::TreeNodeEx("Workshop Source", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (!workshopPathInit) {
+            auto resolved = plugin_->ResolveConfiguredWorkshopRoot();
+            if (resolved.empty()) {
+                const char* pfx86 = std::getenv("ProgramFiles(x86)");
+                if (pfx86) {
+                    workshopPathCache = (std::filesystem::path(pfx86) / "Steam" / "steamapps" / "common" / "rocketleague" / "TAGame" / "CookedPCConsole" / "mods").string();
                 } else {
-                    workshopPathCache = resolved.string();
+                    workshopPathCache = "";
                 }
-                strncpy_s(workshopPathBuf, workshopPathCache.c_str(), sizeof(workshopPathBuf) - 1);
-                workshopPathInit = true;
+            } else {
+                workshopPathCache = resolved.string();
             }
+            strncpy_s(workshopPathBuf, workshopPathCache.c_str(), sizeof(workshopPathBuf) - 1);
+            workshopPathInit = true;
+        }
 
-            ImGui::TextWrapped("Workshop maps root folder:");
-            ImGui::SetNextItemWidth(420);
-            ImGui::InputText("##workshop_root", workshopPathBuf, IM_ARRAYSIZE(workshopPathBuf));
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Set the root folder to scan for workshop maps (contains subfolders with .upk files).");
-            }
+        ImGui::TextWrapped("Workshop maps root folder:");
+        ImGui::SetNextItemWidth(420);
+        ImGui::InputText("##workshop_root", workshopPathBuf, IM_ARRAYSIZE(workshopPathBuf));
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Set the root folder to scan for workshop maps (contains subfolders with .upk files).");
+        }
 
-            if (ImGui::Button("Save Workshop Source")) {
-                // Validate that the path exists and is a directory
-                std::filesystem::path workshopPath(workshopPathBuf);
-                std::error_code ec;
-                if (workshopPath.empty()) {
-                    LOG("SuiteSpot: Workshop path cannot be empty");
-                    addSuccess = false;
-                    addSuccessTimer = 2.0f;
-                } else if (!std::filesystem::exists(workshopPath, ec)) {
-                    LOG("SuiteSpot: Workshop path does not exist: {}", workshopPathBuf);
-                    addSuccess = false;
-                    addSuccessTimer = 2.0f;
-                } else if (!std::filesystem::is_directory(workshopPath, ec)) {
-                    LOG("SuiteSpot: Workshop path is not a directory: {}", workshopPathBuf);
-                    addSuccess = false;
+        if (ImGui::Button("Save Workshop Source")) {
+            std::filesystem::path workshopPath(workshopPathBuf);
+            std::error_code ec;
+            if (workshopPath.empty()) {
+                LOG("SuiteSpot: Workshop path cannot be empty");
+                addSuccess = false;
+                addSuccessTimer = 2.0f;
+            } else if (!std::filesystem::exists(workshopPath, ec)) {
+                LOG("SuiteSpot: Workshop path does not exist: {}", workshopPathBuf);
+                addSuccess = false;
+                addSuccessTimer = 2.0f;
+            } else if (!std::filesystem::is_directory(workshopPath, ec)) {
+                LOG("SuiteSpot: Workshop path is not a directory: {}", workshopPathBuf);
+                addSuccess = false;
+                addSuccessTimer = 2.0f;
+            } else {
+                std::filesystem::path cfgPath = plugin_->GetWorkshopLoaderConfigPath();
+                ec.clear();
+                std::filesystem::create_directories(cfgPath.parent_path(), ec);
+                std::ofstream cfg(cfgPath.string(), std::ios::trunc);
+                if (cfg.is_open()) {
+                    cfg << "MapsFolderPath=" << workshopPathBuf << "\n";
+                    cfg.close();
+                    workshopPathCache = workshopPathBuf;
+                    plugin_->LoadWorkshopMaps();
+                    if (!RLWorkshop.empty()) {
+                        currentWorkshopIndexValue = std::clamp(currentWorkshopIndexValue, 0, static_cast<int>(RLWorkshop.size() - 1));
+                    } else {
+                        currentWorkshopIndexValue = 0;
+                    }
+                    addSuccess = true;
                     addSuccessTimer = 2.0f;
                 } else {
-                    // Path is valid, save it
-                    std::filesystem::path cfgPath = plugin_->GetWorkshopLoaderConfigPath();
-                    ec.clear();
-                    std::filesystem::create_directories(cfgPath.parent_path(), ec);
-                    std::ofstream cfg(cfgPath.string(), std::ios::trunc);
-                    if (cfg.is_open()) {
-                        cfg << "MapsFolderPath=" << workshopPathBuf << "\n";
-                        cfg.close();
-                        workshopPathCache = workshopPathBuf;
-                        plugin_->LoadWorkshopMaps();
-                        if (!RLWorkshop.empty()) {
-                            currentWorkshopIndexValue = std::clamp(currentWorkshopIndexValue, 0, static_cast<int>(RLWorkshop.size() - 1));
-                        } else {
-                            currentWorkshopIndexValue = 0;
-                        }
-                        addSuccess = true;
-                        addSuccessTimer = 2.0f;
-                    } else {
-                        LOG("SuiteSpot: Failed to write workshopmaploader.cfg");
-                        addSuccess = false;
-                        addSuccessTimer = 2.0f;
-                    }
+                    LOG("SuiteSpot: Failed to write workshopmaploader.cfg");
+                    addSuccess = false;
+                    addSuccessTimer = 2.0f;
                 }
             }
-
-            ImGui::TreePop();
         }
 
-        ImGui::Spacing();
-        ImGui::TextUnformatted("Workshop Settings:");
-        ImGui::SetNextItemWidth(220);
-        if (ImGui::InputInt("Delay Workshop (sec)", &delayWorkshopSecValue)) {
-            delayWorkshopSecValue = std::clamp(delayWorkshopSecValue, 0, 300);
-            SetCVarSafely("suitespot_delay_workshop_sec", delayWorkshopSecValue);
-        }
-        ImGui::SameLine();
-        ImGui::TextDisabled("0-300s");
-        if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Wait this many seconds after match ends before loading Workshop. Range: 0-300s");
-        }
+        ImGui::TreePop();
+    }
+
+    ImGui::Spacing();
+    ImGui::TextUnformatted("Workshop Settings:");
+    ImGui::SetNextItemWidth(220);
+    if (ImGui::InputInt("Delay Workshop (sec)", &delayWorkshopSecValue)) {
+        delayWorkshopSecValue = std::clamp(delayWorkshopSecValue, 0, 300);
+        SetCVarSafely("suitespot_delay_workshop_sec", delayWorkshopSecValue);
+    }
+    ImGui::SameLine();
+    ImGui::TextDisabled("0-300s");
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Wait this many seconds after match ends before loading Workshop. Range: 0-300s");
     }
 }
 

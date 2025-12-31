@@ -23,6 +23,11 @@ private:
 		int& delayTrainingSecValue,
 		int& delayWorkshopSecValue);
 
+	// Mode-specific rendering (extracted from RenderMapSelectionTab)
+	void RenderFreeplayMode(int& currentIndexValue, int& delayFreeplaySecValue);
+	void RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue, int& delayTrainingSecValue);
+	void RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWorkshopSecValue);
+
 	// Helper function to safely set CVar values with null checks
 	template<typename T>
 	void SetCVarSafely(const std::string& cvarName, const T& value);

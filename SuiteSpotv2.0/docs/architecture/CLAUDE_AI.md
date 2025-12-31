@@ -1,5 +1,14 @@
 # AI Development Reference
 
+## Communication Style
+
+**IMPORTANT:** The project owner is NOT a developer/coder. When explaining technical concepts:
+- Use simple, everyday analogies (sandwiches, furniture, etc.)
+- Avoid jargon or explain it immediately when used
+- Focus on the "what" and "why" rather than implementation details
+- Ask for approval before making code changes
+- Work on ONE task at a time with clear checkpoints
+
 ## Build
 ```powershell
 & "C:\Program Files\Microsoft Visual Studio\2022\Professional\MSBuild\Current\Bin\MSBuild.exe" SuiteSpotv2.0\SuiteSpot.sln /p:Configuration=Release /p:Platform=x64

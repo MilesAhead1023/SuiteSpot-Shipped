@@ -1,60 +1,12 @@
-# SuiteSpot Feature Roadmap
+# SuiteSpot Future Features
 
-A comprehensive tracking file for planned features, UI improvements, and future enhancements.
+A comprehensive roadmap for future enhancements and new features.
 
 **Vision:** Transform SuiteSpot into an all-in-one Rocket League companion plugin.
 
 ---
 
-## Part 1: UI Organization Tasks
-
-### High Priority - Code Quality
-
-- [ ] **Split RenderMapSelectionTab()** *(SettingsUI.cpp:212-585)*
-  - Extract `RenderFreeplayMode()` (~60 lines)
-  - Extract `RenderTrainingMode()` (~170 lines)
-  - Extract `RenderWorkshopMode()` (~140 lines)
-  - Benefit: Each mode independently maintainable
-
-- [ ] **Create UI Helper Functions** *(New: UIHelpers.h/cpp)*
-  - `InputIntWithRange()` - input with clamping, cvar, tooltip
-  - `ComboWithTooltip()` - dropdown with tooltip
-  - `StatusMessage()` - auto-fade status display
-  - Benefit: Reduce 20+ repeated patterns to single-line calls
-
-- [ ] **Centralize Configuration Constants** *(New: UIConstants.h)*
-  - Widget widths (220, 300, etc.)
-  - Delay ranges (0-300)
-  - Difficulty levels array
-  - Map mode labels
-
-### Medium Priority - Consistency
-
-- [ ] **Standardize Status Message System**
-  - Create `StatusMessage` class with auto-fade
-  - Replace 3 different timer implementations
-
-- [ ] **Add ListClipper to SettingsUI Dropdowns**
-  - Apply pattern from TrainingPackUI
-  - Better performance with 500+ training packs
-
-- [ ] **Extract Form Components**
-  - Workshop path configuration section
-  - Shuffle bag manager section
-
-### Nice-to-Have
-
-- [ ] **Validation Framework**
-  - Shared `ValidatePackCode()`, `ValidatePath()` functions
-
-- [ ] **Consistent State Management**
-  - Choose "read all at start" vs "read on-demand" pattern
-
----
-
-## Part 2: Future Features
-
-### Session Statistics & Tracking
+## Session Statistics & Tracking
 *SDK: PriWrapper::GetMatchGoals(), GetMatchSaves(), GetMatchAssists(), etc.*
 
 - [ ] **Session Stats Tracker**
@@ -74,7 +26,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Longest shot distance
   - Best session streaks
 
-### Quality of Life Features
+---
+
+## Quality of Life Features
 *SDK: GameWrapper::IsInGame(), IsInFreeplay(), Toast()*
 
 - [ ] **Enhanced Auto-Queue** *(expand existing)*
@@ -97,7 +51,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Menu FPS cap (save GPU when idle)
   - In-game FPS cap
 
-### Car & Loadout Features
+---
+
+## Car & Loadout Features
 *SDK: CarWrapper, GetItemsWrapper(), GetUserLoadoutSave()*
 
 - [ ] **Smart Loadout Switching**
@@ -114,7 +70,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Preview items on car
   - *Reference: AlphaConsole features*
 
-### Training Enhancements
+---
+
+## Training Enhancements
 *SDK: ServerWrapper::SpawnBall(), GenerateShot(), GetGoalLocation()*
 
 - [ ] **Training Pack Analytics**
@@ -136,7 +94,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Shot power indicator
   - Reset ball position hotkey
 
-### Display & Overlay Features
+---
+
+## Display & Overlay Features
 *SDK: RegisterDrawable(), ImGui, GetScreenSize()*
 
 - [ ] **In-Game HUD Elements**
@@ -154,7 +114,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Session info display
   - *Reference: RocketStats OBS mode*
 
-### Sound & Notification Features
+---
+
+## Sound & Notification Features
 *SDK: Event hooks for goals, saves, demos*
 
 - [ ] **Custom Sound Events**
@@ -168,7 +130,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Match end chime
   - Overtime warning
 
-### Replay & Content Creation
+---
+
+## Replay & Content Creation
 *SDK: ReplayManagerWrapper, PlayReplay()*
 
 - [ ] **Replay Auto-Save**
@@ -179,7 +143,9 @@ A comprehensive tracking file for planned features, UI improvements, and future 
   - Mark moments during gameplay
   - Easy export timestamps
 
-### Social & Party Features
+---
+
+## Social & Party Features
 *SDK: GetPartyLeaderID(), GetClubID(), GetClubDetails()*
 
 - [ ] **Party Management**
@@ -198,9 +164,7 @@ A comprehensive tracking file for planned features, UI improvements, and future 
 | Feature | User Value | SDK Support | Complexity | Priority |
 |---------|-----------|-------------|------------|----------|
 | Session Stats Tracker | High | Full | Medium | P1 |
-| Split UI Functions | Medium | N/A | Low | P1 |
 | Smart Loadout Switch | High | Full | Medium | P1 |
-| UI Helpers | Medium | N/A | Low | P1 |
 | Training Analytics | High | Full | High | P2 |
 | Custom Sounds | Medium | Events | Medium | P2 |
 | In-Game HUD | Medium | ImGui | Medium | P2 |

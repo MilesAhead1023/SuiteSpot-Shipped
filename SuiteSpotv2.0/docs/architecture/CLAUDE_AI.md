@@ -55,7 +55,6 @@ gameWrapper->SetTimeout([this](GameWrapper* gw) {
 | Settings UI | `SettingsUI.h/cpp` | Main settings window |
 | Prejump UI | `PrejumpUI.h/cpp` | Prejump tab rendering |
 | Loadout UI | `LoadoutUI.h/cpp` | Loadout tab rendering |
-| Overlay | `OverlayRenderer.h/cpp` | Post-match overlay rendering |
 | Loadouts | `LoadoutManager.h/cpp` | Car loadout switching |
 
 ## Key APIs

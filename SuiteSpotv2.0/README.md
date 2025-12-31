@@ -20,7 +20,6 @@
 | Settings UI | `SettingsUI.h/cpp` | Main settings window/tabs |
 | Prejump UI | `PrejumpUI.h/cpp` | Prejump pack tab UI |
 | Loadout UI | `LoadoutUI.h/cpp` | Loadout management UI |
-| Overlay | `OverlayRenderer.h/cpp` | Post-match overlay rendering |
 | Loadouts | `LoadoutManager.h/cpp` | Car loadout switching |
 | Base | `GuiBase.h/cpp` | Settings window infrastructure |
 

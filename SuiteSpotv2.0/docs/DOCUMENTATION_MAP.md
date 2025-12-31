@@ -179,7 +179,6 @@ SuiteSpotv2.0/
 ├── Code
 │   ├── MapManager.cpp           (Issues #7, #17)
 │   ├── SettingsUI.cpp/.h        (Issues #1, #5, #18, #19)
-│   └── OverlayRenderer.cpp/.h   (Issue #19)
 │
 └── Documentation
     ├── README_DOCUMENTATION.md      (Master index - START HERE)

@@ -23,7 +23,7 @@ This document outlines the automated and behavioral guardrails enforced to ensur
 *   **Enforcement:** `tools/guardrails/check_cvars.ps1`
 
 ## 5. UI Separation
-*   **Rule:** ImGui code (including headers) should only be present in UI-specific files (`*UI.cpp`, `Source.cpp`, `OverlayRenderer.cpp`).
+*   **Rule:** ImGui code (including headers) should only be present in UI-specific files (`*UI.cpp`, `Source.cpp`).
 *   **Why:** Keeps core logic testable and decoupled from the rendering layer.
 *   **Enforcement:** `tools/guardrails/check_ui_separation.ps1`
 

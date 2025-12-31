@@ -192,7 +192,7 @@ Post-build event automatically:
 Settings and overlay rendering grew beyond a single file and obscured feature logic.
 
 **Decision:**
-UI rendering is split into `SettingsUI`, `PrejumpUI`, `LoadoutUI`, and `OverlayRenderer`, with `Source.cpp` only acting as the settings window entry point.
+UI rendering is split into `SettingsUI`, `PrejumpUI`, and `LoadoutUI`, with `Source.cpp` only acting as the settings window entry point.
 
 **Consequences:**
 - ✅ UI concerns are isolated and easier to modify
@@ -203,7 +203,6 @@ UI rendering is split into `SettingsUI`, `PrejumpUI`, `LoadoutUI`, and `OverlayR
 - `SettingsUI.cpp/h`: main settings window and tab routing
 - `PrejumpUI.cpp/h`: prejump pack tab rendering
 - `LoadoutUI.cpp/h`: loadout tab rendering
-- `OverlayRenderer.cpp/h`: post-match overlay rendering
 - `Source.cpp`: minimal entry point
 
 **Don't Change:**

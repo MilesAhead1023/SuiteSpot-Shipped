@@ -11,7 +11,7 @@ SuiteSpot is a BakkesMod plugin for Rocket League designed to automate map loadi
 
 **Key Architecture:**
 *   **Plugin Core:** `SuiteSpot.cpp/h` manages lifecycle and hooks.
-*   **UI Layer:** Separated into specific modules (`SettingsUI`, `LoadoutUI`, `OverlayRenderer`, `GuiBase`) to keep logic clean. `Source.cpp` acts as the entry point for the settings window.
+*   **UI Layer:** Separated into specific modules (`SettingsUI`, `LoadoutUI`, `GuiBase`) to keep logic clean. `Source.cpp` acts as the entry point for the settings window.
 *   **Feature Modules:** Independent logic for features like `AutoLoadFeature`, `MapManager`, `TrainingPackManager`.
 *   **Theme System:** `ThemeManager` handles dual-theme support (Menu vs. Game), JSON configuration, and asset caching.
 *   **Data Persistence:** Uses text files and JSON for storing map lists, shuffle bags, and theme configurations in `%APPDATA%\bakkesmod\bakkesmod\data\SuiteTraining\`.
@@ -46,7 +46,7 @@ The project is built using MSBuild. Run the following command from the project r
 4.  **CVar Safety:**
     *   Register CVars only in `SettingsSync::RegisterAllCVars()` (called during `onLoad`).
     *   Use `SetCVarSafely` helpers instead of accessing `cvarManager` directly where possible to avoid null pointer crashes.
-5.  **UI Separation:** Do not mix ImGui code with core game logic. Use the dedicated UI modules (`SettingsUI`, `OverlayRenderer`, etc.).
+5.  **UI Separation:** Do not mix ImGui code with core game logic. Use the dedicated UI modules (`SettingsUI`, etc.).
 
 ### Key Design Patterns (ADRs)
 *   **ADR-001 (Shuffle Bag):** Maps are selected using a shuffle bag algorithm to ensure no repeats until all maps are played.
@@ -58,7 +58,6 @@ The project is built using MSBuild. Run the following command from the project r
 *   `SettingsUI.cpp`: Main settings window rendering (using ImGui).
 *   `MapManager.cpp`: Logic for managing map lists (Training, Workshop, Freeplay) and persistence.
 *   `AutoLoadFeature.cpp`: Logic for auto-queueing and map switching after matches.
-*   `OverlayRenderer.cpp`: Renders the post-match stats overlay.
 *   `ThemeManager.cpp`: Manages loading and applying visual themes.
 *   `docs/`: Extensive documentation including `DEVELOPMENT_GUIDE.md`, `DECISIONS.md`, and `CLAUDE_AI.md`.
 

@@ -146,7 +146,7 @@ if (GetPointer()) {
 }
 ```
 
-**Location:** OverlayRenderer.cpp line 109, SettingsUI.cpp line 627
+**Location:** SettingsUI.cpp line 627
 
 ---
 
@@ -185,8 +185,7 @@ SuiteSpotv2.0/
 ├── UI Systems
 │   ├── SettingsUI.h/cpp      - Main settings window
 │   ├── PrejumpUI.h/cpp       - Prejump packs UI
-│   ├── LoadoutUI.h/cpp       - Loadout management UI
-│   └── OverlayRenderer.h/cpp - Post-match overlay
+│   └── LoadoutUI.h/cpp       - Loadout management UI
 ├── Game Features
 │   ├── AutoLoadFeature.h/cpp - Auto-load/queue
 │   ├── LoadoutManager.h/cpp  - Car loadout switching

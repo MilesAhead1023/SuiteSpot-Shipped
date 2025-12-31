@@ -3,7 +3,7 @@ param(
 )
 
 # Files allowed to include ImGui
-$allowedPattern = ".*UI\.(cpp|h)|Source\.cpp|OverlayRenderer\.(cpp|h)|pch\.(h|cpp)"
+$allowedPattern = ".*UI\.(cpp|h)|Source\.cpp|pch\.(h|cpp)"
 
 $files = Get-ChildItem -Path $RootPath -Include "*.cpp","*.h" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch "IMGUI" }
 

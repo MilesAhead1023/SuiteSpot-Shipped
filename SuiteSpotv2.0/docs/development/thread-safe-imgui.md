@@ -34,4 +34,4 @@ void SuiteSpot::RenderSettings() {
 In current BakkesMod SDK versions, `RenderSettings` is the primary entry point for ImGui. While traditional "always-on" HUDs used `RegisterDrawable` with the legacy `CanvasWrapper`, modern ImGui-first plugins must bridge through `RenderSettings` or a compatible `Render()` override if provided by the SDK base class.
 
 ## CanvasWrapper Constraint
-Per project requirements, **do not use `CanvasWrapper`** for any new rendering. Use the `ImDrawList` pattern from the `OverlayRenderer` class.
+Per project requirements, **do not use `CanvasWrapper`** for any new rendering. Use the `ImDrawList` pattern for custom drawing.

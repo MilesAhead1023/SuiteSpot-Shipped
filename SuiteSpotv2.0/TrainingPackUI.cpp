@@ -6,6 +6,8 @@
 #include "TrainingPackUI.h"
 #include "TrainingPackManager.h"
 #include "SuiteSpot.h"
+#include "UIConstants.h"
+#include "UIHelpers.h"
 
 #include <algorithm>
 #include <cstring>
@@ -49,27 +51,27 @@ void TrainingPackUI::RenderTrainingPackTab() {
     bool trainingShuffleEnabledValue = plugin_->IsTrainingShuffleEnabled();
 
     // ===== HEADER SECTION =====
-    ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Training Pack Browser");
+    ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Training Pack Browser");
     ImGui::Spacing();
 
     // Status line: pack count and last updated
     if (packCount > 0) {
         ImGui::Text("Loaded: %d packs", packCount);
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), " | Last updated: %s", lastUpdated.c_str());
+        ImGui::TextColored(UI::TrainingPackUI::LAST_UPDATED_TEXT_COLOR, " | Last updated: %s", lastUpdated.c_str());
     } else {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No packs loaded - click 'Scrape Packs' to download");
     }
 
     // Control buttons
     ImGui::SameLine();
-    float buttonX = ImGui::GetWindowWidth() - 280;
+    float buttonX = ImGui::GetWindowWidth() - UI::TrainingPackUI::BUTTON_GROUP_OFFSET_FROM_RIGHT;
     if (buttonX > ImGui::GetCursorPosX()) {
         ImGui::SetCursorPosX(buttonX);
     }
 
     if (scraping) {
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "Scraping...");
+        ImGui::TextColored(UI::TrainingPackUI::SCRAPING_STATUS_TEXT_COLOR, "Scraping...");
     } else {
         if (ImGui::Button("Scrape Packs")) {
             plugin_->ScrapeAndLoadTrainingPacks();
@@ -101,7 +103,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
         int shufflePackCount = plugin_->trainingPackMgr ? plugin_->trainingPackMgr->GetShuffleBagCount() : 0;
 
         if (shufflePackCount > 0) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Current Bag: %d pack%s", shufflePackCount, shufflePackCount == 1 ? "" : "s");
+            ImGui::TextColored(UI::TrainingPackUI::SHUFFLE_ACTIVE_STATUS_COLOR, "Current Bag: %d pack%s", shufflePackCount, shufflePackCount == 1 ? "" : "s");
 
             ImGui::SameLine();
             if (ImGui::Button("Start Shuffle Training")) {
@@ -136,7 +138,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
             }
 
             // Show Shuffle toggle here as well for convenience
-            ImGui::SameLine(400);
+            ImGui::SameLine(UI::TrainingPackUI::SHUFFLE_CHECKBOX_POSITION_X);
             if (ImGui::Checkbox("Shuffle Active", &trainingShuffleEnabledValue)) {
                 plugin_->cvarManager->getCvar("suitespot_training_shuffle").setValue(trainingShuffleEnabledValue);
             }
@@ -177,17 +179,17 @@ void TrainingPackUI::RenderTrainingPackTab() {
     // Dynamic width calculation for filters
     float availWidth = ImGui::GetContentRegionAvail().x;
     float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
-    
+
     // Allocate widths: Search (40%), Difficulty (25%), Shots (35%)
     // Adjust logic to ensure they fit on one line if possible
-    float searchW = (availWidth * 0.40f) - itemSpacing;
-    float diffW = (availWidth * 0.25f) - itemSpacing;
-    float shotsW = (availWidth * 0.35f) - itemSpacing;
+    float searchW = (availWidth * UI::TrainingPackUI::FILTER_SEARCH_WIDTH_PERCENT) - itemSpacing;
+    float diffW = (availWidth * UI::TrainingPackUI::FILTER_DIFFICULTY_WIDTH_PERCENT) - itemSpacing;
+    float shotsW = (availWidth * UI::TrainingPackUI::FILTER_SHOTS_WIDTH_PERCENT) - itemSpacing;
 
     // Minimum constraints
-    if (searchW < 150) searchW = 150;
-    if (diffW < 120) diffW = 120;
-    if (shotsW < 150) shotsW = 150;
+    if (searchW < UI::TrainingPackUI::FILTER_SEARCH_MIN_WIDTH) searchW = UI::TrainingPackUI::FILTER_SEARCH_MIN_WIDTH;
+    if (diffW < UI::TrainingPackUI::FILTER_DIFFICULTY_MIN_WIDTH) diffW = UI::TrainingPackUI::FILTER_DIFFICULTY_MIN_WIDTH;
+    if (shotsW < UI::TrainingPackUI::FILTER_SHOTS_MIN_WIDTH) shotsW = UI::TrainingPackUI::FILTER_SHOTS_MIN_WIDTH;
 
     // Search box
     ImGui::SetNextItemWidth(searchW);
@@ -219,7 +221,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
     // Shot count range filter
     ImGui::SameLine();
     ImGui::SetNextItemWidth(shotsW);
-    if (ImGui::SliderInt("Min Shots", &packMinShots, 0, 50)) {
+    if (ImGui::SliderInt("Min Shots", &packMinShots, UI::TrainingPackUI::FILTER_MIN_SHOTS_MIN, UI::TrainingPackUI::FILTER_MIN_SHOTS_MAX)) {
         filtersChanged = true;
     }
     if (ImGui::IsItemHovered()) {
@@ -227,7 +229,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
     }
 
     // Tag filter dropdown (second row)
-    ImGui::SetNextItemWidth(200);
+    ImGui::SetNextItemWidth(UI::TrainingPackUI::TAG_FILTER_DROPDOWN_WIDTH);
 
     if (!tagsInitialized || lastPackCount != packCount) {
         if (manager) {
@@ -300,7 +302,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
     ImGui::Separator();
 
     // Reduced columns to 6 (Removed Creator and Tags)
-    ImGui::Columns(6, "PackColumns", true);
+    ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns", true);
 
     // Apply optimal column widths if dirty
     if (columnWidthsDirty) {
@@ -378,15 +380,15 @@ void TrainingPackUI::RenderTrainingPackTab() {
             ImGui::NextColumn();
 
             // Difficulty column with color coding
-            ImVec4 diffColor = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
-            if (pack.difficulty == "Bronze") diffColor = ImVec4(0.8f, 0.5f, 0.2f, 1.0f);
-            else if (pack.difficulty == "Silver") diffColor = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
-            else if (pack.difficulty == "Gold") diffColor = ImVec4(1.0f, 0.84f, 0.0f, 1.0f);
-            else if (pack.difficulty == "Platinum") diffColor = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
-            else if (pack.difficulty == "Diamond") diffColor = ImVec4(0.4f, 0.4f, 1.0f, 1.0f);
-            else if (pack.difficulty == "Champion") diffColor = ImVec4(0.8f, 0.3f, 0.8f, 1.0f);
-            else if (pack.difficulty == "Grand Champion") diffColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-            else if (pack.difficulty == "Supersonic Legend") diffColor = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
+            ImVec4 diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_DEFAULT_COLOR;
+            if (pack.difficulty == "Bronze") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_BRONZE_COLOR;
+            else if (pack.difficulty == "Silver") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_SILVER_COLOR;
+            else if (pack.difficulty == "Gold") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_GOLD_COLOR;
+            else if (pack.difficulty == "Platinum") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_PLATINUM_COLOR;
+            else if (pack.difficulty == "Diamond") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_DIAMOND_COLOR;
+            else if (pack.difficulty == "Champion") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_CHAMPION_COLOR;
+            else if (pack.difficulty == "Grand Champion") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_GRAND_CHAMPION_COLOR;
+            else if (pack.difficulty == "Supersonic Legend") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_SUPERSONIC_LEGEND_COLOR;
             ImGui::TextColored(diffColor, "%s", pack.difficulty.c_str());
             ImGui::NextColumn();
 
@@ -437,7 +439,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
             bool inShuffleBag = pack.inShuffleBag;
 
             if (inShuffleBag) {
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.6f, 0.2f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button, UI::TrainingPackUI::IN_SHUFFLE_BUTTON_BG_COLOR);
             }
 
             if (ImGui::SmallButton(shuffleLabel.c_str())) {
@@ -458,8 +460,8 @@ void TrainingPackUI::RenderTrainingPackTab() {
             if (pack.source == "custom") {
                 ImGui::SameLine();
                 std::string deleteLabel = "X##del" + std::to_string(row);
-                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.6f, 0.2f, 0.2f, 1.0f));
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.8f, 0.3f, 0.3f, 1.0f));
+                ImGui::PushStyleColor(ImGuiCol_Button, UI::TrainingPackUI::DELETE_BUTTON_BG_COLOR);
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UI::TrainingPackUI::DELETE_BUTTON_HOVER_COLOR);
                 if (ImGui::SmallButton(deleteLabel.c_str())) {
                     if (plugin_->trainingPackMgr) {
                         plugin_->trainingPackMgr->DeletePack(pack.code);
@@ -484,9 +486,9 @@ void TrainingPackUI::RenderTrainingPackTab() {
 }
 
 bool TrainingPackUI::ValidatePackCode(const char* code) const {
-    if (strlen(code) != 19) return false;
-    for (int i = 0; i < 19; i++) {
-        if (i == 4 || i == 9 || i == 14) {
+    if (strlen(code) != UI::TrainingPackUI::PACK_CODE_EXPECTED_LENGTH) return false;
+    for (int i = 0; i < UI::TrainingPackUI::PACK_CODE_EXPECTED_LENGTH; i++) {
+        if (i == UI::TrainingPackUI::PACK_CODE_DASH_POSITION_1 || i == UI::TrainingPackUI::PACK_CODE_DASH_POSITION_2 || i == UI::TrainingPackUI::PACK_CODE_DASH_POSITION_3) {
             if (code[i] != '-') return false;
         }
         else {
@@ -511,11 +513,11 @@ void TrainingPackUI::ClearCustomPackForm() {
 
 void TrainingPackUI::RenderCustomPackForm() {
     if (ImGui::CollapsingHeader("Add Custom Pack")) {
-        ImGui::Indent(10.0f);
+        ImGui::Indent(UI::TrainingPackUI::CUSTOM_PACK_FORM_INDENT);
         ImGui::Spacing();
 
         if (customPackSuccess) {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Pack added successfully!");
+            ImGui::TextColored(UI::TrainingPackUI::SUCCESS_MESSAGE_TEXT_COLOR, "Pack added successfully!");
             ImGui::SameLine();
             if (ImGui::SmallButton("Dismiss")) {
                 customPackSuccess = false;
@@ -523,14 +525,14 @@ void TrainingPackUI::RenderCustomPackForm() {
             ImGui::Spacing();
         }
         if (!customPackError.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "%s", customPackError.c_str());
+            ImGui::TextColored(UI::TrainingPackUI::ERROR_MESSAGE_TEXT_COLOR, "%s", customPackError.c_str());
             ImGui::Spacing();
         }
 
         ImGui::TextUnformatted("Code *");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(XXXX-XXXX-XXXX-XXXX)");
-        ImGui::SetNextItemWidth(220);
+        ImGui::TextColored(UI::TrainingPackUI::DISABLED_INFO_TEXT_COLOR, "(XXXX-XXXX-XXXX-XXXX)");
+        ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_CODE_INPUT_WIDTH);
         if (ImGui::InputText("##customcode", customPackCode, IM_ARRAYSIZE(customPackCode))) {
             std::string raw;
             for (int i = 0; customPackCode[i]; i++) {
@@ -539,7 +541,7 @@ void TrainingPackUI::RenderCustomPackForm() {
                     raw += static_cast<char>(toupper(static_cast<unsigned char>(c)));
                 }
             }
-            if (raw.length() > 16) raw = raw.substr(0, 16);
+            if (raw.length() > UI::TrainingPackUI::PACK_CODE_RAW_MAX_LENGTH) raw = raw.substr(0, UI::TrainingPackUI::PACK_CODE_RAW_MAX_LENGTH);
             std::string formatted;
             for (size_t i = 0; i < raw.length(); i++) {
                 if (i > 0 && i % 4 == 0) formatted += '-';
@@ -549,38 +551,38 @@ void TrainingPackUI::RenderCustomPackForm() {
         }
 
         ImGui::TextUnformatted("Name *");
-        ImGui::SetNextItemWidth(300);
+        ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_NAME_INPUT_WIDTH);
         ImGui::InputText("##customname", customPackName, IM_ARRAYSIZE(customPackName));
 
         ImGui::TextUnformatted("Creator");
-        ImGui::SetNextItemWidth(200);
+        ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_CREATOR_INPUT_WIDTH);
         ImGui::InputText("##customcreator", customPackCreator, IM_ARRAYSIZE(customPackCreator));
 
         ImGui::TextUnformatted("Difficulty");
-        ImGui::SetNextItemWidth(150);
+        ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_DIFFICULTY_DROPDOWN_WIDTH);
         const char* difficulties[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
         ImGui::Combo("##customdifficulty", &customPackDifficulty, difficulties, IM_ARRAYSIZE(difficulties));
 
         ImGui::TextUnformatted("Shot Count");
         ImGui::SetNextItemWidth(200);
-        ImGui::SliderInt("##customshots", &customPackShotCount, 1, 50);
+        ImGui::SliderInt("##customshots", &customPackShotCount, UI::TrainingPackUI::CUSTOM_PACK_SHOTS_MIN, UI::TrainingPackUI::CUSTOM_PACK_SHOTS_MAX);
 
         ImGui::TextUnformatted("Tags");
         ImGui::SameLine();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "(comma-separated)");
-        ImGui::SetNextItemWidth(300);
+        ImGui::TextColored(UI::TrainingPackUI::DISABLED_INFO_TEXT_COLOR, "(comma-separated)");
+        ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_TAGS_INPUT_WIDTH);
         ImGui::InputText("##customtags", customPackTags, IM_ARRAYSIZE(customPackTags));
 
         ImGui::TextUnformatted("Notes");
-        ImGui::InputTextMultiline("##customnotes", customPackNotes, IM_ARRAYSIZE(customPackNotes), ImVec2(400, 60));
+        ImGui::InputTextMultiline("##customnotes", customPackNotes, IM_ARRAYSIZE(customPackNotes), ImVec2(UI::TrainingPackUI::CUSTOM_PACK_NOTES_INPUT_WIDTH, UI::TrainingPackUI::CUSTOM_PACK_NOTES_INPUT_HEIGHT));
 
         ImGui::TextUnformatted("Video URL");
-        ImGui::SetNextItemWidth(350);
+        ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_VIDEO_URL_INPUT_WIDTH);
         ImGui::InputText("##customvideo", customPackVideoUrl, IM_ARRAYSIZE(customPackVideoUrl));
 
         ImGui::Spacing();
 
-        if (ImGui::Button("Add Pack", ImVec2(100, 0))) {
+        if (ImGui::Button("Add Pack", ImVec2(UI::TrainingPackUI::CUSTOM_PACK_ADD_BUTTON_WIDTH, UI::TrainingPackUI::CUSTOM_PACK_ADD_BUTTON_HEIGHT))) {
             customPackError.clear();
             customPackSuccess = false;
             if (strlen(customPackCode) == 0) {
@@ -640,22 +642,22 @@ void TrainingPackUI::RenderCustomPackForm() {
             }
         }
         ImGui::SameLine();
-        if (ImGui::Button("Clear", ImVec2(80, 0))) {
+        if (ImGui::Button("Clear", ImVec2(UI::TrainingPackUI::CUSTOM_PACK_CLEAR_BUTTON_WIDTH, UI::TrainingPackUI::CUSTOM_PACK_CLEAR_BUTTON_HEIGHT))) {
             ClearCustomPackForm();
         }
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "* Required fields");
-        ImGui::Unindent(10.0f);
+        ImGui::TextColored(UI::TrainingPackUI::DISABLED_INFO_TEXT_COLOR, "* Required fields");
+        ImGui::Unindent(UI::TrainingPackUI::CUSTOM_PACK_FORM_INDENT);
         ImGui::Spacing();
     }
 }
 
 void TrainingPackUI::CalculateOptimalColumnWidths() {
     // Initialize widths with header widths + padding
-    columnWidths.assign(6, 40.0f); // Minimum base width
+    columnWidths.assign(UI::TrainingPackUI::TABLE_COLUMN_COUNT, UI::TrainingPackUI::TABLE_MIN_COLUMN_WIDTH); // Minimum base width
 
     auto UpdateMax = [&](int col, const char* text) {
-        float w = ImGui::CalcTextSize(text).x + 20.0f; // + Padding
+        float w = ImGui::CalcTextSize(text).x + UI::TrainingPackUI::TABLE_COLUMN_PADDING; // + Padding
         if (w > columnWidths[col]) columnWidths[col] = w;
     };
 
@@ -677,10 +679,10 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
         
         // Actions column approximation
         // Watch (40) + Spacing + Load (40) + Spacing + +Shuffle (60) + Spacing + Padding
-        float actionsW = 200.0f; 
+        float actionsW = UI::TrainingPackUI::TABLE_ACTIONS_COLUMN_WIDTH;
         if (actionsW > columnWidths[5]) columnWidths[5] = actionsW;
     }
-    
+
     // Safety clamp for very long names
-    if (columnWidths[0] > 400.0f) columnWidths[0] = 400.0f;
+    if (columnWidths[0] > UI::TrainingPackUI::TABLE_NAME_COLUMN_MAX_WIDTH) columnWidths[0] = UI::TrainingPackUI::TABLE_NAME_COLUMN_MAX_WIDTH;
 }

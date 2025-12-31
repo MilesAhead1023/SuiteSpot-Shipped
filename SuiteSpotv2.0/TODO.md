@@ -12,17 +12,23 @@ Current plugin improvements, refactoring tasks, and technical debt.
   - Extracted `RenderWorkshopMode()` (~138 lines)
   - Benefit: Each mode independently maintainable
 
-- [ ] **Create UI Helper Functions** *(New: UIHelpers.h/cpp)*
-  - `InputIntWithRange()` - input with clamping, cvar, tooltip
-  - `ComboWithTooltip()` - dropdown with tooltip
-  - `StatusMessage()` - auto-fade status display
-  - Benefit: Reduce 20+ repeated patterns to single-line calls
+- [x] **Create UI Helper Functions** *(New: UIHelpers.h/cpp)*
+  - Created UIHelpers.h with 7 helper function declarations
+  - Created UIHelpers.cpp with all implementations
+  - Refactored 11 UI patterns: 4 InputIntWithRange, 3 ComboWithTooltip, 2 CheckboxWithCVar, 2 StatusMessage
+  - Moved SetCVarSafely template from SettingsUI to UIHelpers for reuse
+  - Updated SettingsUI.cpp, LoadoutUI.cpp, TrainingPackUI.cpp to use helpers
+  - Added files to SuiteSpot.vcxproj build configuration
+  - Build verified: 0 errors, 0 warnings
+  - Benefit: Eliminated ~48 lines of repetitive code, improved maintainability
 
-- [ ] **Centralize Configuration Constants** *(New: UIConstants.h)*
-  - Widget widths (220, 300, etc.)
-  - Delay ranges (0-300)
-  - Difficulty levels array
-  - Map mode labels
+- [x] **Centralize Configuration Constants** *(New: UIConstants.h)*
+  - Created UIConstants.h with 100+ individual constants
+  - Maximum granularity: Each UI element has its own named constant
+  - Organized into nested namespaces: UI::SettingsUI, UI::TrainingPackUI, UI::LoadoutUI
+  - All constants have descriptive comments explaining exact purpose
+  - Updated SettingsUI.cpp, TrainingPackUI.cpp, LoadoutUI.cpp to use constants
+  - Build verified: 0 errors, 0 warnings
 
 ---
 

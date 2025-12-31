@@ -2,6 +2,8 @@
 
 #include "LoadoutUI.h"
 #include "SuiteSpot.h"
+#include "UIConstants.h"
+#include "UIHelpers.h"
 
 LoadoutUI::LoadoutUI(SuiteSpot* plugin) : plugin_(plugin) {}
 
@@ -18,7 +20,7 @@ void LoadoutUI::RenderLoadoutControls() {
             loadoutsInitialized = true;
         }
 
-        ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Current Loadout:");
+        ImGui::TextColored(UI::LoadoutUI::SECTION_HEADER_COLOR, "Current Loadout:");
         ImGui::SameLine();
         if (currentLoadoutName.empty()) {
             ImGui::TextUnformatted("<Unknown>");
@@ -35,11 +37,11 @@ void LoadoutUI::RenderLoadoutControls() {
         ImGui::Spacing();
 
         if (loadoutNames.empty()) {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No loadouts found. Open Garage to create presets, then click Refresh.");
+            ImGui::TextColored(UI::LoadoutUI::ERROR_WARNING_TEXT_COLOR, "No loadouts found. Open Garage to create presets, then click Refresh.");
         } else {
             const char* comboLabel = (selectedLoadoutIndex >= 0 && selectedLoadoutIndex < (int)loadoutNames.size()) ?
                 loadoutNames[selectedLoadoutIndex].c_str() : "<Select loadout>";
-            ImGui::SetNextItemWidth(220);
+            ImGui::SetNextItemWidth(UI::LoadoutUI::LOADOUT_SELECTOR_DROPDOWN_WIDTH);
             if (ImGui::BeginCombo("##loadout_combo", comboLabel)) {
                 for (int i = 0; i < (int)loadoutNames.size(); ++i) {
                     bool isSelected = (i == selectedLoadoutIndex);
@@ -63,19 +65,19 @@ void LoadoutUI::RenderLoadoutControls() {
                     // Set immediate feedback or wait?
                     // Let's set a "Applying..." state if desired, or just wait for callback.
                     loadoutStatusText = "Applying...";
-                    loadoutStatusColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);
-                    loadoutStatusTimer = 5.0f; // Give it some time
+                    loadoutStatusColor = UI::LoadoutUI::APPLYING_STATUS_COLOR;
+                    loadoutStatusTimer = UI::LoadoutUI::APPLYING_STATUS_DURATION; // Give it some time
 
                     loadoutManager->SwitchLoadout(selectedName, [this, selectedName](bool success) {
                         if (success) {
                             currentLoadoutName = selectedName;
                             loadoutStatusText = "Applied \"" + selectedName + "\"";
-                            loadoutStatusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+                            loadoutStatusColor = UI::LoadoutUI::SUCCESS_MESSAGE_COLOR;
                         } else {
                             loadoutStatusText = "Failed to apply loadout";
-                            loadoutStatusColor = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
+                            loadoutStatusColor = UI::LoadoutUI::ERROR_WARNING_TEXT_COLOR;
                         }
-                        loadoutStatusTimer = 3.0f;
+                        loadoutStatusTimer = UI::LoadoutUI::SUCCESS_MESSAGE_DURATION;
                     });
                 }
             }
@@ -94,8 +96,8 @@ void LoadoutUI::RenderLoadoutControls() {
             });
             selectedLoadoutIndex = 0;
             loadoutStatusText = "Loadouts refreshed";
-            loadoutStatusColor = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
-            loadoutStatusTimer = 2.5f;
+            loadoutStatusColor = UI::LoadoutUI::REFRESH_MESSAGE_COLOR;
+            loadoutStatusTimer = UI::LoadoutUI::REFRESH_MESSAGE_DURATION;
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Refresh the list of available loadout presets");
@@ -104,16 +106,9 @@ void LoadoutUI::RenderLoadoutControls() {
         ImGui::Spacing();
         ImGui::TextDisabled(("Available loadouts: " + std::to_string(loadoutNames.size())).c_str());
 
-        if (loadoutStatusTimer > 0.0f && !loadoutStatusText.empty()) {
-            ImGui::Spacing();
-            ImGui::TextColored(loadoutStatusColor, "%s", loadoutStatusText.c_str());
-            loadoutStatusTimer -= ImGui::GetIO().DeltaTime;
-            if (loadoutStatusTimer <= 0.0f) {
-                loadoutStatusTimer = 0.0f;
-                loadoutStatusText.clear();
-            }
-        }
+        UI::Helpers::ShowStatusMessage(loadoutStatusText, loadoutStatusColor,
+            loadoutStatusTimer, ImGui::GetIO().DeltaTime);
     } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "LoadoutManager not initialized");
+        ImGui::TextColored(UI::LoadoutUI::ERROR_WARNING_TEXT_COLOR, "LoadoutManager not initialized");
     }
 }

@@ -1,6 +1,7 @@
 #pragma once
 #include "IMGUI/imgui.h"
 #include "MapList.h"
+#include "UIHelpers.h"
 #include <string>
 #include <vector>
 
@@ -27,10 +28,6 @@ private:
 	void RenderFreeplayMode(int& currentIndexValue, int& delayFreeplaySecValue);
 	void RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue, int& delayTrainingSecValue);
 	void RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWorkshopSecValue);
-
-	// Helper function to safely set CVar values with null checks
-	template<typename T>
-	void SetCVarSafely(const std::string& cvarName, const T& value);
 
 	SuiteSpot* plugin_;
 

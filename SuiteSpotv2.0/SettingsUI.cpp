@@ -6,6 +6,7 @@
 #include "SuiteSpot.h"
 #include "MapManager.h"
 #include "TrainingPackManager.h"
+#include "UIConstants.h"
 
 #include <algorithm>
 #include <fstream>
@@ -21,8 +22,8 @@ void SettingsUI::RenderMainSettingsWindow() {
 
     // Header with metadata
     ImGui::TextUnformatted("SuiteSpot");
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "By: Flicks Creations");
-    ImGui::TextColored(ImVec4(0.6f, 0.6f, 0.6f, 1.0f), "Version: %s", plugin_version);
+    ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "By: Flicks Creations");
+    ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "Version: %s", plugin_version);
 
     bool enabledValue = plugin_->IsEnabled();
     int mapTypeValue = plugin_->GetMapType();
@@ -38,14 +39,14 @@ void SettingsUI::RenderMainSettingsWindow() {
 
     // Only show status if enabled
     if (enabledValue) {
-        ImGui::SameLine(420);
+        ImGui::SameLine(UI::SettingsUI::STATUS_TEXT_POSITION_X);
 
         const char* modeNames[] = {"Freeplay", "Training", "Workshop"};
         std::string currentMap = "<none>";
         std::string queueDelayStr = std::to_string(delayQueueSecValue) + "s";
         std::string mapDelayStr = "0s";
         std::string shotProgressStr = "";
-        const ImVec4 white = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+        const ImVec4 white = UI::SettingsUI::STATUS_SEPARATOR_COLOR;
 
         // Get current selection and appropriate delay
         if (mapTypeValue == 0) {
@@ -86,8 +87,8 @@ void SettingsUI::RenderMainSettingsWindow() {
         }
 
         // Map mode status (always green when enabled)
-        const ImVec4 green = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-        const ImVec4 red   = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+        const ImVec4 green = UI::SettingsUI::STATUS_ENABLED_TEXT_COLOR;
+        const ImVec4 red   = UI::SettingsUI::STATUS_DISABLED_TEXT_COLOR;
         std::string modeText = "Mode: " + std::string(modeNames[mapTypeValue]);
         if (delayFreeplaySecValue > 0 || delayTrainingSecValue > 0 || delayWorkshopSecValue > 0) {
             modeText += " Delayed: " + mapDelayStr;
@@ -157,12 +158,8 @@ void SettingsUI::RenderMainSettingsWindow() {
 
 void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
     ImGui::BeginGroup();
-    if (ImGui::Checkbox("Enable SuiteSpot", &enabledValue)) {
-        SetCVarSafely("suitespot_enabled", enabledValue);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Enable/disable all SuiteSpot auto-loading and queuing features");
-    }
+    UI::Helpers::CheckboxWithCVar("Enable SuiteSpot", enabledValue, "suitespot_enabled",
+        plugin_->cvarManager, "Enable/disable all SuiteSpot auto-loading and queuing features");
     ImGui::EndGroup();
 
     ImGui::Spacing();
@@ -171,10 +168,10 @@ void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
     ImGui::BeginGroup();
     const char* mapLabels[] = {"Freeplay", "Training", "Workshop"};
     for (int i = 0; i < 3; i++) {
-        if (i > 0) ImGui::SameLine(0, 16);
+        if (i > 0) ImGui::SameLine(0, UI::SettingsUI::MAP_TYPE_RADIO_BUTTON_SPACING);
         if (ImGui::RadioButton(mapLabels[i], mapTypeValue == i)) {
             mapTypeValue = i;
-            SetCVarSafely("suitespot_map_type", mapTypeValue);
+            UI::Helpers::SetCVarSafely("suitespot_map_type", mapTypeValue, plugin_->cvarManager);
         }
     }
     if (ImGui::IsItemHovered()) {
@@ -187,23 +184,13 @@ void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
 }
 
 void SettingsUI::RenderAutoQueueTab(bool& autoQueueValue, int& delayQueueSecValue) {
-    if (ImGui::Checkbox("Auto-Queue Next Match", &autoQueueValue)) {
-        SetCVarSafely("suitespot_auto_queue", autoQueueValue);
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Automatically queue into the next match after the current match ends.\nQueue delay starts at match end, independent of map load.");
-    }
+    UI::Helpers::CheckboxWithCVar("Auto-Queue Next Match", autoQueueValue, "suitespot_auto_queue",
+        plugin_->cvarManager, "Automatically queue into the next match after the current match ends.\nQueue delay starts at match end, independent of map load.");
 
-    ImGui::SetNextItemWidth(220);
-    if (ImGui::InputInt("Delay Queue (sec)", &delayQueueSecValue)) {
-        delayQueueSecValue = std::clamp(delayQueueSecValue, 0, 300);
-        SetCVarSafely("suitespot_delay_queue_sec", delayQueueSecValue);
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("0-300s");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Wait this many seconds before queuing (independent of map load). Range: 0-300s");
-    }
+    UI::Helpers::InputIntWithRange("Delay Queue (sec)", delayQueueSecValue,
+        UI::SettingsUI::DELAY_QUEUE_MIN_SECONDS, UI::SettingsUI::DELAY_QUEUE_MAX_SECONDS,
+        UI::SettingsUI::DELAY_QUEUE_INPUT_WIDTH, "suitespot_delay_queue_sec", plugin_->cvarManager,
+        "Wait this many seconds before queuing (independent of map load). Range: 0-300s", "0-300s");
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -237,19 +224,16 @@ void SettingsUI::RenderFreeplayMode(int& currentIndexValue, int& delayFreeplaySe
     }
 
     const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndexValue].name.c_str();
-    ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo("Freeplay Maps", freeplayLabel)) {
+    if (UI::Helpers::ComboWithTooltip("Freeplay Maps", freeplayLabel,
+        "Select which stadium to load after matches", UI::SettingsUI::FREEPLAY_MAPS_DROPDOWN_WIDTH)) {
         for (int i = 0; i < (int)RLMaps.size(); ++i) {
             bool selected = (i == currentIndexValue);
             if (ImGui::Selectable(RLMaps[i].name.c_str(), selected)) {
                 currentIndexValue = i;
-                SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue);
+                UI::Helpers::SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue, plugin_->cvarManager);
             }
         }
         ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Select which stadium to load after matches");
     }
 
     float rightEdge = ImGui::GetWindowContentRegionMax().x;
@@ -271,16 +255,10 @@ void SettingsUI::RenderFreeplayMode(int& currentIndexValue, int& delayFreeplaySe
 
     ImGui::Spacing();
     ImGui::TextUnformatted("Freeplay Settings:");
-    ImGui::SetNextItemWidth(220);
-    if (ImGui::InputInt("Delay Freeplay (sec)", &delayFreeplaySecValue)) {
-        delayFreeplaySecValue = std::clamp(delayFreeplaySecValue, 0, 300);
-        SetCVarSafely("suitespot_delay_freeplay_sec", delayFreeplaySecValue);
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("0-300s");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Wait this many seconds after match ends before loading Freeplay. Range: 0-300s");
-    }
+    UI::Helpers::InputIntWithRange("Delay Freeplay (sec)", delayFreeplaySecValue,
+        UI::SettingsUI::DELAY_FREEPLAY_MIN_SECONDS, UI::SettingsUI::DELAY_FREEPLAY_MAX_SECONDS,
+        UI::SettingsUI::DELAY_FREEPLAY_INPUT_WIDTH, "suitespot_delay_freeplay_sec", plugin_->cvarManager,
+        "Wait this many seconds after match ends before loading Freeplay. Range: 0-300s", "0-300s");
 }
 
 void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue, int& delayTrainingSecValue) {
@@ -296,20 +274,17 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
         trainingLabel = trainingLabelBuf.c_str();
     }
 
-    ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo("Training Packs", trainingLabel)) {
+    if (UI::Helpers::ComboWithTooltip("Training Packs", trainingLabel,
+        "Select which training pack to load after matches", UI::SettingsUI::TRAINING_PACKS_DROPDOWN_WIDTH)) {
         for (int i = 0; i < (int)RLTraining.size(); ++i) {
             bool selected = (i == currentTrainingIndexValue);
             std::string itemLabel = RLTraining[i].name + " (Shots:" + std::to_string(RLTraining[i].shotCount) + ")";
             if (ImGui::Selectable(itemLabel.c_str(), selected)) {
                 currentTrainingIndexValue = i;
-                SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue);
+                UI::Helpers::SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue, plugin_->cvarManager);
             }
         }
         ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Select which training pack to load after matches");
     }
 
     ImGui::SameLine();
@@ -364,16 +339,10 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
     ImGui::Separator();
 
     ImGui::TextUnformatted("Training Settings:");
-    ImGui::SetNextItemWidth(220);
-    if (ImGui::InputInt("Delay Training (sec)", &delayTrainingSecValue)) {
-        delayTrainingSecValue = std::clamp(delayTrainingSecValue, 0, 300);
-        SetCVarSafely("suitespot_delay_training_sec", delayTrainingSecValue);
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("0-300s");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Wait this many seconds after match ends before loading Training. Range: 0-300s");
-    }
+    UI::Helpers::InputIntWithRange("Delay Training (sec)", delayTrainingSecValue,
+        UI::SettingsUI::DELAY_TRAINING_MIN_SECONDS, UI::SettingsUI::DELAY_TRAINING_MAX_SECONDS,
+        UI::SettingsUI::DELAY_TRAINING_INPUT_WIDTH, "suitespot_delay_training_sec", plugin_->cvarManager,
+        "Wait this many seconds after match ends before loading Training. Range: 0-300s", "0-300s");
 
     if (showAddTrainingForm) {
         ImGui::Spacing();
@@ -411,7 +380,7 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
 
                 if (!isValidCode) {
                     addSuccess = false;
-                    addSuccessTimer = 2.0f;
+                    addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
                 } else {
                     TrainingEntry newPack;
                     newPack.code = codeStr;
@@ -424,7 +393,7 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
                         addSuccess = false;
                     }
                     addSuccess = true;
-                    addSuccessTimer = 3.0f;
+                    addSuccessTimer = UI::SettingsUI::CUSTOM_PACK_SUCCESS_MESSAGE_DURATION;
                     newMapCode[0] = 0;
                     newMapName[0] = 0;
                 }
@@ -434,10 +403,10 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
             ImGui::SetTooltip("Add this training pack to your collection");
         }
 
-        if (addSuccess && addSuccessTimer > 0.0f) {
+        if (addSuccess) {
             ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, addSuccessTimer / 3.0f), "Pack added!");
-            addSuccessTimer -= ImGui::GetIO().DeltaTime;
+            UI::Helpers::ShowStatusMessageWithFade("Pack added!", UI::SettingsUI::CUSTOM_PACK_SUCCESS_TEXT_COLOR,
+                addSuccessTimer, UI::SettingsUI::SUCCESS_MESSAGE_FADE_DIVISOR, ImGui::GetIO().DeltaTime);
             if (addSuccessTimer <= 0.0f) {
                 addSuccess = false;
             }
@@ -453,19 +422,16 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
     }
 
     const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentWorkshopIndexValue].name.c_str();
-    ImGui::SetNextItemWidth(260);
-    if (ImGui::BeginCombo("Workshop Maps", workshopLabel)) {
+    if (UI::Helpers::ComboWithTooltip("Workshop Maps", workshopLabel,
+        "Select which workshop map to load after matches", UI::SettingsUI::WORKSHOP_MAPS_DROPDOWN_WIDTH)) {
         for (int i = 0; i < (int)RLWorkshop.size(); ++i) {
             bool selected = (i == currentWorkshopIndexValue);
             if (ImGui::Selectable(RLWorkshop[i].name.c_str(), selected)) {
                 currentWorkshopIndexValue = i;
-                SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue);
+                UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, plugin_->cvarManager);
             }
         }
         ImGui::EndCombo();
-    }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Select which workshop map to load after matches");
     }
 
     ImGui::SameLine();
@@ -480,7 +446,7 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
                 [&](const WorkshopEntry& entry){ return entry.filePath == previousPath; });
             if (it != RLWorkshop.end()) {
                 currentWorkshopIndexValue = static_cast<int>(std::distance(RLWorkshop.begin(), it));
-                SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue);
+                UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, plugin_->cvarManager);
             }
         }
     }
@@ -521,7 +487,7 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
         }
 
         ImGui::TextWrapped("Workshop maps root folder:");
-        ImGui::SetNextItemWidth(420);
+        ImGui::SetNextItemWidth(UI::SettingsUI::WORKSHOP_PATH_INPUT_WIDTH);
         ImGui::InputText("##workshop_root", workshopPathBuf, IM_ARRAYSIZE(workshopPathBuf));
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Set the root folder to scan for workshop maps (contains subfolders with .upk files).");
@@ -533,15 +499,15 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
             if (workshopPath.empty()) {
                 LOG("SuiteSpot: Workshop path cannot be empty");
                 addSuccess = false;
-                addSuccessTimer = 2.0f;
+                addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
             } else if (!std::filesystem::exists(workshopPath, ec)) {
                 LOG("SuiteSpot: Workshop path does not exist: {}", workshopPathBuf);
                 addSuccess = false;
-                addSuccessTimer = 2.0f;
+                addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
             } else if (!std::filesystem::is_directory(workshopPath, ec)) {
                 LOG("SuiteSpot: Workshop path is not a directory: {}", workshopPathBuf);
                 addSuccess = false;
-                addSuccessTimer = 2.0f;
+                addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
             } else {
                 std::filesystem::path cfgPath = plugin_->GetWorkshopLoaderConfigPath();
                 ec.clear();
@@ -558,11 +524,11 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
                         currentWorkshopIndexValue = 0;
                     }
                     addSuccess = true;
-                    addSuccessTimer = 2.0f;
+                    addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
                 } else {
                     LOG("SuiteSpot: Failed to write workshopmaploader.cfg");
                     addSuccess = false;
-                    addSuccessTimer = 2.0f;
+                    addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
                 }
             }
         }
@@ -572,24 +538,8 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
 
     ImGui::Spacing();
     ImGui::TextUnformatted("Workshop Settings:");
-    ImGui::SetNextItemWidth(220);
-    if (ImGui::InputInt("Delay Workshop (sec)", &delayWorkshopSecValue)) {
-        delayWorkshopSecValue = std::clamp(delayWorkshopSecValue, 0, 300);
-        SetCVarSafely("suitespot_delay_workshop_sec", delayWorkshopSecValue);
-    }
-    ImGui::SameLine();
-    ImGui::TextDisabled("0-300s");
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Wait this many seconds after match ends before loading Workshop. Range: 0-300s");
-    }
-}
-
-// Template implementation for SetCVarSafely
-template<typename T>
-void SettingsUI::SetCVarSafely(const std::string& cvarName, const T& value) {
-	if (!plugin_ || !plugin_->cvarManager) return;
-	auto cvar = plugin_->cvarManager->getCvar(cvarName);
-	if (cvar) {
-		cvar.setValue(value);
-	}
+    UI::Helpers::InputIntWithRange("Delay Workshop (sec)", delayWorkshopSecValue,
+        UI::SettingsUI::DELAY_WORKSHOP_MIN_SECONDS, UI::SettingsUI::DELAY_WORKSHOP_MAX_SECONDS,
+        UI::SettingsUI::DELAY_WORKSHOP_INPUT_WIDTH, "suitespot_delay_workshop_sec", plugin_->cvarManager,
+        "Wait this many seconds after match ends before loading Workshop. Range: 0-300s", "0-300s");
 }

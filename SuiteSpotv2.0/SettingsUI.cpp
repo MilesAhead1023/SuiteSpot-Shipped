@@ -226,11 +226,19 @@ void SettingsUI::RenderFreeplayMode(int& currentIndexValue, int& delayFreeplaySe
     const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndexValue].name.c_str();
     if (UI::Helpers::ComboWithTooltip("Freeplay Maps", freeplayLabel,
         "Select which stadium to load after matches", UI::SettingsUI::FREEPLAY_MAPS_DROPDOWN_WIDTH)) {
-        for (int i = 0; i < (int)RLMaps.size(); ++i) {
-            bool selected = (i == currentIndexValue);
-            if (ImGui::Selectable(RLMaps[i].name.c_str(), selected)) {
-                currentIndexValue = i;
-                UI::Helpers::SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue, plugin_->cvarManager);
+        // Use ImGuiListClipper to only render visible items for better performance
+        ImGuiListClipper clipper;
+        clipper.Begin((int)RLMaps.size());
+
+        while (clipper.Step())
+        {
+            for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
+            {
+                bool selected = (row == currentIndexValue);
+                if (ImGui::Selectable(RLMaps[row].name.c_str(), selected)) {
+                    currentIndexValue = row;
+                    UI::Helpers::SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue, plugin_->cvarManager);
+                }
             }
         }
         ImGui::EndCombo();
@@ -276,12 +284,22 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
 
     if (UI::Helpers::ComboWithTooltip("Training Packs", trainingLabel,
         "Select which training pack to load after matches", UI::SettingsUI::TRAINING_PACKS_DROPDOWN_WIDTH)) {
-        for (int i = 0; i < (int)RLTraining.size(); ++i) {
-            bool selected = (i == currentTrainingIndexValue);
-            std::string itemLabel = RLTraining[i].name + " (Shots:" + std::to_string(RLTraining[i].shotCount) + ")";
-            if (ImGui::Selectable(itemLabel.c_str(), selected)) {
-                currentTrainingIndexValue = i;
-                UI::Helpers::SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue, plugin_->cvarManager);
+        // Use ImGuiListClipper to only render visible items for better performance
+        // This is especially important for training packs since we have 500+ items
+        ImGuiListClipper clipper;
+        clipper.Begin((int)RLTraining.size());
+
+        while (clipper.Step())
+        {
+            for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
+            {
+                bool selected = (row == currentTrainingIndexValue);
+                // String concatenation only happens for visible items (~10-15) instead of all 500+
+                std::string itemLabel = RLTraining[row].name + " (Shots:" + std::to_string(RLTraining[row].shotCount) + ")";
+                if (ImGui::Selectable(itemLabel.c_str(), selected)) {
+                    currentTrainingIndexValue = row;
+                    UI::Helpers::SetCVarSafely("suitespot_current_training_index", currentTrainingIndexValue, plugin_->cvarManager);
+                }
             }
         }
         ImGui::EndCombo();
@@ -416,11 +434,19 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
     const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentWorkshopIndexValue].name.c_str();
     if (UI::Helpers::ComboWithTooltip("Workshop Maps", workshopLabel,
         "Select which workshop map to load after matches", UI::SettingsUI::WORKSHOP_MAPS_DROPDOWN_WIDTH)) {
-        for (int i = 0; i < (int)RLWorkshop.size(); ++i) {
-            bool selected = (i == currentWorkshopIndexValue);
-            if (ImGui::Selectable(RLWorkshop[i].name.c_str(), selected)) {
-                currentWorkshopIndexValue = i;
-                UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, plugin_->cvarManager);
+        // Use ImGuiListClipper to only render visible items for better performance
+        ImGuiListClipper clipper;
+        clipper.Begin((int)RLWorkshop.size());
+
+        while (clipper.Step())
+        {
+            for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
+            {
+                bool selected = (row == currentWorkshopIndexValue);
+                if (ImGui::Selectable(RLWorkshop[row].name.c_str(), selected)) {
+                    currentWorkshopIndexValue = row;
+                    UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, plugin_->cvarManager);
+                }
             }
         }
         ImGui::EndCombo();

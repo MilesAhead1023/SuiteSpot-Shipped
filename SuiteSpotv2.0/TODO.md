@@ -44,9 +44,13 @@ Current plugin improvements, refactoring tasks, and technical debt.
   - Build verified: 0 errors, 0 warnings
   - Benefit: Eliminated ~150 lines, unified 3 patterns into single API
 
-- [ ] **Add ListClipper to SettingsUI Dropdowns**
-  - Apply pattern from TrainingPackUI
-  - Better performance with 500+ training packs
+- [x] **Add ListClipper to SettingsUI Dropdowns** *(SettingsUI.cpp)*
+  - Optimized Training Packs dropdown (lines 279-296): Reduced from 500+ items to ~12 visible items per frame
+  - Optimized Workshop Maps dropdown (lines 429-443): Applied same pattern for 50-200+ workshop maps
+  - Optimized Freeplay Maps dropdown (lines 229-243): Applied for consistency (~30 maps)
+  - Replaced simple for-loops with ImGuiListClipper pattern from TrainingPackUI
+  - Build verified: 0 errors, 0 warnings
+  - Benefit: 98% reduction in rendering work for large lists, eliminates lag when scrolling 500+ training packs
 
 - [ ] **Extract Form Components**
   - Workshop path configuration section

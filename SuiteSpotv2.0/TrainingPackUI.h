@@ -1,6 +1,7 @@
 #pragma once
 #include "IMGUI/imgui.h"
 #include "MapList.h"
+#include "StatusMessage.h"
 #include <string>
 #include <vector>
 
@@ -43,8 +44,7 @@ private:
     char customPackTags[256] = {0};      // Comma-separated
     char customPackNotes[512] = {0};
     char customPackVideoUrl[256] = {0};
-    std::string customPackError;
-    bool customPackSuccess = false;
+    UI::StatusMessage customPackStatus;
 
     // Helper methods
     void RenderCustomPackForm();

@@ -62,22 +62,18 @@ void LoadoutUI::RenderLoadoutControls() {
             if (ImGui::Button("Apply Loadout")) {
                 if (selectedLoadoutIndex >= 0 && selectedLoadoutIndex < (int)loadoutNames.size()) {
                     std::string selectedName = loadoutNames[selectedLoadoutIndex];
-                    // Set immediate feedback or wait?
-                    // Let's set a "Applying..." state if desired, or just wait for callback.
-                    loadoutStatusText = "Applying...";
-                    loadoutStatusColor = UI::LoadoutUI::APPLYING_STATUS_COLOR;
-                    loadoutStatusTimer = UI::LoadoutUI::APPLYING_STATUS_DURATION; // Give it some time
+                    // Show "Applying..." feedback immediately
+                    loadoutStatus.ShowWarning("Applying...", UI::LoadoutUI::APPLYING_STATUS_DURATION);
 
                     loadoutManager->SwitchLoadout(selectedName, [this, selectedName](bool success) {
                         if (success) {
                             currentLoadoutName = selectedName;
-                            loadoutStatusText = "Applied \"" + selectedName + "\"";
-                            loadoutStatusColor = UI::LoadoutUI::SUCCESS_MESSAGE_COLOR;
+                            loadoutStatus.ShowSuccess("Applied \"" + selectedName + "\"",
+                                UI::LoadoutUI::SUCCESS_MESSAGE_DURATION);
                         } else {
-                            loadoutStatusText = "Failed to apply loadout";
-                            loadoutStatusColor = UI::LoadoutUI::ERROR_WARNING_TEXT_COLOR;
+                            loadoutStatus.ShowError("Failed to apply loadout",
+                                UI::LoadoutUI::SUCCESS_MESSAGE_DURATION);
                         }
-                        loadoutStatusTimer = UI::LoadoutUI::SUCCESS_MESSAGE_DURATION;
                     });
                 }
             }
@@ -95,9 +91,7 @@ void LoadoutUI::RenderLoadoutControls() {
                 currentLoadoutName = name;
             });
             selectedLoadoutIndex = 0;
-            loadoutStatusText = "Loadouts refreshed";
-            loadoutStatusColor = UI::LoadoutUI::REFRESH_MESSAGE_COLOR;
-            loadoutStatusTimer = UI::LoadoutUI::REFRESH_MESSAGE_DURATION;
+            loadoutStatus.ShowInfo("Loadouts refreshed", UI::LoadoutUI::REFRESH_MESSAGE_DURATION);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Refresh the list of available loadout presets");
@@ -106,8 +100,7 @@ void LoadoutUI::RenderLoadoutControls() {
         ImGui::Spacing();
         ImGui::TextDisabled(("Available loadouts: " + std::to_string(loadoutNames.size())).c_str());
 
-        UI::Helpers::ShowStatusMessage(loadoutStatusText, loadoutStatusColor,
-            loadoutStatusTimer, ImGui::GetIO().DeltaTime);
+        loadoutStatus.Render(ImGui::GetIO().DeltaTime);
     } else {
         ImGui::TextColored(UI::LoadoutUI::ERROR_WARNING_TEXT_COLOR, "LoadoutManager not initialized");
     }

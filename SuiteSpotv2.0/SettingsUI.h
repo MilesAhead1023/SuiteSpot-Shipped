@@ -1,6 +1,7 @@
 #pragma once
 #include "IMGUI/imgui.h"
 #include "MapList.h"
+#include "StatusMessage.h"
 #include "UIHelpers.h"
 #include <string>
 #include <vector>
@@ -36,8 +37,7 @@ private:
 	std::string trainingLabelBuf;
 	char newMapCode[64] = {0};
 	char newMapName[64] = {0};
-	bool addSuccess = false;
-	float addSuccessTimer = 0.0f;
+	UI::StatusMessage addPackStatus;
 
 	bool workshopPathInit = false;
 	std::string workshopPathCache;

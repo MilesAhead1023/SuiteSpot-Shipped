@@ -379,8 +379,7 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
                 }
 
                 if (!isValidCode) {
-                    addSuccess = false;
-                    addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
+                    // Invalid code format - could show error here in future
                 } else {
                     TrainingEntry newPack;
                     newPack.code = codeStr;
@@ -388,12 +387,11 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
                     newPack.source = "custom";
 
                     if (plugin_->trainingPackMgr) {
-                        addSuccess = plugin_->trainingPackMgr->AddCustomPack(newPack);
-                    } else {
-                        addSuccess = false;
+                        plugin_->trainingPackMgr->AddCustomPack(newPack);
                     }
-                    addSuccess = true;
-                    addSuccessTimer = UI::SettingsUI::CUSTOM_PACK_SUCCESS_MESSAGE_DURATION;
+                    addPackStatus.ShowSuccess("Pack added!",
+                        UI::SettingsUI::CUSTOM_PACK_SUCCESS_MESSAGE_DURATION,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
                     newMapCode[0] = 0;
                     newMapName[0] = 0;
                 }
@@ -403,14 +401,8 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
             ImGui::SetTooltip("Add this training pack to your collection");
         }
 
-        if (addSuccess) {
-            ImGui::SameLine();
-            UI::Helpers::ShowStatusMessageWithFade("Pack added!", UI::SettingsUI::CUSTOM_PACK_SUCCESS_TEXT_COLOR,
-                addSuccessTimer, UI::SettingsUI::SUCCESS_MESSAGE_FADE_DIVISOR, ImGui::GetIO().DeltaTime);
-            if (addSuccessTimer <= 0.0f) {
-                addSuccess = false;
-            }
-        }
+        ImGui::SameLine();
+        addPackStatus.Render(ImGui::GetIO().DeltaTime);
     }
 }
 
@@ -498,16 +490,13 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
             std::error_code ec;
             if (workshopPath.empty()) {
                 LOG("SuiteSpot: Workshop path cannot be empty");
-                addSuccess = false;
-                addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
+                // Could show error message here in future
             } else if (!std::filesystem::exists(workshopPath, ec)) {
                 LOG("SuiteSpot: Workshop path does not exist: {}", workshopPathBuf);
-                addSuccess = false;
-                addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
+                // Could show error message here in future
             } else if (!std::filesystem::is_directory(workshopPath, ec)) {
                 LOG("SuiteSpot: Workshop path is not a directory: {}", workshopPathBuf);
-                addSuccess = false;
-                addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
+                // Could show error message here in future
             } else {
                 std::filesystem::path cfgPath = plugin_->GetWorkshopLoaderConfigPath();
                 ec.clear();
@@ -523,12 +512,12 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
                     } else {
                         currentWorkshopIndexValue = 0;
                     }
-                    addSuccess = true;
-                    addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
+                    addPackStatus.ShowSuccess("Workshop path saved!",
+                        UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
                 } else {
                     LOG("SuiteSpot: Failed to write workshopmaploader.cfg");
-                    addSuccess = false;
-                    addSuccessTimer = UI::SettingsUI::WORKSHOP_PATH_ERROR_MESSAGE_DURATION;
+                    // Could show error message here in future
                 }
             }
         }

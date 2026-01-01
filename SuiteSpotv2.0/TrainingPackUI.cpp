@@ -507,8 +507,7 @@ void TrainingPackUI::ClearCustomPackForm() {
     customPackTags[0] = '\0';
     customPackNotes[0] = '\0';
     customPackVideoUrl[0] = '\0';
-    customPackError.clear();
-    customPackSuccess = false;
+    customPackStatus.Clear();
 }
 
 void TrainingPackUI::RenderCustomPackForm() {
@@ -516,16 +515,8 @@ void TrainingPackUI::RenderCustomPackForm() {
         ImGui::Indent(UI::TrainingPackUI::CUSTOM_PACK_FORM_INDENT);
         ImGui::Spacing();
 
-        if (customPackSuccess) {
-            ImGui::TextColored(UI::TrainingPackUI::SUCCESS_MESSAGE_TEXT_COLOR, "Pack added successfully!");
-            ImGui::SameLine();
-            if (ImGui::SmallButton("Dismiss")) {
-                customPackSuccess = false;
-            }
-            ImGui::Spacing();
-        }
-        if (!customPackError.empty()) {
-            ImGui::TextColored(UI::TrainingPackUI::ERROR_MESSAGE_TEXT_COLOR, "%s", customPackError.c_str());
+        customPackStatus.Render(ImGui::GetIO().DeltaTime);
+        if (customPackStatus.IsVisible()) {
             ImGui::Spacing();
         }
 
@@ -583,16 +574,15 @@ void TrainingPackUI::RenderCustomPackForm() {
         ImGui::Spacing();
 
         if (ImGui::Button("Add Pack", ImVec2(UI::TrainingPackUI::CUSTOM_PACK_ADD_BUTTON_WIDTH, UI::TrainingPackUI::CUSTOM_PACK_ADD_BUTTON_HEIGHT))) {
-            customPackError.clear();
-            customPackSuccess = false;
+            customPackStatus.Clear();
             if (strlen(customPackCode) == 0) {
-                customPackError = "Pack code is required";
+                customPackStatus.ShowError("Pack code is required");
             }
             else if (!ValidatePackCode(customPackCode)) {
-                customPackError = "Invalid code format. Expected: XXXX-XXXX-XXXX-XXXX";
+                customPackStatus.ShowError("Invalid code format. Expected: XXXX-XXXX-XXXX-XXXX");
             }
             else if (strlen(customPackName) == 0) {
-                customPackError = "Pack name is required";
+                customPackStatus.ShowError("Pack name is required");
             }
             else {
                 TrainingEntry pack;
@@ -630,14 +620,14 @@ void TrainingPackUI::RenderCustomPackForm() {
                 pack.isModified = false;
                 if (plugin_->trainingPackMgr) {
                     if (plugin_->trainingPackMgr->AddCustomPack(pack)) {
-                        customPackSuccess = true;
+                        customPackStatus.ShowSuccess("Pack added successfully!");
                         ClearCustomPackForm();
                         LOG("SuiteSpot: Added custom pack: " + pack.name);
                     } else {
-                        customPackError = "Pack with this code already exists";
+                        customPackStatus.ShowError("Pack with this code already exists");
                     }
                 } else {
-                    customPackError = "Pack manager not initialized";
+                    customPackStatus.ShowError("Pack manager not initialized");
                 }
             }
         }

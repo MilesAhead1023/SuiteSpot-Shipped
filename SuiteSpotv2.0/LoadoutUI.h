@@ -1,5 +1,6 @@
 #pragma once
 #include "IMGUI/imgui.h"
+#include "StatusMessage.h"
 #include <string>
 #include <vector>
 
@@ -13,9 +14,7 @@ public:
 private:
     SuiteSpot* plugin_;
 
-    std::string loadoutStatusText;
-    ImVec4 loadoutStatusColor = ImVec4(0, 0, 0, 0);
-    float loadoutStatusTimer = 0.0f;
+    UI::StatusMessage loadoutStatus;
     std::string currentLoadoutName;
     std::vector<std::string> loadoutNames;
     int selectedLoadoutIndex = 0;

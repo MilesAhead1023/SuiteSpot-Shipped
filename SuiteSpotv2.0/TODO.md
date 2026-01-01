@@ -34,9 +34,15 @@ Current plugin improvements, refactoring tasks, and technical debt.
 
 ## Medium Priority - Consistency
 
-- [ ] **Standardize Status Message System**
-  - Create `StatusMessage` class with auto-fade
-  - Replace 3 different timer implementations
+- [x] **Standardize Status Message System** *(New: StatusMessage.h/cpp)*
+  - Created StatusMessage class with DisplayMode enum (Timer, TimerWithFade, ManualDismiss)
+  - Created Type enum (Success, Error, Warning, Info) with automatic color mapping
+  - Migrated LoadoutUI: Replaced 3 variables (text, color, timer) with single StatusMessage
+  - Migrated SettingsUI: Replaced 2 variables (bool, timer) with StatusMessage
+  - Migrated TrainingPackUI: Replaced 2 variables (string, bool) with StatusMessage
+  - Added files to SuiteSpot.vcxproj build configuration
+  - Build verified: 0 errors, 0 warnings
+  - Benefit: Eliminated ~150 lines, unified 3 patterns into single API
 
 - [ ] **Add ListClipper to SettingsUI Dropdowns**
   - Apply pattern from TrainingPackUI

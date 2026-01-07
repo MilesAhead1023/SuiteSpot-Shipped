@@ -277,17 +277,26 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
         out.push_back(pack);
     }
 
-    std::sort(out.begin(), out.end(), [sortColumn, sortAscending](const TrainingEntry& a, const TrainingEntry& b) {
+    // Case-insensitive string comparison helper
+    auto caseInsensitiveCompare = [](const std::string& a, const std::string& b) -> int {
+        std::string lowerA = a;
+        std::string lowerB = b;
+        std::transform(lowerA.begin(), lowerA.end(), lowerA.begin(), [](unsigned char c) { return std::tolower(c); });
+        std::transform(lowerB.begin(), lowerB.end(), lowerB.begin(), [](unsigned char c) { return std::tolower(c); });
+        return lowerA.compare(lowerB);
+    };
+
+    std::sort(out.begin(), out.end(), [sortColumn, sortAscending, &caseInsensitiveCompare](const TrainingEntry& a, const TrainingEntry& b) {
         int cmp = 0;
         switch (sortColumn) {
             case 0: // Name
-                cmp = a.name.compare(b.name);
+                cmp = caseInsensitiveCompare(a.name, b.name);
                 break;
             case 1: // Creator
-                cmp = a.creator.compare(b.creator);
+                cmp = caseInsensitiveCompare(a.creator, b.creator);
                 break;
             case 2: // Difficulty
-                cmp = a.difficulty.compare(b.difficulty);
+                cmp = caseInsensitiveCompare(a.difficulty, b.difficulty);
                 break;
             case 3: // Shots
                 cmp = (a.shotCount < b.shotCount) ? -1 : (a.shotCount > b.shotCount) ? 1 : 0;

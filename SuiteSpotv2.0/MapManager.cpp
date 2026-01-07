@@ -219,27 +219,45 @@ void MapManager::LoadWorkshopMaps(std::vector<WorkshopEntry>& workshop, int& cur
     workshop.clear();
 
     std::vector<std::filesystem::path> roots;
+    std::unordered_set<std::string> seenRoots;
+
+    // Helper to add root only if not already seen
+    auto addRoot = [&](const std::filesystem::path& path) {
+        if (path.empty()) return;
+        std::error_code ec;
+        std::string canonical;
+        if (std::filesystem::exists(path, ec)) {
+            canonical = std::filesystem::canonical(path, ec).string();
+        }
+        if (canonical.empty()) {
+            canonical = path.string();
+        }
+        // Normalize to lowercase for comparison on Windows
+        std::string lower = canonical;
+        std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return std::tolower(c); });
+        if (seenRoots.insert(lower).second) {
+            roots.push_back(path);
+        }
+    };
+
     if (const auto configured = ResolveConfiguredWorkshopRoot(); !configured.empty())
     {
-        roots.push_back(configured);
+        addRoot(configured);
     }
 
     const char* progFiles = std::getenv("ProgramFiles");
     const char* progFilesX86 = std::getenv("ProgramFiles(x86)");
 
     if (progFiles) {
-        roots.emplace_back(std::filesystem::path(progFiles) / "Epic Games" / "rocketleague" / "TAGame" / "CookedPCConsole" / "mods");
+        addRoot(std::filesystem::path(progFiles) / "Epic Games" / "rocketleague" / "TAGame" / "CookedPCConsole" / "mods");
     }
     if (progFilesX86) {
-        roots.emplace_back(std::filesystem::path(progFilesX86) / "Steam" / "steamapps" / "common" / "rocketleague" / "TAGame" / "CookedPCConsole" / "mods");
+        addRoot(std::filesystem::path(progFilesX86) / "Steam" / "steamapps" / "common" / "rocketleague" / "TAGame" / "CookedPCConsole" / "mods");
     }
 
     for (const auto& root : roots)
     {
-        if (!root.empty())
-        {
-            DiscoverWorkshopInDir(root, workshop);
-        }
+        DiscoverWorkshopInDir(root, workshop);
     }
 
     std::unordered_set<std::string> seen;

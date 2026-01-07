@@ -143,14 +143,6 @@ void SettingsUI::RenderMainSettingsWindow() {
             ImGui::EndTabItem();
         } // End Loadout Management tab
 
-        // ===== TRAINING PACKS TAB =====
-        if (ImGui::BeginTabItem("Training Packs")) {
-            if (plugin_->trainingPackUI) {
-            plugin_->trainingPackUI->RenderTrainingPackTab();
-        }
-            ImGui::EndTabItem();
-        } // End Training Packs tab
-
         // Close the tab bar
         ImGui::EndTabBar();
     } // End tab bar
@@ -422,6 +414,14 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
         ImGui::SameLine();
         addPackStatus.Render(ImGui::GetIO().DeltaTime);
     }
+
+    // Embed Training Pack Browser directly in Training mode
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+    if (plugin_->trainingPackUI) {
+        plugin_->trainingPackUI->RenderTrainingPackTab();
+    }
 }
 
 void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWorkshopSecValue) {
@@ -443,7 +443,9 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue, int& delayWo
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
             {
                 bool selected = (row == currentWorkshopIndexValue);
-                if (ImGui::Selectable(RLWorkshop[row].name.c_str(), selected)) {
+                // Use unique ID suffix to handle duplicate names
+                std::string label = RLWorkshop[row].name + "##" + std::to_string(row);
+                if (ImGui::Selectable(label.c_str(), selected)) {
                     currentWorkshopIndexValue = row;
                     UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, plugin_->cvarManager);
                 }

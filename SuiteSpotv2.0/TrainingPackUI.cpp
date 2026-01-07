@@ -176,23 +176,9 @@ void TrainingPackUI::RenderTrainingPackTab() {
                           (packSortColumn != lastSortColumn) ||
                           (packSortAscending != lastSortAscending);
 
-    // Dynamic width calculation for filters
-    float availWidth = ImGui::GetContentRegionAvail().x;
-    float itemSpacing = ImGui::GetStyle().ItemSpacing.x;
-
-    // Allocate widths: Search (40%), Difficulty (25%), Shots (35%)
-    // Adjust logic to ensure they fit on one line if possible
-    float searchW = (availWidth * UI::TrainingPackUI::FILTER_SEARCH_WIDTH_PERCENT) - itemSpacing;
-    float diffW = (availWidth * UI::TrainingPackUI::FILTER_DIFFICULTY_WIDTH_PERCENT) - itemSpacing;
-    float shotsW = (availWidth * UI::TrainingPackUI::FILTER_SHOTS_WIDTH_PERCENT) - itemSpacing;
-
-    // Minimum constraints
-    if (searchW < UI::TrainingPackUI::FILTER_SEARCH_MIN_WIDTH) searchW = UI::TrainingPackUI::FILTER_SEARCH_MIN_WIDTH;
-    if (diffW < UI::TrainingPackUI::FILTER_DIFFICULTY_MIN_WIDTH) diffW = UI::TrainingPackUI::FILTER_DIFFICULTY_MIN_WIDTH;
-    if (shotsW < UI::TrainingPackUI::FILTER_SHOTS_MIN_WIDTH) shotsW = UI::TrainingPackUI::FILTER_SHOTS_MIN_WIDTH;
-
+    // Fixed widths for filter controls
     // Search box
-    ImGui::SetNextItemWidth(searchW);
+    ImGui::SetNextItemWidth(200.0f);
     if (ImGui::InputText("##search", packSearchText, IM_ARRAYSIZE(packSearchText))) {
         filtersChanged = true;
     }
@@ -202,7 +188,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
     // Difficulty filter
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(diffW);
+    ImGui::SetNextItemWidth(150.0f);
     const char* difficulties[] = {"All", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
     if (ImGui::BeginCombo("##difficulty", packDifficultyFilter.c_str())) {
         for (int i = 0; i < IM_ARRAYSIZE(difficulties); i++) {
@@ -220,7 +206,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
     // Shot count range filter
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(shotsW);
+    ImGui::SetNextItemWidth(150.0f);
     if (ImGui::SliderInt("Min Shots", &packMinShots, UI::TrainingPackUI::FILTER_MIN_SHOTS_MIN, UI::TrainingPackUI::FILTER_MIN_SHOTS_MAX)) {
         filtersChanged = true;
     }

@@ -25,6 +25,7 @@ public:
     bool UpdatePack(const std::string& code, const TrainingEntry& updatedPack);
     bool DeletePack(const std::string& code);
     void ToggleShuffleBag(const std::string& code);
+    void AddToShuffleBag(const std::string& code);
 
     // Filtering and sorting
     void FilterAndSortPacks(const std::string& searchText,

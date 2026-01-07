@@ -4,6 +4,7 @@
 #include "StatusMessage.h"
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 class SuiteSpot;
 
@@ -35,6 +36,11 @@ private:
     int lastPackCount = 0;
     std::vector<TrainingEntry> filteredPacks;
 
+    // Selection state
+    std::unordered_set<std::string> selectedPackCodes;
+    int lastSelectedRowIndex = -1;
+    bool packListInitialized = false;
+
     // Custom pack form state
     char customPackCode[20] = {0};       // XXXX-XXXX-XXXX-XXXX format
     char customPackName[128] = {0};
@@ -55,4 +61,6 @@ private:
     // Column sizing state
     std::vector<float> columnWidths;
     bool columnWidthsDirty = true;
+    bool columnWidthsInitialized = false;
+    float lastWindowWidth = 0.0f;
 };

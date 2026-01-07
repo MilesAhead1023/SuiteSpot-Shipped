@@ -10,6 +10,7 @@
 #include "UIHelpers.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <cstdio>
 
@@ -17,9 +18,10 @@
 namespace {
     bool SortableColumnHeader(const char* label, int columnIndex, int& currentSortColumn, bool& sortAscending) {
         // Display label with sort indicator if this column is active
+        // Use ASCII arrows (^ v) since Unicode triangles may not be in the font
         char buffer[256];
         if (currentSortColumn == columnIndex) {
-            snprintf(buffer, sizeof(buffer), "%s %s", label, sortAscending ? "▲" : "▼");
+            snprintf(buffer, sizeof(buffer), "%s %s", label, sortAscending ? "(asc)" : "(desc)");
         } else {
             snprintf(buffer, sizeof(buffer), "%s", label);
         }
@@ -217,7 +219,9 @@ void TrainingPackUI::RenderTrainingPackTab() {
     // Tag filter dropdown (second row)
     ImGui::SetNextItemWidth(UI::TrainingPackUI::TAG_FILTER_DROPDOWN_WIDTH);
 
-    if (!tagsInitialized || lastPackCount != packCount) {
+    bool packsSourceChanged = (lastPackCount != packCount);
+
+    if (!tagsInitialized || packsSourceChanged) {
         if (manager) {
             manager->BuildAvailableTags(availableTags);
         } else {
@@ -260,7 +264,7 @@ void TrainingPackUI::RenderTrainingPackTab() {
     // ===== FILTERED & SORTED PACK LIST (cached) =====
 
     // Rebuild filtered list only when needed
-    if (filtersChanged) {
+    if (filtersChanged || packsSourceChanged || !packListInitialized) {
         if (manager) {
             manager->FilterAndSortPacks(packSearchText, packDifficultyFilter, packTagFilter,
                 packMinShots, packSortColumn, packSortAscending, filteredPacks);
@@ -278,25 +282,143 @@ void TrainingPackUI::RenderTrainingPackTab() {
         
         // Flag to recalculate column widths
         columnWidthsDirty = true;
+        packListInitialized = true;
     }
 
     // Display filtered count
     ImGui::Text("Showing %d of %d packs", (int)filteredPacks.size(), packCount);
     ImGui::Spacing();
 
+    // ===== ACTION BAR =====
+    ImGui::Separator();
+    {
+        int numSelected = (int)selectedPackCodes.size();
+        
+        // Watch Video
+        bool canWatch = false;
+        std::string videoUrl = "";
+        bool singleSelection = numSelected == 1;
+        if (singleSelection) {
+             for (const auto& pack : filteredPacks) {
+                 if (selectedPackCodes.count(pack.code)) {
+                     videoUrl = pack.videoUrl;
+                     break;
+                 }
+             }
+             canWatch = !videoUrl.empty();
+        }
+
+        std::string watchLabel = "Watch Video";
+        if (singleSelection && !canWatch) watchLabel = "No Video";
+        
+        if (singleSelection && canWatch) {
+            if (ImGui::Button(watchLabel.c_str())) {
+                ShellExecuteA(NULL, "open", videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
+            }
+        } else {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::Button(watchLabel.c_str());
+            ImGui::PopStyleVar();
+        }
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open preview video for selected pack");
+
+        ImGui::SameLine();
+
+        // Load Pack
+        if (numSelected == 1) {
+            if (ImGui::Button("Load Pack")) {
+                for (const auto& pack : filteredPacks) {
+                    if (selectedPackCodes.count(pack.code)) {
+                         SuiteSpot* plugin = plugin_;
+                         std::string code = pack.code;
+                         std::string name = pack.name;
+                         plugin_->gameWrapper->SetTimeout([plugin, code, name](GameWrapper* gw) {
+                            std::string cmd = "load_training " + code;
+                            plugin->cvarManager->executeCommand(cmd);
+                            LOG("SuiteSpot: Loading training pack: " + name);
+                        }, 0.0f);
+                        break;
+                    }
+                }
+            }
+        } else {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::Button("Load Pack");
+            ImGui::PopStyleVar();
+        }
+
+        ImGui::SameLine();
+
+        // Add to Shuffle Bag
+        if (numSelected > 0) {
+            if (ImGui::Button("Add to Shuffle Bag")) {
+                if (plugin_->trainingPackMgr) {
+                    for (const auto& pack : filteredPacks) {
+                        if (selectedPackCodes.count(pack.code)) {
+                            plugin_->trainingPackMgr->AddToShuffleBag(pack.code);
+                        }
+                    }
+                }
+            }
+        } else {
+             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+             ImGui::Button("Add to Shuffle Bag");
+             ImGui::PopStyleVar();
+        }
+
+        ImGui::SameLine();
+
+        // Delete (Custom only)
+        if (numSelected > 0) {
+             if (ImGui::Button("Delete Custom Pack")) {
+                 if (plugin_->trainingPackMgr) {
+                     std::vector<std::string> toDelete;
+                     for(const auto& code : selectedPackCodes) toDelete.push_back(code);
+                     
+                     for(const auto& code : toDelete) {
+                         plugin_->trainingPackMgr->DeletePack(code);
+                     }
+                     selectedPackCodes.clear();
+                 }
+             }
+        } else {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::Button("Delete Custom Pack");
+            ImGui::PopStyleVar();
+        }
+
+        ImGui::SameLine();
+
+        // Clear Selection
+        if (numSelected > 0) {
+            if (ImGui::Button("Clear Selection")) {
+                selectedPackCodes.clear();
+            }
+        } else {
+            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            ImGui::Button("Clear Selection");
+            ImGui::PopStyleVar();
+        }
+    }
+
     // ===== TABLE WITH RESIZABLE COLUMNS (ImGui 1.75 Columns API) =====
     ImGui::Separator();
 
-    // Reduced columns to 6 (Removed Creator and Tags)
+    // Reduced columns to 5 (Removed Creator, Tags, Actions)
     ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns", true);
 
-    // Apply optimal column widths if dirty
-    if (columnWidthsDirty) {
+    // Only set initial column widths once, or when window width changes significantly
+    // This allows users to manually resize columns by dragging
+    float currentWindowWidth = ImGui::GetWindowContentRegionWidth();
+    bool windowResized = std::abs(currentWindowWidth - lastWindowWidth) > 50.0f;
+
+    if (!columnWidthsInitialized || windowResized) {
         CalculateOptimalColumnWidths();
-        for (int i = 0; i < 6 && i < (int)columnWidths.size(); i++) {
+        for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
             ImGui::SetColumnWidth(i, columnWidths[i]);
         }
-        columnWidthsDirty = false;
+        columnWidthsInitialized = true;
+        lastWindowWidth = currentWindowWidth;
     }
 
     // ===== HEADER ROW WITH SORT INDICATORS =====
@@ -332,10 +454,6 @@ void TrainingPackUI::RenderTrainingPackTab() {
     }
     ImGui::NextColumn();
 
-    // Actions column header (non-sortable)
-    ImGui::TextUnformatted("Actions");
-    ImGui::NextColumn();
-
     ImGui::Separator();
 
     // ===== RENDER PACK ROWS =====
@@ -348,12 +466,26 @@ void TrainingPackUI::RenderTrainingPackTab() {
         {
             const auto& pack = filteredPacks[row];
 
-            // Name column
-            ImGui::TextUnformatted(pack.name.c_str());
+            // Name column with Selection Logic
+            bool isSelected = selectedPackCodes.count(pack.code) > 0;
+            ImGui::PushID(pack.code.c_str());
+            
+            // SpanAllColumns allows clicking anywhere in the row
+            // Simple toggle-on-click behavior (Checklist style)
+            if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (isSelected) {
+                    selectedPackCodes.erase(pack.code);
+                } else {
+                    selectedPackCodes.insert(pack.code);
+                }
+                lastSelectedRowIndex = row;
+            }
+            ImGui::PopID();
+
             if (ImGui::IsItemHovered()) {
                 std::string tooltip = "";
                 if (!pack.staffComments.empty()) tooltip += pack.staffComments + "\n";
-                if (!pack.creator.empty()) tooltip += "Creator: " + pack.creator + "\n"; // Moved creator to tooltip
+                if (!pack.creator.empty()) tooltip += "Creator: " + pack.creator + "\n";
                 if (!pack.tags.empty()) {
                     tooltip += "Tags: ";
                     for (size_t i = 0; i < pack.tags.size(); i++) {
@@ -388,78 +520,6 @@ void TrainingPackUI::RenderTrainingPackTab() {
 
             // Plays column
             ImGui::Text("%d", pack.plays);
-            ImGui::NextColumn();
-
-            // Actions column
-
-            // Watch Video button
-            if (!pack.videoUrl.empty()) {
-                std::string watchLabel = "Watch##" + std::to_string(row);
-                if (ImGui::SmallButton(watchLabel.c_str())) {
-                    ShellExecuteA(NULL, "open", pack.videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
-                }
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Watch preview video");
-                }
-                ImGui::SameLine();
-            }
-
-            // Load Now button
-            std::string loadLabel = "Load##" + std::to_string(row);
-            if (ImGui::SmallButton(loadLabel.c_str())) {
-                SuiteSpot* plugin = plugin_;
-                plugin_->gameWrapper->SetTimeout([plugin, pack](GameWrapper* gw) {
-                    std::string cmd = "load_training " + pack.code;
-                    plugin->cvarManager->executeCommand(cmd);
-                    LOG("SuiteSpot: Loading training pack: " + pack.name);
-                }, 0.0f);
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Load this pack now");
-            }
-
-            ImGui::SameLine();
-
-            // Add to Shuffle button with visual feedback
-            std::string shuffleLabel = "+Shuffle##" + std::to_string(row);
-            bool inShuffleBag = pack.inShuffleBag;
-
-            if (inShuffleBag) {
-                ImGui::PushStyleColor(ImGuiCol_Button, UI::TrainingPackUI::IN_SHUFFLE_BUTTON_BG_COLOR);
-            }
-
-            if (ImGui::SmallButton(shuffleLabel.c_str())) {
-                if (plugin_->trainingPackMgr) {
-                    plugin_->trainingPackMgr->ToggleShuffleBag(pack.code);
-                }
-            }
-
-            if (inShuffleBag) {
-                ImGui::PopStyleColor();
-            }
-
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(inShuffleBag ? "Remove from shuffle bag" : "Add to shuffle bag");
-            }
-
-            // Delete button
-            if (pack.source == "custom") {
-                ImGui::SameLine();
-                std::string deleteLabel = "X##del" + std::to_string(row);
-                ImGui::PushStyleColor(ImGuiCol_Button, UI::TrainingPackUI::DELETE_BUTTON_BG_COLOR);
-                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, UI::TrainingPackUI::DELETE_BUTTON_HOVER_COLOR);
-                if (ImGui::SmallButton(deleteLabel.c_str())) {
-                    if (plugin_->trainingPackMgr) {
-                        plugin_->trainingPackMgr->DeletePack(pack.code);
-                        LOG("SuiteSpot: Deleted custom pack: " + pack.name);
-                    }
-                }
-                ImGui::PopStyleColor(2);
-                if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("Delete this custom pack");
-                }
-            }
-
             ImGui::NextColumn();
         }
     }
@@ -629,36 +689,23 @@ void TrainingPackUI::RenderCustomPackForm() {
 }
 
 void TrainingPackUI::CalculateOptimalColumnWidths() {
-    // Initialize widths with header widths + padding
-    columnWidths.assign(UI::TrainingPackUI::TABLE_COLUMN_COUNT, UI::TrainingPackUI::TABLE_MIN_COLUMN_WIDTH); // Minimum base width
+    // Dynamic proportional widths based on full window content width
+    // Use GetWindowContentRegionWidth() instead of GetContentRegionAvail().x
+    // to get the full width regardless of cursor position
+    float availWidth = ImGui::GetWindowContentRegionWidth();
 
-    auto UpdateMax = [&](int col, const char* text) {
-        float w = ImGui::CalcTextSize(text).x + UI::TrainingPackUI::TABLE_COLUMN_PADDING; // + Padding
-        if (w > columnWidths[col]) columnWidths[col] = w;
-    };
+    // Column proportions: Name (40%), Difficulty (20%), Shots (15%), Likes (10%), Plays (15%)
+    columnWidths.resize(5);
+    columnWidths[0] = availWidth * 0.40f;  // Name
+    columnWidths[1] = availWidth * 0.20f;  // Difficulty
+    columnWidths[2] = availWidth * 0.15f;  // Shots
+    columnWidths[3] = availWidth * 0.10f;  // Likes
+    columnWidths[4] = availWidth * 0.15f;  // Plays
 
-    // Headers
-    UpdateMax(0, "Name");
-    UpdateMax(1, "Difficulty");
-    UpdateMax(2, "Shots");
-    UpdateMax(3, "Likes");
-    UpdateMax(4, "Plays");
-    UpdateMax(5, "Actions");
-
-    // Content
-    for (const auto& pack : filteredPacks) {
-        UpdateMax(0, pack.name.c_str());
-        UpdateMax(1, pack.difficulty.c_str());
-        UpdateMax(2, std::to_string(pack.shotCount).c_str());
-        UpdateMax(3, std::to_string(pack.likes).c_str());
-        UpdateMax(4, std::to_string(pack.plays).c_str());
-        
-        // Actions column approximation
-        // Watch (40) + Spacing + Load (40) + Spacing + +Shuffle (60) + Spacing + Padding
-        float actionsW = UI::TrainingPackUI::TABLE_ACTIONS_COLUMN_WIDTH;
-        if (actionsW > columnWidths[5]) columnWidths[5] = actionsW;
-    }
-
-    // Safety clamp for very long names
-    if (columnWidths[0] > UI::TrainingPackUI::TABLE_NAME_COLUMN_MAX_WIDTH) columnWidths[0] = UI::TrainingPackUI::TABLE_NAME_COLUMN_MAX_WIDTH;
+    // Apply minimum widths to ensure readability
+    if (columnWidths[0] < 150.0f) columnWidths[0] = 150.0f;
+    if (columnWidths[1] < 100.0f) columnWidths[1] = 100.0f;
+    if (columnWidths[2] < 60.0f) columnWidths[2] = 60.0f;
+    if (columnWidths[3] < 60.0f) columnWidths[3] = 60.0f;
+    if (columnWidths[4] < 60.0f) columnWidths[4] = 60.0f;
 }

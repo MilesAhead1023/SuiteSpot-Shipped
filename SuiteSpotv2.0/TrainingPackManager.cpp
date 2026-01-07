@@ -501,6 +501,25 @@ void TrainingPackManager::ToggleShuffleBag(const std::string& code)
     }
 }
 
+void TrainingPackManager::AddToShuffleBag(const std::string& code)
+{
+    for (auto& pack : RLTraining) {
+        if (pack.code == code) {
+            if (!pack.inShuffleBag) {
+                pack.inShuffleBag = true;
+
+                // Auto-save
+                if (!currentFilePath.empty()) {
+                    SavePacksToFile(currentFilePath);
+                }
+
+                LOG("SuiteSpot: Added pack to shuffle bag: {}", pack.name);
+            }
+            return;
+        }
+    }
+}
+
 std::vector<TrainingEntry> TrainingPackManager::GetShuffleBagPacks() const
 {
     std::vector<TrainingEntry> shuffleBag;

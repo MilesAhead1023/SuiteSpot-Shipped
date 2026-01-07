@@ -309,7 +309,11 @@ void TrainingPackUI::RenderTrainingPackTab() {
         }
 
         std::string watchLabel = "Watch Video";
-        if (singleSelection && !canWatch) watchLabel = "No Video";
+        if (numSelected > 1) {
+            watchLabel = "No Video";
+        } else if (singleSelection && !canWatch) {
+            watchLabel = "No Video";
+        }
         
         if (singleSelection && canWatch) {
             if (ImGui::Button(watchLabel.c_str())) {
@@ -466,22 +470,30 @@ void TrainingPackUI::RenderTrainingPackTab() {
         {
             const auto& pack = filteredPacks[row];
 
-            // Name column with Selection Logic
-            bool isSelected = selectedPackCodes.count(pack.code) > 0;
-            ImGui::PushID(pack.code.c_str());
+                        // Name column with Selection Logic
+                        bool isSelected = selectedPackCodes.count(pack.code) > 0;
+                        ImGui::PushID(pack.code.c_str());
             
-            // SpanAllColumns allows clicking anywhere in the row
-            // Simple toggle-on-click behavior (Checklist style)
-            if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
-                if (isSelected) {
-                    selectedPackCodes.erase(pack.code);
-                } else {
-                    selectedPackCodes.insert(pack.code);
-                }
-                lastSelectedRowIndex = row;
-            }
-            ImGui::PopID();
-
+                        // SpanAllColumns allows clicking anywhere in the row
+                        // Simple toggle-on-click behavior (Checklist style)
+                        if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
+                            if (isSelected) {
+                                selectedPackCodes.erase(pack.code);
+                            } else {
+                                selectedPackCodes.insert(pack.code);
+                                
+                                // Sync with AutoLoadFeature by updating the global index
+                                // This ensures match end logic respects the last selected map
+                                for (int i = 0; i < (int)RLTraining.size(); ++i) {
+                                    if (RLTraining[i].code == pack.code) {
+                                        plugin_->cvarManager->getCvar("suitespot_current_training_index").setValue(i);
+                                        break;
+                                    }
+                                }
+                            }
+                            lastSelectedRowIndex = row;
+                        }
+                        ImGui::PopID();
             if (ImGui::IsItemHovered()) {
                 std::string tooltip = "";
                 if (!pack.staffComments.empty()) tooltip += pack.staffComments + "\n";

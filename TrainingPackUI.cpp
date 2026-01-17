@@ -433,11 +433,8 @@ void TrainingPackUI::Render() {
         }
     }
 
-    // ===== TABLE WITH RESIZABLE COLUMNS (ImGui 1.75 Columns API) =====
+    // ===== TABLE WITH RESIZABLE COLUMNS & FROZEN HEADER =====
     ImGui::Separator();
-
-    // Reduced columns to 5 (Removed Creator, Tags, Actions)
-    ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns", true);
 
     // Only set initial column widths once, or when window width changes significantly
     // This allows users to manually resize columns by dragging
@@ -446,15 +443,16 @@ void TrainingPackUI::Render() {
 
     if (!columnWidthsInitialized || windowResized) {
         CalculateOptimalColumnWidths();
-        for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
-            ImGui::SetColumnWidth(i, columnWidths[i]);
-        }
         columnWidthsInitialized = true;
         lastWindowWidth = currentWindowWidth;
     }
 
-    // ===== HEADER ROW WITH SORT INDICATORS =====
-    ImGui::Separator();
+    // ===== FROZEN HEADER ROW =====
+    ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns_Header", true);
+
+    for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
+        ImGui::SetColumnWidth(i, columnWidths[i]);
+    }
 
     // Name column header (Sort ID 0)
     if (SortableColumnHeader("Name", 0, packSortColumn, packSortAscending)) {
@@ -486,9 +484,18 @@ void TrainingPackUI::Render() {
     }
     ImGui::NextColumn();
 
+    ImGui::Columns(1);
     ImGui::Separator();
 
-    // ===== RENDER PACK ROWS =====
+    // ===== SCROLLABLE PACK ROWS =====
+    ImGui::BeginChild("PackTable", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()), false, ImGuiWindowFlags_HorizontalScrollbar);
+
+    ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns_Body", true);
+
+    for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
+        ImGui::SetColumnWidth(i, columnWidths[i]);
+    }
+
     ImGuiListClipper clipper;
     clipper.Begin((int)filteredPacks.size());
 
@@ -498,33 +505,33 @@ void TrainingPackUI::Render() {
         {
             const auto& pack = filteredPacks[row];
 
-                        // Name column with Selection Logic
-                        bool isSelected = selectedPackCodes.count(pack.code) > 0;
-                        ImGui::PushID(pack.code.c_str());
-            
-                        // SpanAllColumns allows clicking anywhere in the row
-                        // Simple toggle-on-click behavior (Checklist style)
-                        if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
-                            if (isSelected) {
-                                selectedPackCodes.erase(pack.code);
-                            } else {
-                                selectedPackCodes.insert(pack.code);
-                                
-                                // Sync with AutoLoadFeature by updating the global index
-                                // This ensures match end logic respects the last selected map
-                                for (int i = 0; i < (int)RLTraining.size(); ++i) {
-                                    if (RLTraining[i].code == pack.code) {
-                                        SuiteSpot* p = plugin_;
-                                        p->gameWrapper->SetTimeout([p, i](GameWrapper* gw) {
-                                            p->cvarManager->getCvar("suitespot_current_training_index").setValue(i);
-                                        }, 0.0f);
-                                        break;
-                                    }
-                                }
-                            }
-                            lastSelectedRowIndex = row;
+            // Name column with Selection Logic
+            bool isSelected = selectedPackCodes.count(pack.code) > 0;
+            ImGui::PushID(pack.code.c_str());
+
+            // SpanAllColumns allows clicking anywhere in the row
+            // Simple toggle-on-click behavior (Checklist style)
+            if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (isSelected) {
+                    selectedPackCodes.erase(pack.code);
+                } else {
+                    selectedPackCodes.insert(pack.code);
+
+                    // Sync with AutoLoadFeature by updating the global index
+                    // This ensures match end logic respects the last selected map
+                    for (int i = 0; i < (int)RLTraining.size(); ++i) {
+                        if (RLTraining[i].code == pack.code) {
+                            SuiteSpot* p = plugin_;
+                            p->gameWrapper->SetTimeout([p, i](GameWrapper* gw) {
+                                p->cvarManager->getCvar("suitespot_current_training_index").setValue(i);
+                            }, 0.0f);
+                            break;
                         }
-                        ImGui::PopID();
+                    }
+                }
+                lastSelectedRowIndex = row;
+            }
+            ImGui::PopID();
             if (ImGui::IsItemHovered()) {
                 std::string tooltip = "";
                 if (!pack.staffComments.empty()) tooltip += pack.staffComments + "\n";
@@ -575,7 +582,7 @@ void TrainingPackUI::Render() {
 
     // End columns
     ImGui::Columns(1);
-    ImGui::Separator();
+    ImGui::EndChild();
 
     ImGui::Spacing();
     ImGui::End();

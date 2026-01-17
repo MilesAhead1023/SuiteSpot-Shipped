@@ -1,0 +1,54 @@
+#pragma once
+#include "MapList.h"
+#include "logging.h"
+#include <filesystem>
+#include <string>
+#include <vector>
+
+/*
+ * ======================================================================================
+ * MAP MANAGER: THE MAP FINDER
+ * ======================================================================================
+ * 
+ * WHAT IS THIS?
+ * This class is responsible for finding maps on your computer.
+ * 
+ * WHY IS IT HERE?
+ * Rocket League (and BakkesMod) don't automatically know where all your Workshop maps are,
+ * especially if you downloaded them manually or use a custom folder. We need to scan
+ * the disk to find them.
+ * 
+ * HOW DOES IT WORK?
+ * 1. `DiscoverWorkshopInDir()`: You give it a folder (like "C:\MyMaps"), and it looks for
+ *    files ending in `.upk` or `.udk`.
+ * 2. It creates a list of these maps (`WorkshopEntry`) so the UI can display them.
+ * 3. It helps other parts of the plugin figure out where the "Data" folder is.
+ */
+
+class MapManager
+{
+public:
+    MapManager();
+
+    // Finds the main "Data" folder where we save our stuff
+    std::filesystem::path GetDataRoot() const;
+    
+    // Finds the specific folder for SuiteSpot data
+    std::filesystem::path GetSuiteTrainingDir() const;
+    
+    // Makes sure these folders actually exist (creates them if missing)
+    void EnsureDataDirectories() const;
+
+    // Workshop Helpers
+    std::filesystem::path GetWorkshopLoaderConfigPath() const;
+    std::filesystem::path ResolveConfiguredWorkshopRoot() const;
+    
+    // The big scanner: Finds maps in a folder and adds them to the list
+    void DiscoverWorkshopInDir(const std::filesystem::path& dir, std::vector<WorkshopEntry>& outList) const;
+    
+    // Refreshes the list of maps
+    void LoadWorkshopMaps(std::vector<WorkshopEntry>& outList, int& currentIndex);
+
+private:
+    std::filesystem::path dataRoot;
+};

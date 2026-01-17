@@ -1,0 +1,398 @@
+#include "pch.h"
+#include "SuiteSpot.h"
+#include "MapList.h"
+#include "MapManager.h"
+#include "SettingsSync.h"
+#include "AutoLoadFeature.h"
+#include "TrainingPackManager.h"
+#include "SettingsUI.h"
+#include "TrainingPackUI.h"
+#include "LoadoutUI.h"
+#include <fstream>
+#include <string>
+#include <algorithm>
+#include <cctype>
+#include <unordered_set>
+#include <random>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
+#include <cmath>
+
+/*
+ * ======================================================================================
+ * SUITESPOT: IMPLEMENTATION DETAILS
+ * ======================================================================================
+ * 
+ * This file contains the actual code for the plugin's lifecycle.
+ * 
+ * KEY SECTIONS:
+ * 1. PERSISTENCE HELPERS: Tiny functions that ask the Managers for data paths (like where 
+ *    to find Workshop maps).
+ * 2. EVENT HOOKS: The `GameEndedEvent` function is the heartbeat of the automation. 
+ *    It waits for the match to finish, then triggers the `AutoLoadFeature`.
+ * 3. LOADING (onLoad):
+ *    - Creates all the "Managers" (tools for Maps, Settings, Packs).
+ *    - Registers the "Browser Window" logic (via togglemenu).
+ *    - Hooks into the game events.
+ * 4. RENDERING:
+ *    - Handled natively by BakkesMod's PluginWindow interface.
+ *    - Uses a custom OnClose override to ensure standalone windows stay persistent
+ *      when the main settings menu is closed.
+ */
+
+// ===== SuiteSpot persistence helpers =====
+std::filesystem::path SuiteSpot::GetDataRoot() const {
+    return mapManager ? mapManager->GetDataRoot() : std::filesystem::path();
+}
+
+std::filesystem::path SuiteSpot::GetSuiteTrainingDir() const {
+    return mapManager ? mapManager->GetSuiteTrainingDir() : std::filesystem::path();
+}
+
+void SuiteSpot::EnsureDataDirectories() const {
+    if (mapManager) {
+        mapManager->EnsureDataDirectories();
+    }
+}
+
+std::filesystem::path SuiteSpot::GetWorkshopLoaderConfigPath() const {
+    return mapManager ? mapManager->GetWorkshopLoaderConfigPath() : std::filesystem::path();
+}
+
+std::filesystem::path SuiteSpot::ResolveConfiguredWorkshopRoot() const {
+    return mapManager ? mapManager->ResolveConfiguredWorkshopRoot() : std::filesystem::path();
+}
+
+void SuiteSpot::DiscoverWorkshopInDir(const std::filesystem::path& dir) {
+    if (mapManager) {
+        mapManager->DiscoverWorkshopInDir(dir, RLWorkshop);
+    }
+}
+
+void SuiteSpot::LoadWorkshopMaps() {
+    if (mapManager) {
+        int index = settingsSync ? settingsSync->GetCurrentWorkshopIndex() : 0;
+        mapManager->LoadWorkshopMaps(RLWorkshop, index);
+        if (settingsSync) {
+            settingsSync->SetCurrentWorkshopIndex(index);
+        }
+    }
+}
+
+// ===== TRAINING PACK SCRAPER INTEGRATION =====
+bool SuiteSpot::IsEnabled() const {
+    return settingsSync ? settingsSync->IsEnabled() : false;
+}
+
+bool SuiteSpot::IsAutoQueueEnabled() const {
+    return settingsSync ? settingsSync->IsAutoQueue() : false;
+}
+
+bool SuiteSpot::IsTrainingShuffleEnabled() const {
+    return settingsSync ? settingsSync->IsTrainingShuffleEnabled() : false;
+}
+
+int SuiteSpot::GetMapType() const {
+    return settingsSync ? settingsSync->GetMapType() : 0;
+}
+
+int SuiteSpot::GetDelayQueueSec() const {
+    return settingsSync ? settingsSync->GetDelayQueueSec() : 0;
+}
+
+int SuiteSpot::GetDelayFreeplaySec() const {
+    return settingsSync ? settingsSync->GetDelayFreeplaySec() : 0;
+}
+
+int SuiteSpot::GetDelayTrainingSec() const {
+    return settingsSync ? settingsSync->GetDelayTrainingSec() : 0;
+}
+
+int SuiteSpot::GetDelayWorkshopSec() const {
+    return settingsSync ? settingsSync->GetDelayWorkshopSec() : 0;
+}
+
+int SuiteSpot::GetCurrentIndex() const {
+    return settingsSync ? settingsSync->GetCurrentIndex() : 0;
+}
+
+int SuiteSpot::GetCurrentTrainingIndex() const {
+    return settingsSync ? settingsSync->GetCurrentTrainingIndex() : 0;
+}
+
+int SuiteSpot::GetCurrentWorkshopIndex() const {
+    return settingsSync ? settingsSync->GetCurrentWorkshopIndex() : 0;
+}
+
+int SuiteSpot::GetTrainingBagSize() const {
+    return settingsSync ? settingsSync->GetTrainingBagSize() : 0;
+}
+
+std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
+    return GetSuiteTrainingDir() / "prejump_packs.json";
+}
+
+bool SuiteSpot::IsTrainingPackCacheStale() const {
+    return trainingPackMgr ? trainingPackMgr->IsCacheStale(GetTrainingPacksPath()) : true;
+}
+
+std::string SuiteSpot::FormatLastUpdatedTime() const {
+    return trainingPackMgr ? trainingPackMgr->GetLastUpdatedTime(GetTrainingPacksPath()) : "Unknown";
+}
+
+void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath) {
+    if (trainingPackMgr) {
+        trainingPackMgr->LoadPacksFromFile(filePath);
+    }
+}
+
+// #detailed comments: ScrapeAndLoadTrainingPacks
+// Purpose: Launches an external PowerShell script to scrape online source
+// and write a JSON cache to disk. This is intentionally performed in a
+// background task (scheduled via gameWrapper->SetTimeout) to avoid any
+// blocking on the UI/game thread.
+//
+// Safety and behavior notes:
+//  - scrapingInProgress is a guard flag ensuring only one scrape
+//    runs at a time. It is set before scheduling and cleared when the
+//    background process finishes.
+//  - The implementation uses system() and relies on the platform's
+//    default process creation semantics; this must remain as-is for
+//    portability with existing deployments. If this is changed to a
+//    more advanced process API, ensure identical detach/exit semantics.
+//  - The script path is hard-coded to the repo dev path; callers should
+//    ensure that the script is present when invoking this routine.
+//
+// DO NOT CHANGE: Modifying timing (the 0.1f scheduling) or the way the
+// result is checked could resurface race conditions that previously
+// required this exact coordination.
+void SuiteSpot::ScrapeAndLoadTrainingPacks() {
+    if (trainingPackMgr) {
+        trainingPackMgr->ScrapeAndLoadTrainingPacks(GetTrainingPacksPath(), gameWrapper);
+    }
+}
+
+
+using namespace std;
+using namespace std::chrono_literals;
+
+BAKKESMOD_PLUGIN(SuiteSpot, "SuiteSpot", plugin_version, PLUGINTYPE_FREEPLAY)
+
+shared_ptr<CVarManagerWrapper> _globalCvarManager;
+
+void SuiteSpot::LoadHooks() {
+    // ===== MATCH EVENT HOOKS =====
+    // Re-queue/transition at match end or when main menu appears after a match
+    gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
+    gameWrapper->HookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
+}
+
+// #detailed comments: GameEndedEvent
+// Purpose: Called by hooked game events when a match ends. The function
+// runs the auto-load logic if enabled.
+//
+// Timing and ordering notes:
+//  - The postMatch.start timestamp is recorded with steady_clock so
+//    overlay lifetime calculations are not affected by system clock
+//    adjustments.
+//
+// DO NOT CHANGE: The safeExecute lambda intentionally accepts a delay
+// (in seconds) and either executes immediately or schedules via
+// gameWrapper->SetTimeout. Changing its semantics will alter when
+// external commands (load_freeplay, queue, etc.) are run relative to
+// overlay presentation.
+void SuiteSpot::GameEndedEvent(std::string name) {
+    LOG("SuiteSpot: GameEndedEvent triggered by hook: {}", name);
+    
+    // 1. Run Auto-Load/Queue Logic first (Independent of overlay)
+    if (autoLoadFeature && settingsSync) {
+        LOG("SuiteSpot: Triggering AutoLoadFeature::OnMatchEnded");
+        // Get shuffle bag from TrainingPackManager
+        std::vector<TrainingEntry> shuffleBag = trainingPackMgr ? trainingPackMgr->GetShuffleBagPacks() : std::vector<TrainingEntry>();
+        autoLoadFeature->OnMatchEnded(gameWrapper, cvarManager, RLMaps, RLTraining, RLWorkshop,
+            shuffleBag, *settingsSync);
+    }
+}
+
+void SuiteSpot::onLoad() {
+    _globalCvarManager = cvarManager;
+    LOG("SuiteSpot loaded");
+    mapManager = new MapManager();
+    settingsSync = new SettingsSync();
+    autoLoadFeature = new AutoLoadFeature();
+    trainingPackMgr = new TrainingPackManager();
+    settingsUI = new SettingsUI(this);
+    trainingPackUI = std::make_shared<TrainingPackUI>(this);
+    loadoutUI = new LoadoutUI(this);
+
+    EnsureDataDirectories();
+    LoadWorkshopMaps();
+    
+    // Initialize LoadoutManager
+    loadoutManager = std::make_unique<LoadoutManager>(gameWrapper);
+    LOG("SuiteSpot: LoadoutManager initialized");
+
+    // Check Pack cache and load if available
+
+    if (trainingPackMgr) {
+        if (!std::filesystem::exists(GetTrainingPacksPath())) {
+            LOG("SuiteSpot: No Pack cache found. Schedule scraping on next opportunity.");
+            // Will be scraped on first Settings render or user request
+        } else {
+            // Load existing Pack cache
+            trainingPackMgr->LoadPacksFromFile(GetTrainingPacksPath());
+            LOG("SuiteSpot: Pack cache loaded");
+        }
+    }
+    
+    LoadHooks();
+
+    if (settingsSync) {
+        settingsSync->RegisterAllCVars(cvarManager);
+        // Shuffle bag count is now managed by TrainingPackManager
+        int shuffleBagSize = trainingPackMgr ? trainingPackMgr->GetShuffleBagCount() : 0;
+        settingsSync->UpdateTrainingBagSize(shuffleBagSize, cvarManager);
+    }
+    
+    LOG("SuiteSpot: Plugin initialization complete");
+}
+
+void SuiteSpot::onUnload() {
+    // Match events
+    gameWrapper->UnhookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded");
+    gameWrapper->UnhookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded");
+
+    delete settingsUI;
+    settingsUI = nullptr;
+    trainingPackUI = nullptr;
+    delete loadoutUI;
+    loadoutUI = nullptr;
+    delete trainingPackMgr;
+    trainingPackMgr = nullptr;
+    delete autoLoadFeature;
+    autoLoadFeature = nullptr;
+    delete settingsSync;
+    settingsSync = nullptr;
+    delete mapManager;
+    mapManager = nullptr;
+    LOG("SuiteSpot unloaded");
+}
+
+void SuiteSpot::Render() {
+
+    if (isBrowserOpen && trainingPackUI) {
+
+        trainingPackUI->Render();
+
+    }
+
+}
+
+
+
+std::string SuiteSpot::GetMenuName() {
+
+    return "suitespot_browser";
+
+}
+
+
+
+std::string SuiteSpot::GetMenuTitle() {
+
+    return "SuiteSpot Training Browser";
+
+}
+
+
+
+void SuiteSpot::SetImGuiContext(uintptr_t ctx) {
+
+
+
+    if (ctx) {
+
+
+
+        imgui_ctx = ctx;
+
+
+
+        ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
+
+
+
+    }
+
+
+
+}
+
+
+
+
+
+
+
+bool SuiteSpot::ShouldBlockInput() {
+
+    return isBrowserOpen;
+
+}
+
+
+
+bool SuiteSpot::IsActiveOverlay() {
+
+    return isBrowserOpen;
+
+}
+
+
+
+void SuiteSpot::OnOpen() {
+
+    LOG("SuiteSpot: OnOpen called");
+
+    isBrowserOpen = true;
+
+    if (trainingPackUI) {
+
+        trainingPackUI->SetOpen(true);
+
+    }
+
+}
+
+
+
+void SuiteSpot::OnClose() {
+
+
+
+    LOG("SuiteSpot: OnClose called (Ignoring state change to keep browser open)");
+
+
+
+    // isBrowserOpen = false; // Disabled to prevent F2 from closing browser
+
+
+
+    // if (trainingPackUI) {
+
+
+
+    //    trainingPackUI->SetOpen(false);
+
+
+
+    // }
+
+
+
+}
+
+
+
+

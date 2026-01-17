@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{2d54c860-fd62-45f7-b9fe-dd5f50832816}</ProjectGuid>
+    <RootNamespace>SuiteSpot</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="BakkesMod.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="BakkesMod.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)plugins\</OutDir>
+    <IntDir>$(SolutionDir)build\.intermediates\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)plugins\</OutDir>
+    <IntDir>$(SolutionDir)build\.intermediates\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <DisableSpecificWarnings>4244;4267;4305;4099;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <AdditionalIncludeDirectories>$(ProjectDir);C:\Users\bmile\vcpkg\installed\x64-windows\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <DisableSpecificWarnings>4244;4267;4305;4099;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+    <PreBuildEvent>
+      <Command>powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File CompiledScripts/update_version.ps1 "./version.h"</Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>@echo off
+setlocal
+set "BM=%25AppData%25\bakkesmod\bakkesmod"
+set "PATCH=%25BM%25\bakkesmodsdk\bakkesmod-patch.exe"
+set "DLL=$(TargetPath)"
+mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
+mkdir "%25BM%25\data\SuiteSpot\SuiteTraining" 2&gt;nul
+mkdir "%25BM%25\plugins\settings" 2&gt;nul
+if not exist "%25DLL%25" (
+  echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
+  exit /b 1
+)
+copy /y "$(ProjectDir)CompiledScripts/scrape_prejump.ps1" "%25BM%25\data\SuiteSpot\scrape_prejump.ps1"
+if not exist "%25PATCH%25" (
+  echo [PostBuild] WARN: Patcher not found: "%25PATCH%25"
+  echo [PostBuild] Skipping patch step.
+  exit /b 0
+)
+"%25PATCH%25" "%25DLL%25"
+if errorlevel 1 (
+  echo [PostBuild] ERROR: bakkesmod-patch.exe failed.
+  exit /b 1
+)
+echo [PostBuild] Success.
+exit /b 0</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="imgui\imgui.cpp" />
+    <ClCompile Include="imgui\imguivariouscontrols.cpp" />
+    <ClCompile Include="imgui\imgui_additions.cpp" />
+    <ClCompile Include="imgui\imgui_demo.cpp" />
+    <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="imgui\imgui_rangeslider.cpp" />
+    <ClCompile Include="imgui\imgui_searchablecombo.cpp" />
+    <ClCompile Include="IMGUI\imgui_stdlib.cpp" />
+    <ClCompile Include="imgui\imgui_timeline.cpp" />
+    <ClCompile Include="imgui\imgui_widgets.cpp" />
+    <ClCompile Include="AutoLoadFeature.cpp" />
+    <ClCompile Include="LoadoutManager.cpp" />
+    <ClCompile Include="MapManager.cpp" />
+    <ClCompile Include="MapList.cpp" />
+    <ClCompile Include="TrainingPackManager.cpp" />
+    <ClCompile Include="TrainingPackUI.cpp" />
+    <ClCompile Include="LoadoutUI.cpp" />
+    <ClCompile Include="SettingsUI.cpp" />
+    <ClCompile Include="SettingsSync.cpp" />
+    <ClCompile Include="StatusMessageUI.cpp" />
+    <ClCompile Include="HelpersUI.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="SuiteSpot.cpp" />
+    <ClCompile Include="Source.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="imgui\imconfig.h" />
+    <ClInclude Include="imgui\imgui.h" />
+    <ClInclude Include="imgui\imguivariouscontrols.h" />
+    <ClInclude Include="imgui\imgui_additions.h" />
+    <ClInclude Include="imgui\imgui_impl_dx11.h" />
+    <ClInclude Include="imgui\imgui_impl_win32.h" />
+    <ClInclude Include="imgui\imgui_internal.h" />
+    <ClInclude Include="imgui\imgui_rangeslider.h" />
+    <ClInclude Include="imgui\imgui_searchablecombo.h" />
+    <ClInclude Include="IMGUI\imgui_stdlib.h" />
+    <ClInclude Include="imgui\imgui_timeline.h" />
+    <ClInclude Include="imgui\imstb_rectpack.h" />
+    <ClInclude Include="imgui\imstb_textedit.h" />
+    <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="AutoLoadFeature.h" />
+    <ClInclude Include="LoadoutManager.h" />
+    <ClInclude Include="logging.h" />
+    <ClInclude Include="MapManager.h" />
+    <ClInclude Include="MapList.h" />
+    <ClInclude Include="TrainingPackManager.h" />
+    <ClInclude Include="TrainingPackUI.h" />
+    <ClInclude Include="LoadoutUI.h" />
+    <ClInclude Include="SettingsUI.h" />
+    <ClInclude Include="SettingsSync.h" />
+    <ClInclude Include="StatusMessageUI.h" />
+    <ClInclude Include="ConstantsUI.h" />
+    <ClInclude Include="HelpersUI.h" />
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="SuiteSpot.h" />
+    <ClInclude Include="version.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SuiteSpot.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".githooks\pre-commit" />
+    <None Include=".githooks\pre-push" />
+    <None Include=".github\CODEOWNERS" />
+    <None Include=".github\ISSUE_TEMPLATE\bug_report.md" />
+    <None Include=".github\ISSUE_TEMPLATE\feature_request.md" />
+    <None Include=".github\pull_request_template.md" />
+    <None Include=".github\workflows\branch-flow.yml" />
+    <None Include="README.md" />
+    <None Include="TODO.md" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
+

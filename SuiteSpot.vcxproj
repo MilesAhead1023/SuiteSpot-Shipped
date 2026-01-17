@@ -99,13 +99,13 @@ set "BM=%25AppData%25\bakkesmod\bakkesmod"
 set "PATCH=%25BM%25\bakkesmodsdk\bakkesmod-patch.exe"
 set "DLL=$(TargetPath)"
 mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
-mkdir "%25BM%25\data\SuiteSpot\SuiteTraining" 2&gt;nul
+mkdir "%25BM%25\data\SuiteSpot\TrainingSuite" 2&gt;nul
 mkdir "%25BM%25\plugins\settings" 2&gt;nul
 if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
   exit /b 1
 )
-copy /y "$(ProjectDir)CompiledScripts/scrape_prejump.ps1" "%25BM%25\data\SuiteSpot\scrape_prejump.ps1"
+copy /y "$(ProjectDir)CompiledScripts\PackGrabber.ps1" "%25BM%25\data\SuiteSpot\PackGrabber.ps1"
 if not exist "%25PATCH%25" (
   echo [PostBuild] WARN: Patcher not found: "%25PATCH%25"
   echo [PostBuild] Skipping patch step.

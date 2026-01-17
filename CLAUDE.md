@@ -32,8 +32,8 @@ SuiteSpot is a BakkesMod plugin for Rocket League that automates game mode trans
 ## Build Commands
 
 ```bash
-# Build from command line (requires Visual Studio 2022)
-msbuild SuiteSpot.sln /p:Configuration=Release /p:Platform=x64
+# Build from command line (VS2022 Professional)
+"/c/Program Files/Microsoft Visual Studio/2022/Professional/MSBuild/Current/Bin/MSBuild.exe" SuiteSpot.sln -p:Configuration=Release -p:Platform=x64 -v:minimal
 
 # Or open SuiteSpot.sln in Visual Studio and build (F7)
 ```

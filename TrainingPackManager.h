@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <mutex>
 
 /*
  * ======================================================================================
@@ -74,6 +75,7 @@ private:
     void SavePacksToFile(const std::filesystem::path& filePath);
 
     std::vector<TrainingEntry> RLTraining;
+    mutable std::mutex packMutex;  // Protects RLTraining from concurrent access
     int packCount = 0;
     std::string lastUpdated = "Never";
     bool scrapingInProgress = false;

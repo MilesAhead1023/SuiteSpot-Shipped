@@ -1,8 +1,8 @@
 # SuiteSpot Prejump Training Pack Scraper
 # Scrapes all 2,301 training packs from prejump.com and exports as JSON
 #
-# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File scrape_prejump.ps1 -OutputPath "C:\path\to\output.json"
-# Default output: %APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\SuiteTraining\prejump_packs.json
+# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File PackGrabber.ps1 -OutputPath "C:\path\to\output.json"
+# Default output: %APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\prejump_packs.json
 #
 # Requirements:
 #   - PowerShell 5.0+ (included with Windows 10+)
@@ -15,7 +15,7 @@
 #   - Rate limit: 200ms between requests (polite scraping)
 
 param(
-    [string]$OutputPath = "$env:APPDATA\bakkesmod\bakkesmod\data\SuiteSpot\SuiteTraining\prejump_packs.json",
+    [string]$OutputPath = "$env:APPDATA\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\prejump_packs.json",
     [int]$TimeoutSec = 30,
     [switch]$QuietMode = $false
 )

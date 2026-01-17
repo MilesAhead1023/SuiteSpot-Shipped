@@ -280,13 +280,12 @@ void SuiteSpot::onUnload() {
 }
 
 void SuiteSpot::Render() {
+    if (!imgui_ctx) return;
+    ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(imgui_ctx));
 
     if (isBrowserOpen && trainingPackUI) {
-
         trainingPackUI->Render();
-
     }
-
 }
 
 

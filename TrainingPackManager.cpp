@@ -7,13 +7,17 @@
 #include <iomanip>
 #include <set>
 #include <sstream>
+#include <thread>
 
 void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePath)
 {
     if (!std::filesystem::exists(filePath)) {
         LOG("SuiteSpot: Pack cache file not found: {}", filePath.string());
-        RLTraining.clear();
-        packCount = 0;
+        {
+            std::lock_guard<std::mutex> lock(packMutex);
+            RLTraining.clear();
+            packCount = 0;
+        }
         lastUpdated = "Never";
         return;
     }
@@ -29,6 +33,7 @@ void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePat
         file >> jsonData;
         file.close();
 
+        std::lock_guard<std::mutex> lock(packMutex);
         RLTraining.clear();
 
         if (!jsonData.contains("packs") || !jsonData["packs"].is_array()) {
@@ -122,8 +127,11 @@ void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePat
 
     } catch (const std::exception& e) {
         LOG("SuiteSpot: Error loading training packs: {}", std::string(e.what()));
-        RLTraining.clear();
-        packCount = 0;
+        {
+            std::lock_guard<std::mutex> lock(packMutex);
+            RLTraining.clear();
+            packCount = 0;
+        }
     }
 }
 
@@ -174,11 +182,11 @@ void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path
     }
 
     auto dataFolder = gameWrapper->GetDataFolder();
-    auto scraperScript = dataFolder / "SuiteSpot" / "scrape_prejump.ps1";
+    auto scraperScript = dataFolder / "SuiteSpot" / "PackGrabber.ps1";
 
     if (!std::filesystem::exists(scraperScript)) {
         // Fallback to searching in the data root if not in SuiteSpot subfolder
-        scraperScript = dataFolder / "scrape_prejump.ps1";
+        scraperScript = dataFolder / "PackGrabber.ps1";
     }
 
     if (!std::filesystem::exists(scraperScript)) {
@@ -186,11 +194,7 @@ void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path
         return;
     }
 
-    std::string cmd = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" + scraperScript.string()
-                    + "\" -OutputPath \"" + outputPath.string() + "\" -QuietMode:$true";
-
     scrapingInProgress = true;
-    LOG("SuiteSpot: Started scraper...");
 
     if (!gameWrapper) {
         scrapingInProgress = false;
@@ -198,19 +202,49 @@ void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path
         return;
     }
 
-    gameWrapper->SetTimeout([this, cmd, outputPath](GameWrapper* gw) {
+    LOG("SuiteSpot: Launching scraper script: {}", scraperScript.string());
+    LOG("SuiteSpot: Output path: {}", outputPath.string());
+
+    // Launch scraper in background thread to avoid blocking game thread
+    std::thread scraperThread([this, scraperScript, outputPath]() {
+        std::string scriptStr = scraperScript.string();
+        std::string outStr = outputPath.string();
+
+        // Create log file path for debugging
+        auto logFile = outputPath.parent_path() / "PackGrabber.log";
+
+        // Use cmd.exe to launch PowerShell and capture output to log file
+        std::string cmd = "cmd.exe /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \""
+                        + scriptStr + "\" -OutputPath \"" + outStr + "\" > \"" + logFile.string() + "\" 2>&1";
+
+        LOG("SuiteSpot: Scraper thread started, executing: {}", cmd);
+
         int result = system(cmd.c_str());
+
+        LOG("SuiteSpot: Scraper process returned: {}", result);
+
+        // Try to read error log if it exists
+        if (std::filesystem::exists(logFile)) {
+            std::ifstream log(logFile);
+            std::string line;
+            LOG("SuiteSpot: PackGrabber output:");
+            while (std::getline(log, line)) {
+                LOG("  {}", line);
+            }
+        }
 
         if (result == 0) {
             LOG("SuiteSpot: Scraper completed successfully");
             LoadPacksFromFile(outputPath);
             lastUpdated = GetLastUpdatedTime(outputPath);
         } else {
-            LOG("SuiteSpot: Scraper failed with exit code {}", result);
+            LOG("SuiteSpot: Scraper returned non-zero exit code: {}", result);
         }
 
         scrapingInProgress = false;
-    }, 0.1f);
+    });
+
+    scraperThread.detach();  // Let thread run independently
 }
 
 void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
@@ -221,6 +255,7 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
                                             bool sortAscending,
                                             std::vector<TrainingEntry>& out) const
 {
+    std::lock_guard<std::mutex> lock(packMutex);
     out.clear();
 
     std::string searchLower(searchText);
@@ -314,6 +349,7 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
 
 void TrainingPackManager::BuildAvailableTags(std::vector<std::string>& out) const
 {
+    std::lock_guard<std::mutex> lock(packMutex);
     std::set<std::string> uniqueTags;
     for (const auto& pack : RLTraining) {
         for (const auto& tag : pack.tags) {
@@ -331,6 +367,7 @@ void TrainingPackManager::BuildAvailableTags(std::vector<std::string>& out) cons
 void TrainingPackManager::SavePacksToFile(const std::filesystem::path& filePath)
 {
     try {
+        std::lock_guard<std::mutex> lock(packMutex);
         nlohmann::json output;
         output["version"] = "1.0.0";
 
@@ -396,132 +433,151 @@ void TrainingPackManager::SavePacksToFile(const std::filesystem::path& filePath)
 
 bool TrainingPackManager::AddCustomPack(const TrainingEntry& pack)
 {
-    // Check for duplicate code
-    for (const auto& existing : RLTraining) {
-        if (existing.code == pack.code) {
-            LOG("SuiteSpot: Pack with code {} already exists", pack.code);
-            return false;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        // Check for duplicate code
+        for (const auto& existing : RLTraining) {
+            if (existing.code == pack.code) {
+                LOG("SuiteSpot: Pack with code {} already exists", pack.code);
+                return false;
+            }
         }
+
+        TrainingEntry newPack = pack;
+        newPack.source = "custom";
+        RLTraining.push_back(newPack);
+
+        // Sort RLTraining alphabetically by name
+        std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
+            std::string nameA = a.name;
+            std::string nameB = b.name;
+            std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
+            std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
+            return nameA < nameB;
+        });
+
+        packCount = static_cast<int>(RLTraining.size());
+        LOG("SuiteSpot: Added custom pack: {}", pack.name);
+        // Lock releases here before SavePacksToFile
     }
 
-    TrainingEntry newPack = pack;
-    newPack.source = "custom";
-    RLTraining.push_back(newPack);
-
-    // Sort RLTraining alphabetically by name
-    std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
-        std::string nameA = a.name;
-        std::string nameB = b.name;
-        std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
-        std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
-        return nameA < nameB;
-    });
-
-    packCount = static_cast<int>(RLTraining.size());
-
-    // Auto-save if we have a file path
+    // Auto-save if we have a file path (outside the lock)
     if (!currentFilePath.empty()) {
         SavePacksToFile(currentFilePath);
     }
-
-    LOG("SuiteSpot: Added custom pack: {}", pack.name);
     return true;
 }
 
 bool TrainingPackManager::UpdatePack(const std::string& code, const TrainingEntry& updatedPack)
 {
-    for (auto& pack : RLTraining) {
-        if (pack.code == code) {
-            // Preserve source and update isModified
-            std::string originalSource = pack.source;
-            pack = updatedPack;
-            pack.source = originalSource;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.code == code) {
+                // Preserve source and update isModified
+                std::string originalSource = pack.source;
+                pack = updatedPack;
+                pack.source = originalSource;
 
-            // Mark as modified if it was a prejump pack
-            if (originalSource == "prejump") {
-                pack.isModified = true;
+                // Mark as modified if it was a prejump pack
+                if (originalSource == "prejump") {
+                    pack.isModified = true;
+                }
+
+                // Sort RLTraining alphabetically by name
+                std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
+                    std::string nameA = a.name;
+                    std::string nameB = b.name;
+                    std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
+                    std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
+                    return nameA < nameB;
+                });
+
+                LOG("SuiteSpot: Updated pack: {}", pack.name);
+                // Lock releases here before SavePacksToFile
             }
-
-            // Sort RLTraining alphabetically by name
-            std::sort(RLTraining.begin(), RLTraining.end(), [](const TrainingEntry& a, const TrainingEntry& b) {
-                std::string nameA = a.name;
-                std::string nameB = b.name;
-                std::transform(nameA.begin(), nameA.end(), nameA.begin(), [](unsigned char c) { return std::tolower(c); });
-                std::transform(nameB.begin(), nameB.end(), nameB.begin(), [](unsigned char c) { return std::tolower(c); });
-                return nameA < nameB;
-            });
-
-            // Auto-save
-            if (!currentFilePath.empty()) {
-                SavePacksToFile(currentFilePath);
-            }
-
-            LOG("SuiteSpot: Updated pack: {}", pack.name);
-            return true;
         }
+    }
+
+    // Auto-save outside the lock
+    if (!currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+        return true;
     }
     return false;
 }
 
 bool TrainingPackManager::DeletePack(const std::string& code)
 {
-    auto it = std::find_if(RLTraining.begin(), RLTraining.end(),
-        [&code](const TrainingEntry& p) { return p.code == code; });
+    std::string name;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        auto it = std::find_if(RLTraining.begin(), RLTraining.end(),
+            [&code](const TrainingEntry& p) { return p.code == code; });
 
-    if (it != RLTraining.end()) {
-        std::string name = it->name;
-        RLTraining.erase(it);
-        packCount = static_cast<int>(RLTraining.size());
+        if (it != RLTraining.end()) {
+            name = it->name;
+            RLTraining.erase(it);
+            packCount = static_cast<int>(RLTraining.size());
 
-        // Auto-save
-        if (!currentFilePath.empty()) {
-            SavePacksToFile(currentFilePath);
+            LOG("SuiteSpot: Deleted pack: {}", name);
+        } else {
+            return false;
         }
-
-        LOG("SuiteSpot: Deleted pack: {}", name);
-        return true;
     }
-    return false;
+
+    // Auto-save outside the lock
+    if (!currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
+    return true;
 }
 
 void TrainingPackManager::ToggleShuffleBag(const std::string& code)
 {
-    for (auto& pack : RLTraining) {
-        if (pack.code == code) {
-            pack.inShuffleBag = !pack.inShuffleBag;
-
-            // Auto-save
-            if (!currentFilePath.empty()) {
-                SavePacksToFile(currentFilePath);
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.code == code) {
+                pack.inShuffleBag = !pack.inShuffleBag;
+                LOG("SuiteSpot: {} pack from shuffle bag: {}", std::string(pack.inShuffleBag ? "Added" : "Removed"), pack.name);
+                break;
             }
-
-            LOG("SuiteSpot: {} pack from shuffle bag: {}", std::string(pack.inShuffleBag ? "Added" : "Removed"), pack.name);
-            return;
         }
+    }
+
+    // Auto-save outside the lock
+    if (!currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
     }
 }
 
 void TrainingPackManager::AddToShuffleBag(const std::string& code)
 {
-    for (auto& pack : RLTraining) {
-        if (pack.code == code) {
-            if (!pack.inShuffleBag) {
-                pack.inShuffleBag = true;
-
-                // Auto-save
-                if (!currentFilePath.empty()) {
-                    SavePacksToFile(currentFilePath);
+    bool shouldSave = false;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.code == code) {
+                if (!pack.inShuffleBag) {
+                    pack.inShuffleBag = true;
+                    shouldSave = true;
+                    LOG("SuiteSpot: Added pack to shuffle bag: {}", pack.name);
                 }
-
-                LOG("SuiteSpot: Added pack to shuffle bag: {}", pack.name);
+                break;
             }
-            return;
         }
+    }
+
+    // Auto-save outside the lock
+    if (shouldSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
     }
 }
 
 std::vector<TrainingEntry> TrainingPackManager::GetShuffleBagPacks() const
 {
+    std::lock_guard<std::mutex> lock(packMutex);
     std::vector<TrainingEntry> shuffleBag;
     for (const auto& pack : RLTraining) {
         if (pack.inShuffleBag) {
@@ -533,6 +589,7 @@ std::vector<TrainingEntry> TrainingPackManager::GetShuffleBagPacks() const
 
 TrainingEntry* TrainingPackManager::GetPackByCode(const std::string& code)
 {
+    std::lock_guard<std::mutex> lock(packMutex);
     for (auto& pack : RLTraining) {
         if (pack.code == code) {
             return &pack;
@@ -543,6 +600,7 @@ TrainingEntry* TrainingPackManager::GetPackByCode(const std::string& code)
 
 int TrainingPackManager::GetShuffleBagCount() const
 {
+    std::lock_guard<std::mutex> lock(packMutex);
     int count = 0;
     for (const auto& pack : RLTraining) {
         if (pack.inShuffleBag) {

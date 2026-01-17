@@ -108,6 +108,7 @@ void TrainingPackUI::Render() {
     // Early return if no packs loaded
     if (packs.empty()) {
         ImGui::TextWrapped("No packs available. Click 'Scrape Packs' to download the training pack database, or add your own custom packs below.");
+        ImGui::End();
         return;
     }
 
@@ -180,6 +181,7 @@ void TrainingPackUI::Render() {
     // Early return if no packs loaded
     if (packs.empty()) {
         ImGui::TextWrapped("No packs available. Click 'Scrape Packs' to download the training pack database, or add your own custom packs above.");
+        ImGui::End();
         return;
     }
 

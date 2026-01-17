@@ -2,6 +2,22 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation Suite
+
+**Before writing code, read the relevant documentation:**
+
+| Document | Purpose |
+|----------|---------|
+| [BAKKESMOD_API_REFERENCE.md](docs/standards/BAKKESMOD_API_REFERENCE.md) | Complete SDK API reference - wrappers, methods, data structures |
+| [CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Code patterns, naming conventions, anti-patterns |
+| [THREAD_SAFETY.md](docs/standards/THREAD_SAFETY.md) | Threading model, Execute pattern, synchronization |
+
+**Quick rules:**
+- Always null-check wrappers before use: `if (!car) return;`
+- Use `gameWrapper->Execute()` for game operations from render thread
+- Use `gameWrapper->SetTimeout()` for delayed operations (never `sleep()`)
+- Prefix CVars with `suitespot_`
+
 ## Project Overview
 
 SuiteSpot is a BakkesMod plugin for Rocket League that automates game mode transitions after matches end. It can auto-load freeplay, training packs, or workshop maps, and optionally auto-queue for the next match.
@@ -67,9 +83,20 @@ CVars (settings) use BakkesMod's built-in persistence with prefix `suitespot_`.
 
 ## Thread Safety
 
-- Use `gameWrapper->Execute()` for any game thread operations from callbacks
-- `LoadoutManager` uses `std::mutex` for its cache
-- UI renders on the main thread; defer heavy work with `gameWrapper->SetTimeout()`
+See [THREAD_SAFETY.md](docs/standards/THREAD_SAFETY.md) for detailed patterns.
+
+**Critical:** `RenderSettings()` runs on render thread. Use `gameWrapper->Execute()` for game operations:
+
+```cpp
+void RenderSettings() {
+    if (ImGui::Button("Spawn Ball")) {
+        gameWrapper->Execute([](GameWrapper* gw) {
+            auto server = gw->GetCurrentGameState();
+            if (server) server.SpawnBall({0,0,100}, true, false);
+        });
+    }
+}
+```
 
 ## ImGui Notes
 

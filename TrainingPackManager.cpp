@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TrainingPackManager.h"
+#include "EmbeddedPackGrabber.h"
 
 #include <algorithm>
 #include <chrono>
@@ -181,59 +182,79 @@ void TrainingPackManager::UpdateTrainingPackList(const std::filesystem::path& ou
         return;
     }
 
-    auto dataFolder = gameWrapper->GetDataFolder();
-    auto updateScript = dataFolder / "SuitePackGrabber.ps1";
-
-    if (!std::filesystem::exists(updateScript)) {
-        LOG("SuiteSpot: Training pack update script not found in data folder: {}", updateScript.string());
+    if (!gameWrapper) {
+        LOG("SuiteSpot: GameWrapper unavailable for training pack update");
         return;
     }
 
     scrapingInProgress = true;
 
-    if (!gameWrapper) {
-        scrapingInProgress = false;
-        LOG("SuiteSpot: GameWrapper unavailable for training pack update");
-        return;
-    }
-
-    LOG("SuiteSpot: Launching training pack updater: {}", updateScript.string());
+    LOG("SuiteSpot: Training pack updater starting");
     LOG("SuiteSpot: Output path: {}", outputPath.string());
 
     // Launch update in background thread to avoid blocking game thread
-    std::thread updateThread([this, updateScript, outputPath]() {
-        std::string scriptStr = updateScript.string();
-        std::string outStr = outputPath.string();
+    std::thread updateThread([this, outputPath]() {
+        try {
+            // Get temp directory for script extraction
+            std::filesystem::path tempDir = std::filesystem::temp_directory_path();
+            auto tempScript = tempDir / "SuitePackGrabber_temp.ps1";
+            auto logFile = outputPath.parent_path() / "PackGrabber.log";
 
-        // Create log file path for debugging
-        auto logFile = outputPath.parent_path() / "PackGrabber.log";
-
-        // Use cmd.exe to launch PowerShell and capture output to log file
-        std::string cmd = "cmd.exe /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \""
-                        + scriptStr + "\" -OutputPath \"" + outStr + "\" > \"" + logFile.string() + "\" 2>&1";
-
-        LOG("SuiteSpot: Training pack updater started, executing: {}", cmd);
-
-        int result = system(cmd.c_str());
-
-        LOG("SuiteSpot: Training pack updater returned: {}", result);
-
-        // Try to read error log if it exists
-        if (std::filesystem::exists(logFile)) {
-            std::ifstream log(logFile);
-            std::string line;
-            LOG("SuiteSpot: PackGrabber output:");
-            while (std::getline(log, line)) {
-                LOG("  {}", line);
+            // Write embedded script to temp file
+            {
+                std::ofstream tempFile(tempScript, std::ios::binary);
+                if (!tempFile.is_open()) {
+                    LOG("SuiteSpot: Failed to create temp script file: {}", tempScript.string());
+                    scrapingInProgress = false;
+                    return;
+                }
+                tempFile.write(EMBEDDED_PACK_GRABBER_SCRIPT,
+                              std::string_view(EMBEDDED_PACK_GRABBER_SCRIPT).length());
+                tempFile.close();
             }
-        }
 
-        if (result == 0) {
-            LOG("SuiteSpot: Training pack update completed successfully");
-            LoadPacksFromFile(outputPath);
-            lastUpdated = GetLastUpdatedTime(outputPath);
-        } else {
-            LOG("SuiteSpot: Training pack updater returned non-zero exit code: {}", result);
+            std::string outStr = outputPath.string();
+
+            // Use cmd.exe to launch PowerShell and capture output to log file
+            std::string cmd = "cmd.exe /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \""
+                            + tempScript.string() + "\" -OutputPath \"" + outStr + "\" > \"" + logFile.string() + "\" 2>&1";
+
+            LOG("SuiteSpot: Training pack updater started");
+
+            int result = system(cmd.c_str());
+
+            LOG("SuiteSpot: Training pack updater returned: {}", result);
+
+            // Try to read error log if it exists
+            if (std::filesystem::exists(logFile)) {
+                std::ifstream log(logFile);
+                std::string line;
+                LOG("SuiteSpot: PackGrabber output:");
+                while (std::getline(log, line)) {
+                    LOG("  {}", line);
+                }
+            }
+
+            if (result == 0) {
+                LOG("SuiteSpot: Training pack update completed successfully");
+                LoadPacksFromFile(outputPath);
+                lastUpdated = GetLastUpdatedTime(outputPath);
+            } else {
+                LOG("SuiteSpot: Training pack updater returned non-zero exit code: {}", result);
+            }
+
+            // Clean up temp script
+            try {
+                if (std::filesystem::exists(tempScript)) {
+                    std::filesystem::remove(tempScript);
+                    LOG("SuiteSpot: Cleaned up temporary script file");
+                }
+            } catch (const std::exception& e) {
+                LOG("SuiteSpot: Warning - failed to clean up temp script: {}", std::string(e.what()));
+            }
+
+        } catch (const std::exception& e) {
+            LOG("SuiteSpot: Training pack updater error: {}", std::string(e.what()));
         }
 
         scrapingInProgress = false;

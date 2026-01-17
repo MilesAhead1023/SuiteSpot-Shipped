@@ -1,8 +1,8 @@
-# SuiteSpot Prejump Training Pack Scraper
-# Scrapes all 2,301 training packs from prejump.com and exports as JSON
+# SuiteSpot Training Pack Updater
+# Downloads training packs from online source and exports as JSON
 #
 # Usage: powershell -NoProfile -ExecutionPolicy Bypass -File PackGrabber.ps1 -OutputPath "C:\path\to\output.json"
-# Default output: %APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\prejump_packs.json
+# Default output: %APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\training_packs.json
 #
 # Requirements:
 #   - PowerShell 5.0+ (included with Windows 10+)
@@ -15,7 +15,7 @@
 #   - Rate limit: 200ms between requests (polite scraping)
 
 param(
-    [string]$OutputPath = "$env:APPDATA\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\prejump_packs.json",
+    [string]$OutputPath = "$env:APPDATA\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\training_packs.json",
     [int]$TimeoutSec = 30,
     [switch]$QuietMode = $false
 )
@@ -250,8 +250,8 @@ function Load-ExistingPacks {
 # =====================================================================
 
 Write-Log "========================================================" Info
-Write-Log "  SuiteSpot Prejump Training Pack Scraper" Info
-Write-Log "  Scraping 2,301 packs from prejump.com..." Info
+Write-Log "  SuiteSpot Training Pack Updater" Info
+Write-Log "  Downloading training packs from online source..." Info
 Write-Log "========================================================" Info
 
 Write-Log "Output: $OutputPath" Info
@@ -273,7 +273,7 @@ try {
     $pageInfo = Extract-PackDataFromHtml -HtmlContent $htmlContent
     Write-Log "[OK] Success" Success
     Write-Log " - Total packs available: $($pageInfo.TotalCount)" Info
-    Write-Log " - Total pages to scrape: $($pageInfo.LastPage)" Info
+    Write-Log " - Total pages to download: $($pageInfo.LastPage)" Info
     Write-Log " - First page loaded: $($pageInfo.Packs.Count) packs" Info
     Write-Log ""
 
@@ -341,8 +341,8 @@ try {
         }
     }
 
-    Write-Log "  Total packs scraped: $($allPacks.Count)" Info
-    Write-Log "  Unique prejump packs: $($uniquePacks.Count)" Info
+    Write-Log "  Total packs downloaded: $($allPacks.Count)" Info
+    Write-Log "  Unique packs: $($uniquePacks.Count)" Info
 
     if ($failedPages.Count -gt 0) {
         Write-Log "  Failed pages: $($failedPages.Count)" Warning
@@ -438,8 +438,8 @@ try {
 
     Write-Log ""
     Write-Log "========================================================" Success
-    Write-Log "  SUCCESS - Scraping complete!" Success
-    Write-Log "  Scraped: $($uniquePacks.Count) prejump packs" Success
+    Write-Log "  SUCCESS - Update complete!" Success
+    Write-Log "  Downloaded: $($uniquePacks.Count) packs" Success
     if ($customPacks.Count -gt 0) {
         Write-Log "  Preserved: $($customPacks.Count) custom pack(s)" Success
     }
@@ -450,7 +450,7 @@ try {
     exit 0
 
 } catch {
-    Write-Host "ERROR - Scraping failed!" -ForegroundColor Red
+    Write-Host "ERROR - Update failed!" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     Write-Host "Stack trace:" -ForegroundColor Red
     Write-Host $_.ScriptStackTrace -ForegroundColor Red

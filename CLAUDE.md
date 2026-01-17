@@ -42,7 +42,7 @@ SuiteSpot is a BakkesMod plugin for Rocket League that automates game mode trans
 
 **Post-build:** The build automatically:
 1. Creates data directories in `%APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\`
-2. Copies the scraper script
+2. Copies the training pack updater script
 3. Runs `bakkesmod-patch.exe` to inject the DLL
 
 **Pre-build:** `version.h` build number is auto-incremented via `CompiledScripts/update_version.ps1`
@@ -52,7 +52,7 @@ SuiteSpot is a BakkesMod plugin for Rocket League that automates game mode trans
 ```
 SuiteSpot (Plugin Hub)
 ├── MapManager         - Discovers workshop maps from filesystem
-├── TrainingPackManager - Manages 2000+ training packs from Prejump.com
+├── TrainingPackManager - Manages 2000+ training packs
 ├── SettingsSync       - CVar persistence (BakkesMod settings)
 ├── AutoLoadFeature    - Core logic: what to load when match ends
 ├── LoadoutManager     - Car preset switching (thread-safe)
@@ -77,7 +77,7 @@ SuiteSpot (Plugin Hub)
 
 ## Data Persistence
 
-Training packs stored at: `%APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\prejump_packs.json`
+Training packs stored at: `%APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\training_packs.json`
 
 CVars (settings) use BakkesMod's built-in persistence with prefix `suitespot_`.
 

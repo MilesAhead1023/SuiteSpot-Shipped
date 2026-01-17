@@ -73,7 +73,7 @@ void TrainingPackUI::Render() {
         ImGui::SameLine();
         ImGui::TextColored(UI::TrainingPackUI::LAST_UPDATED_TEXT_COLOR, " | Last updated: %s", lastUpdated.c_str());
     } else {
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No packs loaded - click 'Scrape Packs' to download");
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No packs loaded - click 'Update Pack List' to download");
     }
 
     // Control buttons
@@ -84,10 +84,10 @@ void TrainingPackUI::Render() {
     }
 
     if (scraping) {
-        ImGui::TextColored(UI::TrainingPackUI::SCRAPING_STATUS_TEXT_COLOR, "Scraping...");
+        ImGui::TextColored(UI::TrainingPackUI::SCRAPING_STATUS_TEXT_COLOR, "Updating...");
     } else {
-        if (ImGui::Button("Scrape Packs")) {
-            plugin_->ScrapeAndLoadTrainingPacks();
+        if (ImGui::Button("Update Pack List")) {
+            plugin_->UpdateTrainingPackList();
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Download latest training packs from online source (~2-3 minutes)");

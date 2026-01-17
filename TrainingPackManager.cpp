@@ -173,24 +173,24 @@ std::string TrainingPackManager::GetLastUpdatedTime(const std::filesystem::path&
     }
 }
 
-void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path& outputPath,
+void TrainingPackManager::UpdateTrainingPackList(const std::filesystem::path& outputPath,
                                                    const std::shared_ptr<GameWrapper>& gameWrapper)
 {
     if (scrapingInProgress) {
-        LOG("SuiteSpot: Pack scraping already in progress");
+        LOG("SuiteSpot: Training pack update already in progress");
         return;
     }
 
     auto dataFolder = gameWrapper->GetDataFolder();
-    auto scraperScript = dataFolder / "SuiteSpot" / "PackGrabber.ps1";
+    auto updateScript = dataFolder / "SuiteSpot" / "PackGrabber.ps1";
 
-    if (!std::filesystem::exists(scraperScript)) {
+    if (!std::filesystem::exists(updateScript)) {
         // Fallback to searching in the data root if not in SuiteSpot subfolder
-        scraperScript = dataFolder / "PackGrabber.ps1";
+        updateScript = dataFolder / "PackGrabber.ps1";
     }
 
-    if (!std::filesystem::exists(scraperScript)) {
-        LOG("SuiteSpot: Pack scraper script not found in data folder: {}", scraperScript.string());
+    if (!std::filesystem::exists(updateScript)) {
+        LOG("SuiteSpot: Training pack update script not found in data folder: {}", updateScript.string());
         return;
     }
 
@@ -198,16 +198,16 @@ void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path
 
     if (!gameWrapper) {
         scrapingInProgress = false;
-        LOG("SuiteSpot: GameWrapper unavailable for scrape");
+        LOG("SuiteSpot: GameWrapper unavailable for training pack update");
         return;
     }
 
-    LOG("SuiteSpot: Launching scraper script: {}", scraperScript.string());
+    LOG("SuiteSpot: Launching training pack updater: {}", updateScript.string());
     LOG("SuiteSpot: Output path: {}", outputPath.string());
 
-    // Launch scraper in background thread to avoid blocking game thread
-    std::thread scraperThread([this, scraperScript, outputPath]() {
-        std::string scriptStr = scraperScript.string();
+    // Launch update in background thread to avoid blocking game thread
+    std::thread updateThread([this, updateScript, outputPath]() {
+        std::string scriptStr = updateScript.string();
         std::string outStr = outputPath.string();
 
         // Create log file path for debugging
@@ -217,11 +217,11 @@ void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path
         std::string cmd = "cmd.exe /c powershell.exe -NoProfile -ExecutionPolicy Bypass -File \""
                         + scriptStr + "\" -OutputPath \"" + outStr + "\" > \"" + logFile.string() + "\" 2>&1";
 
-        LOG("SuiteSpot: Scraper thread started, executing: {}", cmd);
+        LOG("SuiteSpot: Training pack updater started, executing: {}", cmd);
 
         int result = system(cmd.c_str());
 
-        LOG("SuiteSpot: Scraper process returned: {}", result);
+        LOG("SuiteSpot: Training pack updater returned: {}", result);
 
         // Try to read error log if it exists
         if (std::filesystem::exists(logFile)) {
@@ -234,17 +234,17 @@ void TrainingPackManager::ScrapeAndLoadTrainingPacks(const std::filesystem::path
         }
 
         if (result == 0) {
-            LOG("SuiteSpot: Scraper completed successfully");
+            LOG("SuiteSpot: Training pack update completed successfully");
             LoadPacksFromFile(outputPath);
             lastUpdated = GetLastUpdatedTime(outputPath);
         } else {
-            LOG("SuiteSpot: Scraper returned non-zero exit code: {}", result);
+            LOG("SuiteSpot: Training pack updater returned non-zero exit code: {}", result);
         }
 
         scrapingInProgress = false;
     });
 
-    scraperThread.detach();  // Let thread run independently
+    updateThread.detach();  // Let thread run independently
 }
 
 void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,

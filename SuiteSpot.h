@@ -107,9 +107,9 @@ public:
     void LoadHooks();
     void GameEndedEvent(std::string name);
 
-    // Training Pack scraper integration
+    // Training Pack update integration
     std::filesystem::path GetTrainingPacksPath() const;
-    void ScrapeAndLoadTrainingPacks();
+    void UpdateTrainingPackList();
     void LoadTrainingPacksFromFile(const std::filesystem::path& filePath);
     bool IsTrainingPackCacheStale() const;
     std::string FormatLastUpdatedTime() const;

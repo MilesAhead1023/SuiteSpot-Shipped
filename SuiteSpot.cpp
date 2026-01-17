@@ -80,7 +80,7 @@ void SuiteSpot::LoadWorkshopMaps() {
     }
 }
 
-// ===== TRAINING PACK SCRAPER INTEGRATION =====
+// ===== TRAINING PACK UPDATE INTEGRATION =====
 bool SuiteSpot::IsEnabled() const {
     return settingsSync ? settingsSync->IsEnabled() : false;
 }
@@ -130,7 +130,7 @@ int SuiteSpot::GetTrainingBagSize() const {
 }
 
 std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
-    return GetSuiteTrainingDir() / "prejump_packs.json";
+    return GetSuiteTrainingDir() / "training_packs.json";
 }
 
 bool SuiteSpot::IsTrainingPackCacheStale() const {
@@ -147,15 +147,14 @@ void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath)
     }
 }
 
-// #detailed comments: ScrapeAndLoadTrainingPacks
-// Purpose: Launches an external PowerShell script to scrape online source
-// and write a JSON cache to disk. This is intentionally performed in a
-// background task (scheduled via gameWrapper->SetTimeout) to avoid any
-// blocking on the UI/game thread.
+// #detailed comments: UpdateTrainingPackList
+// Purpose: Launches an external PowerShell script to download the latest
+// training pack data and write a JSON cache to disk. This is intentionally
+// performed in a background task to avoid any blocking on the UI/game thread.
 //
 // Safety and behavior notes:
-//  - scrapingInProgress is a guard flag ensuring only one scrape
-//    runs at a time. It is set before scheduling and cleared when the
+//  - scrapingInProgress is a guard flag ensuring only one update
+//    runs at a time. It is set before launching and cleared when the
 //    background process finishes.
 //  - The implementation uses system() and relies on the platform's
 //    default process creation semantics; this must remain as-is for
@@ -164,12 +163,12 @@ void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath)
 //  - The script path is hard-coded to the repo dev path; callers should
 //    ensure that the script is present when invoking this routine.
 //
-// DO NOT CHANGE: Modifying timing (the 0.1f scheduling) or the way the
+// DO NOT CHANGE: Modifying the background thread logic or the way the
 // result is checked could resurface race conditions that previously
 // required this exact coordination.
-void SuiteSpot::ScrapeAndLoadTrainingPacks() {
+void SuiteSpot::UpdateTrainingPackList() {
     if (trainingPackMgr) {
-        trainingPackMgr->ScrapeAndLoadTrainingPacks(GetTrainingPacksPath(), gameWrapper);
+        trainingPackMgr->UpdateTrainingPackList(GetTrainingPacksPath(), gameWrapper);
     }
 }
 

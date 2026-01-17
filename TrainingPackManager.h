@@ -16,15 +16,15 @@
  * 
  * WHAT IS THIS?
  * This is the librarian of the plugin. It keeps track of every training pack you have,
- * whether they came from the internet (Prejump) or you added them yourself.
- * 
+ * whether they came from the internet or you added them yourself.
+ *
  * WHY IS IT HERE?
  * Managing 2000+ training packs requires a lot of organization. We need to save them
  * to a file, load them back up, search them, and handle the "Shuffle Bag" logic.
- * 
+ *
  * HOW DOES IT WORK?
- * 1. `LoadPacksFromFile()`: Reads `prejump_packs.json` and turns it into a list of `TrainingEntry` objects.
- * 2. `ScrapeAndLoadTrainingPacks()`: Runs a secret PowerShell script to download the latest packs from the web.
+ * 1. `LoadPacksFromFile()`: Reads `training_packs.json` and turns it into a list of `TrainingEntry` objects.
+ * 2. `UpdateTrainingPackList()`: Runs a PowerShell script to download the latest packs from the web.
  * 3. `FilterAndSortPacks()`: When you type in the search bar, this function decides which packs to show.
  * 4. `Shuffle Bag`: It tracks which packs you want to rotate through and picks the next one for you.
  */
@@ -37,8 +37,8 @@ public:
     bool IsCacheStale(const std::filesystem::path& filePath) const;
     std::string GetLastUpdatedTime(const std::filesystem::path& filePath) const;
     
-    // The "Scraper" - Downloads fresh data
-    void ScrapeAndLoadTrainingPacks(const std::filesystem::path& outputPath, 
+    // Downloads fresh data from online source
+    void UpdateTrainingPackList(const std::filesystem::path& outputPath,
                                   const std::shared_ptr<GameWrapper>& gameWrapper);
 
     // Search and Sort logic

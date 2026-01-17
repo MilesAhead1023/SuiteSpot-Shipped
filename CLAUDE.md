@@ -77,7 +77,7 @@ SuiteSpot (Plugin Hub)
 
 ## Data Persistence
 
-Training packs stored at: `%APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\training_packs.json`
+Training packs stored at: `%APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\training_packs.json`
 
 CVars (settings) use BakkesMod's built-in persistence with prefix `suitespot_`.
 

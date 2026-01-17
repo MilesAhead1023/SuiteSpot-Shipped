@@ -182,12 +182,7 @@ void TrainingPackManager::UpdateTrainingPackList(const std::filesystem::path& ou
     }
 
     auto dataFolder = gameWrapper->GetDataFolder();
-    auto updateScript = dataFolder / "SuiteSpot" / "PackGrabber.ps1";
-
-    if (!std::filesystem::exists(updateScript)) {
-        // Fallback to searching in the data root if not in SuiteSpot subfolder
-        updateScript = dataFolder / "PackGrabber.ps1";
-    }
+    auto updateScript = dataFolder / "SuitePackGrabber.ps1";
 
     if (!std::filesystem::exists(updateScript)) {
         LOG("SuiteSpot: Training pack update script not found in data folder: {}", updateScript.string());

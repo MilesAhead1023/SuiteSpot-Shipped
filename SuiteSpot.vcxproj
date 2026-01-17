@@ -105,7 +105,7 @@ if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
   exit /b 1
 )
-copy /y "$(ProjectDir)CompiledScripts\PackGrabber.ps1" "%25BM%25\data\SuiteSpot\PackGrabber.ps1"
+copy /y "$(ProjectDir)CompiledScripts\SuitePackGrabber.ps1" "%25BM%25\data\SuitePackGrabber.ps1"
 if not exist "%25PATCH%25" (
   echo [PostBuild] WARN: Patcher not found: "%25PATCH%25"
   echo [PostBuild] Skipping patch step.

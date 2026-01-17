@@ -1,7 +1,7 @@
 # SuiteSpot Training Pack Updater
 # Downloads training packs from online source and exports as JSON
 #
-# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File PackGrabber.ps1 -OutputPath "C:\path\to\output.json"
+# Usage: powershell -NoProfile -ExecutionPolicy Bypass -File SuitePackGrabber.ps1 -OutputPath "C:\path\to\output.json"
 # Default output: %APPDATA%\bakkesmod\bakkesmod\data\SuiteSpot\TrainingSuite\training_packs.json
 #
 # Requirements:

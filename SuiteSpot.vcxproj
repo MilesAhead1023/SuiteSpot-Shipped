@@ -98,9 +98,12 @@ setlocal
 set "BM=%25AppData%25\bakkesmod\bakkesmod"
 set "PATCH=%25BM%25\bakkesmodsdk\bakkesmod-patch.exe"
 set "DLL=$(TargetPath)"
+set "PROJECT_DIR=$(ProjectDir)"
 mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
 mkdir "%25BM%25\data\SuiteSpot\TrainingSuite" 2&gt;nul
 mkdir "%25BM%25\plugins\settings" 2&gt;nul
+echo [PostBuild] Copying resources...
+xcopy "%25PROJECT_DIR%25Resources" "%25BM%25\data\SuiteSpot\Resources" /E /I /Y /Q
 if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
   exit /b 1

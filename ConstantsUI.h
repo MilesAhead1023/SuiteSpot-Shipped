@@ -237,7 +237,7 @@ namespace UI {
 		// === Difficulty Badge Colors ===
 
 		// Background color for Unranked/Unknown difficulty badge
-		inline const ImVec4 DIFFICULTY_BADGE_UNRANKED_COLOR = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+		inline const ImVec4 DIFFICULTY_BADGE_UNRANKED_COLOR = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
 
 		// Background color for Bronze difficulty badge (#925732)
 		inline const ImVec4 DIFFICULTY_BADGE_BRONZE_COLOR = ImVec4(0.57f, 0.34f, 0.20f, 1.0f);

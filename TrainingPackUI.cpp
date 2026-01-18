@@ -39,7 +39,18 @@ namespace {
     }
 }
 
-TrainingPackUI::TrainingPackUI(SuiteSpot* plugin) : plugin_(plugin) {}
+TrainingPackUI::TrainingPackUI(SuiteSpot* plugin) : plugin_(plugin) {
+    auto path = plugin_->GetDataRoot() / "SuiteSpot" / "Resources" / "Icons" / "icon_youtube.png";
+    LOG("SuiteSpot: Attempting to load YouTube icon from: " + path.string());
+    youtubeIcon = std::make_shared<ImageWrapper>(path.string(), true);
+    youtubeIcon->LoadForImGui([this, path](bool success) {
+        if (success) {
+            LOG("SuiteSpot: YouTube icon loaded successfully.");
+        } else {
+            LOG("SuiteSpot: Failed to load YouTube icon from " + path.string());
+        }
+    });
+}
 
 void TrainingPackUI::Render() {
     if (!isWindowOpen_) {
@@ -1071,16 +1082,6 @@ bool TrainingPackUI::IsActiveOverlay() {
 void TrainingPackUI::OnOpen() {
     isWindowOpen_ = true;
     needsFocusOnNextRender_ = true;  // Bring window to front on next render
-
-    if (!youtubeIcon) {
-        auto path = plugin_->GetDataRoot() / "SuiteSpot" / "Resources" / "Icons" / "icon_youtube.png";
-        youtubeIcon = std::make_shared<ImageWrapper>(path.string(), true);
-        youtubeIcon->LoadForImGui([this](bool success){
-            if(!success){
-                LOG("SuiteSpot: Failed to load YouTube icon from " + (plugin_->GetDataRoot() / "SuiteSpot" / "Resources" / "Icons" / "icon_youtube.png").string());
-            }
-        });
-    }
 }
 
 void TrainingPackUI::OnClose() {

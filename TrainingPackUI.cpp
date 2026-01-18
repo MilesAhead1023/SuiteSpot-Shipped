@@ -5,6 +5,7 @@
 
 #include "TrainingPackUI.h"
 #include "TrainingPackManager.h"
+#include "ModernUI.h"
 #include "SuiteSpot.h"
 #include "ConstantsUI.h"
 #include "HelpersUI.h"
@@ -77,6 +78,9 @@ void TrainingPackUI::Render() {
         ImGui::End();
         return;
     }
+
+    // Apply font scale to this window
+    ImGui::SetWindowFontScale(UI::Modern::Theme::FontScale);
 
     const auto* manager = plugin_->trainingPackMgr;
     static const std::vector<TrainingEntry> emptyPacks;

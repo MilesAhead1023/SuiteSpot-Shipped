@@ -430,11 +430,11 @@ namespace UI {
         }
 
         void PushFontLarge() {
-            ImGui::SetWindowFontScale(1.5f);
+            ImGui::SetWindowFontScale(Theme::FontScaleLarge);
         }
 
         void PopFont() {
-            ImGui::SetWindowFontScale(1.0f);
+            ImGui::SetWindowFontScale(Theme::FontScale);
         }
 
     } // namespace Modern

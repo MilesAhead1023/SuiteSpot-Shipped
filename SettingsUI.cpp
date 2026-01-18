@@ -3,6 +3,7 @@
 #include "SettingsUI.h"
 #include "LoadoutUI.h"
 #include "TrainingPackUI.h"
+#include "ModernUI.h"
 #include "SuiteSpot.h"
 #include "MapManager.h"
 #include "TrainingPackManager.h"
@@ -20,6 +21,8 @@ void SettingsUI::RenderMainSettingsWindow() {
     if (!plugin_) {
         return;
     }
+
+    ImGui::SetWindowFontScale(UI::Modern::Theme::FontScale);
 
     // Header with metadata
     ImGui::TextUnformatted("SuiteSpot");

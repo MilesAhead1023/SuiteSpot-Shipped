@@ -26,6 +26,10 @@ namespace UI {
             constexpr float Radius_Medium = 8.0f;
             constexpr float Radius_Large = 12.0f;
             constexpr float Padding = 10.0f;
+
+            // Font Scaling
+            constexpr float FontScale = 1.12f;
+            constexpr float FontScaleLarge = 1.5f;
         }
 
         // --- Vector Icons ---

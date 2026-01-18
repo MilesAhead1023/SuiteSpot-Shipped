@@ -123,4 +123,7 @@ private:
     bool columnWidthsDirty = true;
     bool columnWidthsInitialized = false;
     float lastWindowWidth = 0.0f;
+
+    // Icons
+    std::shared_ptr<ImageWrapper> youtubeIcon;
 };

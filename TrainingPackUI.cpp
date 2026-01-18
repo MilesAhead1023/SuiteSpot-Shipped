@@ -517,7 +517,18 @@ void TrainingPackUI::Render() {
 
             // Play Button (if video exists)
             if (!pack.videoUrl.empty()) {
-                if (ImGui::ArrowButton("##play", ImGuiDir_Right)) {
+                bool clicked = false;
+                if (youtubeIcon && youtubeIcon->IsLoadedForImGui()) {
+                    if (ImGui::ImageButton(youtubeIcon->GetImGuiTex(), ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+                        clicked = true;
+                    }
+                } else {
+                    if (ImGui::ArrowButton("##play", ImGuiDir_Right)) {
+                        clicked = true;
+                    }
+                }
+
+                if (clicked) {
                     ShellExecuteA(NULL, "open", pack.videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
                 }
                 if (ImGui::IsItemHovered()) ImGui::SetTooltip("Watch Preview");
@@ -1060,6 +1071,16 @@ bool TrainingPackUI::IsActiveOverlay() {
 void TrainingPackUI::OnOpen() {
     isWindowOpen_ = true;
     needsFocusOnNextRender_ = true;  // Bring window to front on next render
+
+    if (!youtubeIcon) {
+        auto path = plugin_->GetDataRoot() / "Resources" / "Icons" / "icon_youtube.png";
+        youtubeIcon = std::make_shared<ImageWrapper>(path.string(), true);
+        youtubeIcon->LoadForImGui([this](bool success){
+            if(!success){
+                LOG("SuiteSpot: Failed to load YouTube icon from " + (plugin_->GetDataRoot() / "Resources" / "Icons" / "icon_youtube.png").string());
+            }
+        });
+    }
 }
 
 void TrainingPackUI::OnClose() {

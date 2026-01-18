@@ -351,23 +351,6 @@ void TrainingPackUI::Render() {
             }
         }
 
-        // Watch Video
-        bool canWatch = (selectedPack && !selectedPack->videoUrl.empty());
-        std::string watchLabel = (hasSelection && !canWatch) ? "No Video" : "Watch Video";
-        
-        if (hasSelection && canWatch) {
-            if (ImGui::Button(watchLabel.c_str())) {
-                ShellExecuteA(NULL, "open", selectedPack->videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
-            }
-        } else {
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-            ImGui::Button(watchLabel.c_str());
-            ImGui::PopStyleVar();
-        }
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("Open preview video for selected pack");
-
-        ImGui::SameLine();
-
         // Load Pack
         if (hasSelection) {
             if (ImGui::Button("Load Pack")) {
@@ -535,6 +518,19 @@ void TrainingPackUI::Render() {
             // Name column with Selection Logic
             bool isSelected = (selectedPackCode == pack.code);
             ImGui::PushID(pack.code.c_str());
+
+            // Play Button (if video exists)
+            if (!pack.videoUrl.empty()) {
+                if (ImGui::ArrowButton("##play", ImGuiDir_Right)) {
+                    ShellExecuteA(NULL, "open", pack.videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                }
+                if (ImGui::IsItemHovered()) ImGui::SetTooltip("Watch Preview");
+                ImGui::SameLine();
+            } else {
+                // Indent to align with packs that have buttons (approximate width of ArrowButton + Spacing)
+                ImGui::Dummy(ImVec2(ImGui::GetFrameHeight(), 0)); 
+                ImGui::SameLine();
+            }
 
             // SpanAllColumns allows clicking anywhere in the row
             // Simple toggle-on-click behavior

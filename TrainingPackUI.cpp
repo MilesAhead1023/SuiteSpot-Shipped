@@ -232,7 +232,7 @@ void TrainingPackUI::Render() {
     // Difficulty filter
     ImGui::SameLine();
     ImGui::SetNextItemWidth(150.0f);
-    const char* difficulties[] = {"All", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
+    const char* difficulties[] = {"All", "Unranked", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
     if (ImGui::BeginCombo("##difficulty", packDifficultyFilter.c_str())) {
         for (int i = 0; i < IM_ARRAYSIZE(difficulties); i++) {
             bool selected = (packDifficultyFilter == difficulties[i]);
@@ -610,7 +610,7 @@ void TrainingPackUI::Render() {
             ImGui::NextColumn();
 
             // Difficulty column with color coding
-            ImVec4 diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_DEFAULT_COLOR;
+            ImVec4 diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_UNRANKED_COLOR;
             if (pack.difficulty == "Bronze") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_BRONZE_COLOR;
             else if (pack.difficulty == "Silver") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_SILVER_COLOR;
             else if (pack.difficulty == "Gold") diffColor = UI::TrainingPackUI::DIFFICULTY_BADGE_GOLD_COLOR;
@@ -890,7 +890,7 @@ void TrainingPackUI::RenderCustomPackForm() {
 
         ImGui::TextUnformatted("Difficulty");
         ImGui::SetNextItemWidth(UI::TrainingPackUI::CUSTOM_PACK_DIFFICULTY_DROPDOWN_WIDTH);
-        const char* difficulties[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
+        const char* difficulties[] = {"Unranked", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
         ImGui::Combo("##customdifficulty", &customPackDifficulty, difficulties, IM_ARRAYSIZE(difficulties));
 
         ImGui::TextUnformatted("Shot Count");
@@ -928,7 +928,7 @@ void TrainingPackUI::RenderCustomPackForm() {
                 pack.code = customPackCode;
                 pack.name = customPackName;
                 pack.creator = strlen(customPackCreator) > 0 ? customPackCreator : "Unknown";
-                const char* difficultyNames[] = {"Unknown", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
+                const char* difficultyNames[] = {"Unranked", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
                 pack.difficulty = difficultyNames[customPackDifficulty];
                 pack.shotCount = customPackShotCount;
                 if (strlen(customPackTags) > 0) {

@@ -26,7 +26,7 @@
  * 1. `LoadPacksFromFile()`: Reads `training_packs.json` and turns it into a list of `TrainingEntry` objects.
  * 2. `UpdateTrainingPackList()`: Runs a PowerShell script to download the latest packs from the web.
  * 3. `FilterAndSortPacks()`: When you type in the search bar, this function decides which packs to show.
- * 4. `Shuffle Bag`: It tracks which packs you want to rotate through and picks the next one for you.
+ * 4. `Categorized Bags`: Organize packs into categories (Defense, Offense, etc.) for structured training rotations.
  */
 
 class TrainingPackManager
@@ -56,13 +56,30 @@ public:
     // Management (CRUD) operations
     bool AddCustomPack(const TrainingEntry& pack);
     bool UpdatePack(const std::string& code, const TrainingEntry& updatedPack);
+    void HealPack(const std::string& code, int shots);
     bool DeletePack(const std::string& code);
     
-    // Shuffle Bag Logic
-    void ToggleShuffleBag(const std::string& code);
-    void AddToShuffleBag(const std::string& code);
-    std::vector<TrainingEntry> GetShuffleBagPacks() const;
-    int GetShuffleBagCount() const;
+    // Categorized Bag Logic
+    const std::vector<TrainingBag>& GetAvailableBags() const { return availableBags; }
+    const TrainingBag* GetBag(const std::string& bagName) const;
+    std::vector<TrainingEntry> GetPacksInBag(const std::string& bagName) const;
+    int GetBagPackCount(const std::string& bagName) const;
+
+    // Pack-to-bag assignment
+    void AddPackToBag(const std::string& code, const std::string& bagName);
+    void AddPacksToBag(const std::vector<std::string>& codes, const std::string& bagName);
+    void RemovePackFromBag(const std::string& code, const std::string& bagName);
+    void RemovePackFromAllBags(const std::string& code);
+    bool IsPackInBag(const std::string& code, const std::string& bagName) const;
+
+    // Bag management
+    void SetBagEnabled(const std::string& bagName, bool enabled);
+    bool CreateCustomBag(const std::string& name, const std::string& icon, const float color[4]);
+    bool DeleteCustomBag(const std::string& bagName);
+
+    // Rotation
+    TrainingEntry GetNextFromRotation();
+    std::string GetNextBagInRotation() const;
 
     // Accessors
     const std::vector<TrainingEntry>& GetPacks() const { return RLTraining; }
@@ -70,14 +87,22 @@ public:
     std::string GetLastUpdated() const { return lastUpdated; }
     bool IsScrapingInProgress() const { return scrapingInProgress; }
     TrainingEntry* GetPackByCode(const std::string& code);
+    void TestHealerFetch(std::shared_ptr<GameWrapper> gw, std::string code);
 
 private:
     void SavePacksToFile(const std::filesystem::path& filePath);
+    void InitializeDefaultBags();
+    void MigrateShuffleBagToBagCategories();  // Migration from old inShuffleBag to new system
 
     std::vector<TrainingEntry> RLTraining;
+    std::vector<TrainingBag> availableBags;
     mutable std::mutex packMutex;  // Protects RLTraining from concurrent access
     int packCount = 0;
     std::string lastUpdated = "Never";
     bool scrapingInProgress = false;
     std::filesystem::path currentFilePath;
+    int currentRotationIndex = 0;  // Tracks which bag is next in rotation
 };
+
+
+

@@ -33,7 +33,7 @@ void SettingsUI::RenderMainSettingsWindow() {
     bool enabledValue = plugin_->IsEnabled();
     int mapTypeValue = plugin_->GetMapType();
     bool autoQueueValue = plugin_->IsAutoQueueEnabled();
-    bool trainingShuffleEnabledValue = plugin_->IsTrainingShuffleEnabled();
+    bool bagRotationEnabledValue = plugin_->IsBagRotationEnabled();
     int delayQueueSecValue = plugin_->GetDelayQueueSec();
     int delayFreeplaySecValue = plugin_->GetDelayFreeplaySec();
     int delayTrainingSecValue = plugin_->GetDelayTrainingSec();
@@ -59,24 +59,18 @@ void SettingsUI::RenderMainSettingsWindow() {
             }
             mapDelayStr = std::to_string(delayFreeplaySecValue) + "s";
         } else if (mapTypeValue == 1) {
-            if (!RLTraining.empty() && currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
-                currentMap = RLTraining[currentTrainingIndexValue].name + " (Shots:" + std::to_string(RLTraining[currentTrainingIndexValue].shotCount) + ")";
-            }
             mapDelayStr = std::to_string(delayTrainingSecValue) + "s";
 
-            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr) {
-                int shuffleCount = plugin_->trainingPackMgr->GetShuffleBagCount();
-                if (shuffleCount > 0) {
-                    if (shuffleCount == 1) {
-                        auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
-                        if (!shuffleBag.empty()) {
-                            const auto& entry = shuffleBag.front();
-                            currentMap = entry.name + " (Shots:" + std::to_string(entry.shotCount) + ")";
-                        }
-                    } else {
-                        currentMap = "Shuffle (" + std::to_string(shuffleCount) + " packs)";
-                    }
+            if (bagRotationEnabledValue && plugin_->trainingPackMgr) {
+                // Show next bag in rotation
+                std::string nextBag = plugin_->trainingPackMgr->GetNextBagInRotation();
+                if (nextBag != "None") {
+                    currentMap = "Bag Rotation: " + nextBag;
+                } else if (!RLTraining.empty() && currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
+                    currentMap = RLTraining[currentTrainingIndexValue].name;
                 }
+            } else if (!RLTraining.empty() && currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
+                currentMap = RLTraining[currentTrainingIndexValue].name + " (Shots:" + std::to_string(RLTraining[currentTrainingIndexValue].shotCount) + ")";
             }
         } else if (mapTypeValue == 2) {
             if (!RLWorkshop.empty() && currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
@@ -166,7 +160,7 @@ void SettingsUI::RenderMainSettingsWindow() {
             ImGui::Spacing();
 
             // 2) Map Selection Logic
-            RenderMapSelectionTab(mapTypeValue, trainingShuffleEnabledValue, currentIndexValue,
+            RenderMapSelectionTab(mapTypeValue, bagRotationEnabledValue, currentIndexValue,
                 currentTrainingIndexValue, currentWorkshopIndexValue, delayFreeplaySecValue,
                 delayTrainingSecValue, delayWorkshopSecValue, delayQueueSecValue);
 
@@ -210,7 +204,7 @@ void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
 }
 
 void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
-    bool trainingShuffleEnabledValue,
+    bool bagRotationEnabledValue,
     int& currentIndexValue,
     int& currentTrainingIndexValue,
     int& currentWorkshopIndexValue,
@@ -224,7 +218,7 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
     if (mapTypeValue == 0) {
         RenderFreeplayMode(currentIndexValue);
     } else if (mapTypeValue == 1) {
-        RenderTrainingMode(trainingShuffleEnabledValue, currentTrainingIndexValue);
+        RenderTrainingMode(bagRotationEnabledValue, currentTrainingIndexValue);
     } else if (mapTypeValue == 2) {
         RenderWorkshopMode(currentWorkshopIndexValue);
     }
@@ -267,8 +261,18 @@ void SettingsUI::RenderFreeplayMode(int& currentIndexValue) {
     }
 }
 
-void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue) {
+void SettingsUI::RenderTrainingMode(bool bagRotationEnabledValue, int& currentTrainingIndexValue) {
     ImGui::TextUnformatted("Training Settings:");
+
+    // Show bag rotation status
+    if (bagRotationEnabledValue && plugin_->trainingPackMgr) {
+        std::string nextBag = plugin_->trainingPackMgr->GetNextBagInRotation();
+        if (nextBag != "None") {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Bag Rotation Active - Next: %s", nextBag.c_str());
+        } else {
+            ImGui::TextDisabled("Bag Rotation: No packs in any bag");
+        }
+    }
 
     ImGui::Spacing();
     if (ImGui::Button("Open Training Pack Browser", ImVec2(250, 30))) {
@@ -278,7 +282,7 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
         }, 0.0f);
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Open the full training pack browser in a separate window");
+        ImGui::SetTooltip("Open the full training pack browser to manage bags and packs");
     }
 }
 

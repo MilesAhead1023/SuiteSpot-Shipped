@@ -22,14 +22,9 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
             autoQueue = cvar.getBoolValue();
         });
 
-    cvarManager->registerCvar("suitespot_training_shuffle", "0", "Enable shuffle for training maps", true, true, 0, true, 1)
+    cvarManager->registerCvar("suitespot_bag_rotation", "1", "Enable categorized bag rotation for training", true, true, 0, true, 1)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
-            trainingShuffleEnabled = cvar.getBoolValue();
-        });
-
-    cvarManager->registerCvar("suitespot_training_bag_size", "0", "Shuffle bag size (legacy, reflects selected count)", true, true, 0, true, 1000)
-        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
-            trainingBagSize = cvar.getIntValue();
+            bagRotationEnabled = cvar.getBoolValue();
         });
 
     cvarManager->registerCvar("suitespot_delay_queue_sec", "0", "Delay before queuing (seconds)", true, true, 0, true, 300)
@@ -72,8 +67,7 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->getCvar("suitespot_enabled").setValue(enabled ? 1 : 0);
     cvarManager->getCvar("suitespot_map_type").setValue(mapType);
     cvarManager->getCvar("suitespot_auto_queue").setValue(autoQueue ? 1 : 0);
-    cvarManager->getCvar("suitespot_training_shuffle").setValue(trainingShuffleEnabled ? 1 : 0);
-    cvarManager->getCvar("suitespot_training_bag_size").setValue(trainingBagSize);
+    cvarManager->getCvar("suitespot_bag_rotation").setValue(bagRotationEnabled ? 1 : 0);
     cvarManager->getCvar("suitespot_delay_queue_sec").setValue(delayQueueSec);
     cvarManager->getCvar("suitespot_delay_freeplay_sec").setValue(delayFreeplaySec);
     cvarManager->getCvar("suitespot_delay_training_sec").setValue(delayTrainingSec);
@@ -81,15 +75,6 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->getCvar("suitespot_current_freeplay_index").setValue(currentIndex);
     cvarManager->getCvar("suitespot_current_training_index").setValue(currentTrainingIndex);
     cvarManager->getCvar("suitespot_current_workshop_index").setValue(currentWorkshopIndex);
-}
-
-void SettingsSync::UpdateTrainingBagSize(int bagSize, const std::shared_ptr<CVarManagerWrapper>& cvarManager)
-{
-    trainingBagSize = std::max(0, bagSize);
-    if (cvarManager)
-    {
-        cvarManager->getCvar("suitespot_training_bag_size").setValue(trainingBagSize);
-    }
 }
 
 void SettingsSync::SetCurrentIndex(int value)

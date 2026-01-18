@@ -136,15 +136,15 @@ function Normalize-TrainingPack {
             plays = $Pack.plays  # Update dynamic stats
             status = $Pack.status
             source = "prejump"
-            inShuffleBag = if ($existingPack.inShuffleBag) { $existingPack.inShuffleBag } else { $false }
+            bagCategories = if ($existingPack.bagCategories) { @($existingPack.bagCategories) } else { @() }
             isModified = $true
         }
     }
 
-    # Preserve shuffle bag membership from existing pack
-    $inShuffleBag = $false
-    if ($existingPack -and $existingPack.inShuffleBag) {
-        $inShuffleBag = $existingPack.inShuffleBag
+    # Preserve bag categories from existing pack
+    $bagCategories = @()
+    if ($existingPack -and $existingPack.bagCategories) {
+        $bagCategories = @($existingPack.bagCategories)
     }
 
     return @{
@@ -162,7 +162,7 @@ function Normalize-TrainingPack {
         plays = $Pack.plays
         status = $Pack.status
         source = "prejump"
-        inShuffleBag = $inShuffleBag
+        bagCategories = $bagCategories
         isModified = $false
     }
 }
@@ -206,7 +206,7 @@ function Load-ExistingPacks {
                         plays = if ($pack.plays) { $pack.plays } else { 0 }
                         status = if ($pack.status) { $pack.status } else { "" }
                         source = "custom"
-                        inShuffleBag = if ($pack.inShuffleBag) { $pack.inShuffleBag } else { $false }
+                        bagCategories = if ($pack.bagCategories) { @($pack.bagCategories) } else { @() }
                         isModified = if ($pack.isModified) { $pack.isModified } else { $false }
                     }
                 } else {
@@ -226,7 +226,7 @@ function Load-ExistingPacks {
                         plays = if ($pack.plays) { $pack.plays } else { 0 }
                         status = if ($pack.status) { $pack.status } else { "" }
                         source = if ($pack.source) { $pack.source } else { "prejump" }
-                        inShuffleBag = if ($pack.inShuffleBag) { $pack.inShuffleBag } else { $false }
+                        bagCategories = if ($pack.bagCategories) { @($pack.bagCategories) } else { @() }
                         isModified = if ($pack.isModified) { $pack.isModified } else { $false }
                     }
                 }

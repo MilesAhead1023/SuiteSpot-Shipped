@@ -116,7 +116,7 @@ public:
     
     bool IsEnabled() const;
     bool IsAutoQueueEnabled() const;
-    bool IsTrainingShuffleEnabled() const;
+    bool IsBagRotationEnabled() const;
     int GetMapType() const;
     int GetDelayQueueSec() const;
     int GetDelayFreeplaySec() const;
@@ -125,7 +125,6 @@ public:
     int GetCurrentIndex() const;
     int GetCurrentTrainingIndex() const;
     int GetCurrentWorkshopIndex() const;
-    int GetTrainingBagSize() const;
 
 private:
     // Loadout management

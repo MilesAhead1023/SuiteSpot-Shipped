@@ -11,7 +11,8 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
                                    const std::vector<MapEntry>& maps,
                                    const std::vector<TrainingEntry>& training,
                                    const std::vector<WorkshopEntry>& workshop,
-                                   const std::vector<TrainingEntry>& shuffleBag,
+                                   bool useBagRotation,
+                                   const TrainingEntry& selectedBagPack,
                                    SettingsSync& settings)
 {
     if (!gameWrapper || !cvarManager) return;
@@ -22,7 +23,6 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
     const int delayFreeplaySec = settings.GetDelayFreeplaySec();
     const int delayTrainingSec = settings.GetDelayTrainingSec();
     const int delayWorkshopSec = settings.GetDelayWorkshopSec();
-    const bool trainingShuffleEnabled = settings.IsTrainingShuffleEnabled();
 
     int currentIndex = settings.GetCurrentIndex();
     int currentTrainingIndex = settings.GetCurrentTrainingIndex();
@@ -49,30 +49,27 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             LOG("SuiteSpot: Loading freeplay map: " + maps[currentIndex].name);
         }
     } else if (mapType == 1) { // Training
-        if (training.empty() && shuffleBag.empty()) {
-            LOG("SuiteSpot: No training maps configured.");
+        std::string codeToLoad;
+        std::string nameToLoad;
+
+        // Use bag rotation if enabled and a pack was selected
+        if (useBagRotation && !selectedBagPack.code.empty()) {
+            codeToLoad = selectedBagPack.code;
+            nameToLoad = selectedBagPack.name;
+        } else if (!training.empty()) {
+            // Fall back to specific training index
+            currentTrainingIndex = std::clamp(currentTrainingIndex, 0, static_cast<int>(training.size() - 1));
+            settings.SetCurrentTrainingIndex(currentTrainingIndex);
+            codeToLoad = training[currentTrainingIndex].code;
+            nameToLoad = training[currentTrainingIndex].name;
+        }
+
+        if (!codeToLoad.empty()) {
+            safeExecute(delayTrainingSec, "load_training " + codeToLoad);
+            mapLoadDelay = delayTrainingSec;
+            LOG("SuiteSpot: Loading training pack: " + nameToLoad);
         } else {
-            std::string codeToLoad;
-            std::string nameToLoad;
-
-            if (trainingShuffleEnabled && !shuffleBag.empty()) {
-                static std::mt19937 rng(std::random_device{}());
-                std::uniform_int_distribution<int> dist(0, static_cast<int>(shuffleBag.size()) - 1);
-                int bagIndex = dist(rng);
-                codeToLoad = shuffleBag[bagIndex].code;
-                nameToLoad = shuffleBag[bagIndex].name;
-            } else if (!training.empty()) {
-                currentTrainingIndex = std::clamp(currentTrainingIndex, 0, static_cast<int>(training.size() - 1));
-                settings.SetCurrentTrainingIndex(currentTrainingIndex);
-                codeToLoad = training[currentTrainingIndex].code;
-                nameToLoad = training[currentTrainingIndex].name;
-            }
-
-            if (!codeToLoad.empty()) {
-                safeExecute(delayTrainingSec, "load_training " + codeToLoad);
-                mapLoadDelay = delayTrainingSec;
-                LOG("SuiteSpot: Loading training map: " + nameToLoad);
-            }
+            LOG("SuiteSpot: No training pack to load.");
         }
     } else if (mapType == 2) { // Workshop
         if (workshop.empty()) {

@@ -29,15 +29,11 @@ public:
     // Tells BakkesMod about all our settings
     void RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& cvarManager);
     
-    // Updates the "Bag Size" setting (special case because it changes dynamically)
-    void UpdateTrainingBagSize(int bagSize, const std::shared_ptr<CVarManagerWrapper>& cvarManager);
-
     // Getters: Fast, safe ways to ask "Is this feature on?"
     bool IsEnabled() const { return enabled; }
     int GetMapType() const { return mapType; }
     bool IsAutoQueue() const { return autoQueue; }
-    bool IsTrainingShuffleEnabled() const { return trainingShuffleEnabled; }
-    int GetTrainingBagSize() const { return trainingBagSize; }
+    bool IsBagRotationEnabled() const { return bagRotationEnabled; }
 
     // Delay getters (How long to wait?)
     int GetDelayQueueSec() const { return delayQueueSec; }
@@ -60,8 +56,7 @@ private:
     bool enabled = false;
     int mapType = 0; // 0=Freeplay, 1=Training, 2=Workshop
     bool autoQueue = false;
-    bool trainingShuffleEnabled = false;
-    int trainingBagSize = 0;
+    bool bagRotationEnabled = true;  // Use categorized bag rotation for training
 
     int delayQueueSec = 0;
     int delayFreeplaySec = 0;

@@ -141,16 +141,13 @@ namespace UI {
 		// Button group width offset from right edge of window
 		constexpr float BUTTON_GROUP_OFFSET_FROM_RIGHT = 280.0f;
 
-		// Horizontal position for shuffle checkbox in filter row
-		constexpr float SHUFFLE_CHECKBOX_POSITION_X = 400.0f;
-
 		// Indentation amount for custom pack form section
 		constexpr float CUSTOM_PACK_FORM_INDENT = 10.0f;
 
 		// === Table Configuration ===
 
 		// Number of columns in Training Packs table
-		constexpr int TABLE_COLUMN_COUNT = 5;
+		constexpr int TABLE_COLUMN_COUNT = 6;
 
 		// Minimum width for any column in Training Packs table (before dynamic sizing)
 		constexpr float TABLE_MIN_COLUMN_WIDTH = 40.0f;
@@ -277,8 +274,8 @@ namespace UI {
 		// Text color for scraping status message (yellow warning)
 		inline const ImVec4 SCRAPING_STATUS_TEXT_COLOR = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
 
-		// Text color for shuffle bag active status message (green)
-		inline const ImVec4 SHUFFLE_ACTIVE_STATUS_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+		// Text color for bag rotation active status message (green)
+		inline const ImVec4 BAG_ROTATION_STATUS_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
 
 		// Text color for success message "Pack added!" in custom pack form (green)
 		inline const ImVec4 SUCCESS_MESSAGE_TEXT_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
@@ -291,8 +288,8 @@ namespace UI {
 
 		// === Button Colors ===
 
-		// Background color for "Add to Shuffle" button when pack is in shuffle bag (green)
-		inline const ImVec4 IN_SHUFFLE_BUTTON_BG_COLOR = ImVec4(0.2f, 0.6f, 0.2f, 1.0f);
+		// Background color for "In Bag" badge indicator (green)
+		inline const ImVec4 IN_BAG_BUTTON_BG_COLOR = ImVec4(0.2f, 0.6f, 0.2f, 1.0f);
 
 		// Background color for "Delete" button in Training Packs table (red)
 		inline const ImVec4 DELETE_BUTTON_BG_COLOR = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);

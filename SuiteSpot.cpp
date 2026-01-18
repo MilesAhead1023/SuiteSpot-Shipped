@@ -89,8 +89,8 @@ bool SuiteSpot::IsAutoQueueEnabled() const {
     return settingsSync ? settingsSync->IsAutoQueue() : false;
 }
 
-bool SuiteSpot::IsTrainingShuffleEnabled() const {
-    return settingsSync ? settingsSync->IsTrainingShuffleEnabled() : false;
+bool SuiteSpot::IsBagRotationEnabled() const {
+    return settingsSync ? settingsSync->IsBagRotationEnabled() : true;
 }
 
 int SuiteSpot::GetMapType() const {
@@ -123,10 +123,6 @@ int SuiteSpot::GetCurrentTrainingIndex() const {
 
 int SuiteSpot::GetCurrentWorkshopIndex() const {
     return settingsSync ? settingsSync->GetCurrentWorkshopIndex() : 0;
-}
-
-int SuiteSpot::GetTrainingBagSize() const {
-    return settingsSync ? settingsSync->GetTrainingBagSize() : 0;
 }
 
 std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
@@ -185,7 +181,22 @@ void SuiteSpot::LoadHooks() {
     // Re-queue/transition at match end or when main menu appears after a match
     gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
     gameWrapper->HookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
-}
+
+    // Metadata Healing Hook
+    gameWrapper->HookEvent("Function TAGame.GameInfo_TrainingEditor_TA.PostBeginPlay", [this](std::string eventName) {
+        if (!trainingPackMgr) return;
+        if (gameWrapper->IsInCustomTraining()) {
+            auto server = gameWrapper->GetGameEventAsServer();
+            if (!server) return;
+            TrainingEditorWrapper editor(server.memory_address);
+            if (!editor) return;
+            auto saveData = editor.GetTrainingData().GetTrainingData();
+            if (!saveData) return;
+            std::string code = saveData.GetCode().ToString();
+            int realShots = saveData.GetNumRounds();
+            trainingPackMgr->HealPack(code, realShots);
+        }
+    });}
 
 // #detailed comments: GameEndedEvent
 // Purpose: Called by hooked game events when a match ends. The function
@@ -203,14 +214,23 @@ void SuiteSpot::LoadHooks() {
 // overlay presentation.
 void SuiteSpot::GameEndedEvent(std::string name) {
     LOG("SuiteSpot: GameEndedEvent triggered by hook: {}", name);
-    
+
     // 1. Run Auto-Load/Queue Logic first (Independent of overlay)
     if (autoLoadFeature && settingsSync) {
         LOG("SuiteSpot: Triggering AutoLoadFeature::OnMatchEnded");
-        // Get shuffle bag from TrainingPackManager
-        std::vector<TrainingEntry> shuffleBag = trainingPackMgr ? trainingPackMgr->GetShuffleBagPacks() : std::vector<TrainingEntry>();
+
+        // Determine if bag rotation should be used
+        bool useBagRotation = settingsSync->IsBagRotationEnabled() && trainingPackMgr != nullptr;
+        TrainingEntry selectedPack;
+
+        if (useBagRotation) {
+            // Get next pack from bag rotation system
+            selectedPack = trainingPackMgr->GetNextFromRotation();
+            useBagRotation = !selectedPack.code.empty();  // Only use if we got a valid pack
+        }
+
         autoLoadFeature->OnMatchEnded(gameWrapper, cvarManager, RLMaps, RLTraining, RLWorkshop,
-            shuffleBag, *settingsSync);
+            useBagRotation, selectedPack, *settingsSync);
     }
 }
 
@@ -249,11 +269,17 @@ void SuiteSpot::onLoad() {
 
     if (settingsSync) {
         settingsSync->RegisterAllCVars(cvarManager);
-        // Shuffle bag count is now managed by TrainingPackManager
-        int shuffleBagSize = trainingPackMgr ? trainingPackMgr->GetShuffleBagCount() : 0;
-        settingsSync->UpdateTrainingBagSize(shuffleBagSize, cvarManager);
     }
     
+        cvarManager->registerNotifier("healer_test_fetch", [this](std::vector<std::string> args) {
+        if (args.size() < 2) {
+            LOG("Usage: healer_test_fetch <Code>");
+            return;
+        }
+        if (trainingPackMgr) {
+            trainingPackMgr->TestHealerFetch(gameWrapper, args[1]);
+        }
+    }, "Test the training pack metadata healer", PERMISSION_ALL);
     LOG("SuiteSpot: Plugin initialization complete");
 }
 
@@ -389,6 +415,11 @@ void SuiteSpot::OnClose() {
 
 
 }
+
+
+
+
+
 
 
 

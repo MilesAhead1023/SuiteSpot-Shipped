@@ -41,9 +41,9 @@ private:
     // Internal helpers to draw specific tabs
     // These break the big menu into smaller, manageable chunks
     void RenderGeneralTab(bool& enabledValue, int& mapTypeValue);
-    void RenderMapSelectionTab(int mapTypeValue, bool trainingShuffleEnabledValue, int& currentIndexValue, int& currentTrainingIndexValue, int& currentWorkshopIndexValue, int& delayFreeplaySecValue, int& delayTrainingSecValue, int& delayWorkshopSecValue, int& delayQueueSecValue);
+    void RenderMapSelectionTab(int mapTypeValue, bool bagRotationEnabledValue, int& currentIndexValue, int& currentTrainingIndexValue, int& currentWorkshopIndexValue, int& delayFreeplaySecValue, int& delayTrainingSecValue, int& delayWorkshopSecValue, int& delayQueueSecValue);
     void RenderFreeplayMode(int& currentIndexValue);
-    void RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue);
+    void RenderTrainingMode(bool bagRotationEnabledValue, int& currentTrainingIndexValue);
     void RenderWorkshopMode(int& currentWorkshopIndexValue);
 
     // Workshop path configuration state

@@ -59,9 +59,6 @@ void TrainingPackUI::Render() {
     const int packCount = manager ? manager->GetPackCount() : 0;
     const auto& lastUpdated = manager ? manager->GetLastUpdated() : emptyString;
     const bool scraping = manager && manager->IsScrapingInProgress();
-    
-    // Use cached value to avoid CVar access on render thread
-    bool trainingShuffleEnabledValue = cachedShuffleEnabled;
 
     // ===== HEADER SECTION =====
     ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Training Pack Browser");
@@ -112,62 +109,73 @@ void TrainingPackUI::Render() {
         return;
     }
 
-    // ===== SHUFFLE BAG STATUS & CONTROLS =====
-    if (ImGui::CollapsingHeader("Shuffle Bag Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
-        int shufflePackCount = plugin_->trainingPackMgr ? plugin_->trainingPackMgr->GetShuffleBagCount() : 0;
+    // ===== BAG MANAGER STATUS & CONTROLS =====
+    if (ImGui::CollapsingHeader("Bag Manager", ImGuiTreeNodeFlags_DefaultOpen)) {
+        const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
 
-        if (shufflePackCount > 0) {
-            ImGui::TextColored(UI::TrainingPackUI::SHUFFLE_ACTIVE_STATUS_COLOR, "Current Bag: %d pack%s", shufflePackCount, shufflePackCount == 1 ? "" : "s");
+        // Count total packs across all enabled bags
+        int totalPacksInBags = 0;
+        int enabledBagCount = 0;
+        for (const auto& bag : bags) {
+            if (bag.enabled) {
+                totalPacksInBags += manager ? manager->GetBagPackCount(bag.name) : 0;
+                enabledBagCount++;
+            }
+        }
+
+        if (totalPacksInBags > 0) {
+            ImGui::TextColored(UI::TrainingPackUI::BAG_ROTATION_STATUS_COLOR,
+                "Rotation: %d pack%s in %d bag%s",
+                totalPacksInBags, totalPacksInBags == 1 ? "" : "s",
+                enabledBagCount, enabledBagCount == 1 ? "" : "s");
 
             ImGui::SameLine();
-            if (ImGui::Button("Start Shuffle Training")) {
+            if (ImGui::Button("Start Bag Rotation")) {
                 SuiteSpot* p = plugin_;
                 p->gameWrapper->SetTimeout([p](GameWrapper* gw) {
-                    // Enable plugin, set mode to Training, and enable Shuffle
+                    // Enable plugin, set mode to Training, and enable bag rotation
                     p->cvarManager->getCvar("suitespot_enabled").setValue(1);
-                    // Training
                     p->cvarManager->getCvar("suitespot_map_type").setValue(1);
-                    p->cvarManager->getCvar("suitespot_training_shuffle").setValue(1);
+                    p->cvarManager->getCvar("suitespot_bag_rotation").setValue(1);
                 }, 0.0f);
 
-                LOG("SuiteSpot: Shuffle training started with " + std::to_string(shufflePackCount) + " packs");
+                LOG("SuiteSpot: Bag rotation started with " + std::to_string(totalPacksInBags) + " packs");
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enable SuiteSpot, switch to Training mode, and enable Shuffle using your current bag.");
-            }
-
-            ImGui::SameLine();
-            if (ImGui::Button("Clear Bag")) {
-                // Clear shuffle bag by toggling all packs that are in it
-                if (plugin_->trainingPackMgr) {
-                    auto shufflePacks = plugin_->trainingPackMgr->GetShuffleBagPacks();
-                    for (const auto& pack : shufflePacks) {
-                        plugin_->trainingPackMgr->ToggleShuffleBag(pack.code);
-                    }
-                }
-                LOG("SuiteSpot: Shuffle bag cleared");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Remove all packs from the shuffle bag.");
-            }
-
-            // Show Shuffle toggle here as well for convenience
-            ImGui::SameLine(UI::TrainingPackUI::SHUFFLE_CHECKBOX_POSITION_X);
-            if (ImGui::Checkbox("Shuffle Active", &trainingShuffleEnabledValue)) {
-                cachedShuffleEnabled = trainingShuffleEnabledValue;
-                SuiteSpot* p = plugin_;
-                bool v = trainingShuffleEnabledValue;
-                p->gameWrapper->SetTimeout([p, v](GameWrapper* gw) {
-                    p->cvarManager->getCvar("suitespot_training_shuffle").setValue(v);
-                }, 0.0f);
+                ImGui::SetTooltip("Enable SuiteSpot, switch to Training mode, and enable bag rotation.");
             }
         } else {
-            ImGui::TextDisabled("Shuffle Bag: Empty");
-            ImGui::TextWrapped("Add packs to your bag using the '+Shuffle' buttons in the table below to create a rotation.");
+            ImGui::TextDisabled("No packs in rotation bags");
+            ImGui::TextWrapped("Add packs to bags using the 'Add to Bag' button below, or right-click a pack row.");
+        }
+
+        // Show bag summary in a compact row
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Bags:");
+        ImGui::SameLine();
+        for (const auto& bag : bags) {
+            int bagCount = manager ? manager->GetBagPackCount(bag.name) : 0;
+            if (bagCount > 0) {
+                ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
+                ImGui::TextColored(badgeColor, "%s %s(%d)", bag.icon.c_str(), bag.name.c_str(), bagCount);
+                ImGui::SameLine();
+            }
+        }
+        ImGui::NewLine();
+
+        ImGui::SameLine();
+        if (ImGui::Button("Manage Bags...")) {
+            showBagManagerModal = true;
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Open bag manager to enable/disable bags and adjust rotation order");
         }
 
         ImGui::Spacing();
     }
+
+    // Render bag manager modal (after the collapsing header)
+    RenderBagManagerModal();
 
     ImGui::Separator();
     ImGui::Spacing();
@@ -376,24 +384,43 @@ void TrainingPackUI::Render() {
 
         ImGui::SameLine();
 
-        // Add to Shuffle Bag
+        // Add to Bag (opens popup to select bag)
         if (numSelected > 0) {
-            if (ImGui::Button("Add to Shuffle Bag")) {
-                if (plugin_->trainingPackMgr) {
-                    int addedCount = 0;
-                    for (const auto& pack : filteredPacks) {
-                        if (selectedPackCodes.count(pack.code)) {
-                            plugin_->trainingPackMgr->AddToShuffleBag(pack.code);
-                            addedCount++;
-                        }
-                    }
-                    browserStatus.ShowSuccess("Added " + std::to_string(addedCount) + " pack(s) to shuffle bag", 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-                }
+            if (ImGui::Button("Add to Bag...")) {
+                ImGui::OpenPopup("BagPickerPopup");
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Add selected pack(s) to a training bag");
             }
         } else {
              ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-             ImGui::Button("Add to Shuffle Bag");
+             ImGui::Button("Add to Bag...");
              ImGui::PopStyleVar();
+        }
+
+        // Bag Picker Popup
+        if (ImGui::BeginPopup("BagPickerPopup")) {
+            ImGui::TextUnformatted("Select Bag:");
+            ImGui::Separator();
+
+            const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
+            for (const auto& bag : bags) {
+                ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
+                ImGui::PushStyleColor(ImGuiCol_Text, badgeColor);
+                std::string label = bag.icon + " " + bag.name;
+                if (ImGui::Selectable(label.c_str())) {
+                    if (plugin_->trainingPackMgr) {
+                        std::vector<std::string> codes;
+                        for (const auto& code : selectedPackCodes) {
+                            codes.push_back(code);
+                        }
+                        plugin_->trainingPackMgr->AddPacksToBag(codes, bag.name);
+                        browserStatus.ShowSuccess("Added " + std::to_string(codes.size()) + " pack(s) to " + bag.name, 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                    }
+                }
+                ImGui::PopStyleColor();
+            }
+            ImGui::EndPopup();
         }
 
         ImGui::SameLine();
@@ -450,7 +477,7 @@ void TrainingPackUI::Render() {
     // ===== FROZEN HEADER ROW =====
     ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns_Header", true);
 
-    for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
+    for (int i = 0; i < 6 && i < (int)columnWidths.size(); i++) {
         ImGui::SetColumnWidth(i, columnWidths[i]);
     }
 
@@ -484,6 +511,10 @@ void TrainingPackUI::Render() {
     }
     ImGui::NextColumn();
 
+    // Bags column header (no sorting for now)
+    ImGui::Text("Bags");
+    ImGui::NextColumn();
+
     ImGui::Columns(1);
     ImGui::Separator();
 
@@ -492,7 +523,7 @@ void TrainingPackUI::Render() {
 
     ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns_Body", true);
 
-    for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
+    for (int i = 0; i < 6 && i < (int)columnWidths.size(); i++) {
         ImGui::SetColumnWidth(i, columnWidths[i]);
     }
 
@@ -531,6 +562,32 @@ void TrainingPackUI::Render() {
                 }
                 lastSelectedRowIndex = row;
             }
+
+            // Right-click context menu for quick bag management
+            if (ImGui::BeginPopupContextItem(("PackContext_" + pack.code).c_str())) {
+                ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "%s", pack.name.c_str());
+                ImGui::Separator();
+
+                const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
+                for (const auto& bag : bags) {
+                    bool inBag = pack.bagCategories.count(bag.name) > 0;
+                    std::string label = (inBag ? "[X] " : "[ ] ") + bag.icon + " " + bag.name;
+
+                    if (ImGui::Selectable(label.c_str())) {
+                        if (plugin_->trainingPackMgr) {
+                            if (inBag) {
+                                plugin_->trainingPackMgr->RemovePackFromBag(pack.code, bag.name);
+                                browserStatus.ShowSuccess("Removed from " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                            } else {
+                                plugin_->trainingPackMgr->AddPackToBag(pack.code, bag.name);
+                                browserStatus.ShowSuccess("Added to " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                            }
+                        }
+                    }
+                }
+                ImGui::EndPopup();
+            }
+
             ImGui::PopID();
             if (ImGui::IsItemHovered()) {
                 std::string tooltip = "";
@@ -577,6 +634,28 @@ void TrainingPackUI::Render() {
             // Plays column
             ImGui::Text("%d", pack.plays);
             ImGui::NextColumn();
+
+            // Bags column - show colored pill badges for each bag
+            const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
+            for (const auto& bag : bags) {
+                if (pack.bagCategories.count(bag.name) > 0) {
+                    ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
+                    ImGui::PushStyleColor(ImGuiCol_Button, badgeColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(bag.color[0] * 1.2f, bag.color[1] * 1.2f, bag.color[2] * 1.2f, bag.color[3]));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, badgeColor);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 2.0f));
+
+                    std::string badgeLabel = bag.icon + " " + bag.name;
+                    ImGui::SmallButton(badgeLabel.c_str());
+
+                    ImGui::PopStyleVar(2);
+                    ImGui::PopStyleColor(3);
+                    ImGui::SameLine();
+                }
+            }
+            ImGui::NewLine();
+            ImGui::NextColumn();
         }
     }
 
@@ -586,6 +665,78 @@ void TrainingPackUI::Render() {
 
     ImGui::Spacing();
     ImGui::End();
+}
+
+void TrainingPackUI::RenderBagManagerModal() {
+    if (!showBagManagerModal) return;
+
+    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
+    if (ImGui::BeginPopupModal("Bag Manager", &showBagManagerModal, ImGuiWindowFlags_None)) {
+        ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Training Bag Configuration");
+        ImGui::Text("Enable/disable bags to control which packs are included in rotation.");
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        const auto* manager = plugin_->trainingPackMgr;
+        const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
+
+        // Table header
+        ImGui::Columns(4, "BagTable", true);
+        ImGui::Text("Status");
+        ImGui::NextColumn();
+        ImGui::Text("Bag");
+        ImGui::NextColumn();
+        ImGui::Text("Packs");
+        ImGui::NextColumn();
+        ImGui::Text("Priority");
+        ImGui::NextColumn();
+        ImGui::Separator();
+
+        // Render each bag
+        for (const auto& bag : bags) {
+            int packCount = manager ? manager->GetBagPackCount(bag.name) : 0;
+            ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
+
+            // Enabled checkbox
+            bool enabled = bag.enabled;
+            if (ImGui::Checkbox(("##enabled_" + bag.name).c_str(), &enabled)) {
+                if (plugin_->trainingPackMgr) {
+                    plugin_->trainingPackMgr->SetBagEnabled(bag.name, enabled);
+                }
+            }
+            ImGui::NextColumn();
+
+            // Bag name with icon and color
+            ImGui::TextColored(badgeColor, "%s %s", bag.icon.c_str(), bag.name.c_str());
+            ImGui::NextColumn();
+
+            // Pack count
+            ImGui::Text("%d", packCount);
+            ImGui::NextColumn();
+
+            // Priority (lower = first)
+            ImGui::Text("%d", bag.priority);
+            ImGui::NextColumn();
+        }
+
+        ImGui::Columns(1);
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::TextWrapped("Tip: Right-click on any pack in the browser to add it to a bag. Use the 'Add to Bag' button for multi-select.");
+
+        ImGui::Spacing();
+        if (ImGui::Button("Close", ImVec2(120, 0))) {
+            showBagManagerModal = false;
+        }
+
+        ImGui::EndPopup();
+    }
+
+    // Open modal when flag is set
+    if (showBagManagerModal) {
+        ImGui::OpenPopup("Bag Manager");
+    }
 }
 
 bool TrainingPackUI::ValidatePackCode(const char* code) const {
@@ -719,7 +870,6 @@ void TrainingPackUI::RenderCustomPackForm() {
                 pack.staffComments = customPackNotes;
                 pack.videoUrl = customPackVideoUrl;
                 pack.source = "custom";
-                pack.inShuffleBag = false;
                 pack.isModified = false;
                 if (plugin_->trainingPackMgr) {
                     if (plugin_->trainingPackMgr->AddCustomPack(pack)) {
@@ -751,13 +901,14 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
     // to get the full width regardless of cursor position
     float availWidth = ImGui::GetWindowContentRegionWidth();
 
-    // Column proportions: Name (40%), Difficulty (20%), Shots (15%), Likes (10%), Plays (15%)
-    columnWidths.resize(5);
-    columnWidths[0] = availWidth * 0.40f;  // Name
-    columnWidths[1] = availWidth * 0.20f;  // Difficulty
-    columnWidths[2] = availWidth * 0.15f;  // Shots
+    // Column proportions: Name (35%), Difficulty (15%), Shots (10%), Likes (10%), Plays (10%), Bags (20%)
+    columnWidths.resize(6);
+    columnWidths[0] = availWidth * 0.35f;  // Name
+    columnWidths[1] = availWidth * 0.15f;  // Difficulty
+    columnWidths[2] = availWidth * 0.10f;  // Shots
     columnWidths[3] = availWidth * 0.10f;  // Likes
-    columnWidths[4] = availWidth * 0.15f;  // Plays
+    columnWidths[4] = availWidth * 0.10f;  // Plays
+    columnWidths[5] = availWidth * 0.20f;  // Bags
 
     // Apply minimum widths to ensure readability
     if (columnWidths[0] < 150.0f) columnWidths[0] = 150.0f;
@@ -765,6 +916,7 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
     if (columnWidths[2] < 60.0f) columnWidths[2] = 60.0f;
     if (columnWidths[3] < 60.0f) columnWidths[3] = 60.0f;
     if (columnWidths[4] < 60.0f) columnWidths[4] = 60.0f;
+    if (columnWidths[5] < 100.0f) columnWidths[5] = 100.0f;
 }
 
 std::string TrainingPackUI::GetMenuName() {

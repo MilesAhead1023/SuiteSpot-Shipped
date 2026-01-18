@@ -64,7 +64,6 @@ public:
 private:
     SuiteSpot* plugin_;
     bool isWindowOpen_ = false;
-    bool cachedShuffleEnabled = false;
 
     char packSearchText[256] = {0};
     std::string packDifficultyFilter = "All";
@@ -103,8 +102,12 @@ private:
     UI::StatusMessage customPackStatus;
     UI::StatusMessage browserStatus;
 
+    // Bag manager modal state
+    bool showBagManagerModal = false;
+
     // Helper methods
     void RenderCustomPackForm();
+    void RenderBagManagerModal();
     bool ValidatePackCode(const char* code) const;
     void ClearCustomPackForm();
     void CalculateOptimalColumnWidths();

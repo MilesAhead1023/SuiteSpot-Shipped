@@ -1073,11 +1073,11 @@ void TrainingPackUI::OnOpen() {
     needsFocusOnNextRender_ = true;  // Bring window to front on next render
 
     if (!youtubeIcon) {
-        auto path = plugin_->GetDataRoot() / "Resources" / "Icons" / "icon_youtube.png";
+        auto path = plugin_->GetDataRoot() / "SuiteSpot" / "Resources" / "Icons" / "icon_youtube.png";
         youtubeIcon = std::make_shared<ImageWrapper>(path.string(), true);
         youtubeIcon->LoadForImGui([this](bool success){
             if(!success){
-                LOG("SuiteSpot: Failed to load YouTube icon from " + (plugin_->GetDataRoot() / "Resources" / "Icons" / "icon_youtube.png").string());
+                LOG("SuiteSpot: Failed to load YouTube icon from " + (plugin_->GetDataRoot() / "SuiteSpot" / "Resources" / "Icons" / "icon_youtube.png").string());
             }
         });
     }

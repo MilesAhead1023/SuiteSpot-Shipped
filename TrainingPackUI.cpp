@@ -530,7 +530,7 @@ void TrainingPackUI::Render() {
             if (!pack.videoUrl.empty()) {
                 bool clicked = false;
                 if (youtubeIcon && youtubeIcon->IsLoadedForImGui()) {
-                    if (ImGui::ImageButton(youtubeIcon->GetImGuiTex(), ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()))) {
+                    if (ImGui::ImageButton(youtubeIcon->GetImGuiTex(), ImVec2(ImGui::GetFrameHeight(), ImGui::GetFrameHeight()), ImVec2(0, 0), ImVec2(1, 1), 0)) {
                         clicked = true;
                     }
                 } else {

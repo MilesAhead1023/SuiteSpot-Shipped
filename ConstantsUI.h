@@ -147,7 +147,7 @@ namespace UI {
 		// === Table Configuration ===
 
 		// Number of columns in Training Packs table
-		constexpr int TABLE_COLUMN_COUNT = 6;
+		constexpr int TABLE_COLUMN_COUNT = 5;
 
 		// Minimum width for any column in Training Packs table (before dynamic sizing)
 		constexpr float TABLE_MIN_COLUMN_WIDTH = 40.0f;

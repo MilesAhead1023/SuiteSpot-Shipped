@@ -456,7 +456,7 @@ void TrainingPackUI::Render() {
     // ===== FROZEN HEADER ROW =====
     ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns_Header", true);
 
-    for (int i = 0; i < 6 && i < (int)columnWidths.size(); i++) {
+    for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
         ImGui::SetColumnWidth(i, columnWidths[i]);
     }
 
@@ -490,10 +490,6 @@ void TrainingPackUI::Render() {
     }
     ImGui::NextColumn();
 
-    // Bags column header (no sorting for now)
-    ImGui::Text("Bags");
-    ImGui::NextColumn();
-
     ImGui::Columns(1);
     ImGui::Separator();
 
@@ -502,7 +498,7 @@ void TrainingPackUI::Render() {
 
     ImGui::Columns(UI::TrainingPackUI::TABLE_COLUMN_COUNT, "PackColumns_Body", true);
 
-    for (int i = 0; i < 6 && i < (int)columnWidths.size(); i++) {
+    for (int i = 0; i < 5 && i < (int)columnWidths.size(); i++) {
         ImGui::SetColumnWidth(i, columnWidths[i]);
     }
 
@@ -636,28 +632,6 @@ void TrainingPackUI::Render() {
 
             // Plays column
             ImGui::Text("%d", pack.plays);
-            ImGui::NextColumn();
-
-            // Bags column - show colored pill badges for each bag
-            const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
-            for (const auto& bag : bags) {
-                if (pack.bagCategories.count(bag.name) > 0) {
-                    ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
-                    ImGui::PushStyleColor(ImGuiCol_Button, badgeColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(bag.color[0] * 1.2f, bag.color[1] * 1.2f, bag.color[2] * 1.2f, bag.color[3]));
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, badgeColor);
-                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
-                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 2.0f));
-
-                    std::string badgeLabel = bag.icon + " " + bag.name;
-                    ImGui::SmallButton(badgeLabel.c_str());
-
-                    ImGui::PopStyleVar(2);
-                    ImGui::PopStyleColor(3);
-                    ImGui::SameLine();
-                }
-            }
-            ImGui::NewLine();
             ImGui::NextColumn();
         }
     }
@@ -1012,14 +986,13 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
     // to get the full width regardless of cursor position
     float availWidth = ImGui::GetWindowContentRegionWidth();
 
-    // Column proportions: Name (35%), Difficulty (15%), Shots (10%), Likes (10%), Plays (10%), Bags (20%)
-    columnWidths.resize(6);
-    columnWidths[0] = availWidth * 0.35f;  // Name
-    columnWidths[1] = availWidth * 0.15f;  // Difficulty
+    // Column proportions: Name (45%), Difficulty (25%), Shots (10%), Likes (10%), Plays (10%)
+    columnWidths.resize(5);
+    columnWidths[0] = availWidth * 0.45f;  // Name
+    columnWidths[1] = availWidth * 0.25f;  // Difficulty
     columnWidths[2] = availWidth * 0.10f;  // Shots
     columnWidths[3] = availWidth * 0.10f;  // Likes
     columnWidths[4] = availWidth * 0.10f;  // Plays
-    columnWidths[5] = availWidth * 0.20f;  // Bags
 
     // Apply minimum widths to ensure readability
     if (columnWidths[0] < 150.0f) columnWidths[0] = 150.0f;
@@ -1027,7 +1000,6 @@ void TrainingPackUI::CalculateOptimalColumnWidths() {
     if (columnWidths[2] < 60.0f) columnWidths[2] = 60.0f;
     if (columnWidths[3] < 60.0f) columnWidths[3] = 60.0f;
     if (columnWidths[4] < 60.0f) columnWidths[4] = 60.0f;
-    if (columnWidths[5] < 100.0f) columnWidths[5] = 100.0f;
 }
 
 std::string TrainingPackUI::GetMenuName() {

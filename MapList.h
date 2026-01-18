@@ -43,6 +43,7 @@ struct TrainingEntry {
     // Unified system fields
     std::string source = "prejump"; // "prejump" or "custom"
     std::set<std::string> bagCategories;  // Categorized bag membership (e.g., "Defense", "Offense")
+    std::map<std::string, int> orderInBag;  // Position within each bag (0 = first)
     bool isModified = false;        // Track if user edited a scraped pack
 };
 extern std::vector<TrainingEntry> RLTraining;

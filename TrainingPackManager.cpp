@@ -115,6 +115,20 @@ void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePat
                 // Legacy migration: packs marked for shuffle go to "Warmup" by default
                 entry.bagCategories.insert("Warmup");
             }
+            // Load orderInBag (position within each bag)
+            if (pack.contains("orderInBag") && pack["orderInBag"].is_object()) {
+                for (auto& [bagName, order] : pack["orderInBag"].items()) {
+                    if (order.is_number_integer()) {
+                        entry.orderInBag[bagName] = order.get<int>();
+                    }
+                }
+            } else {
+                // Migration: If orderInBag missing, auto-assign based on load order
+                int orderCounter = 0;
+                for (const auto& bagName : entry.bagCategories) {
+                    entry.orderInBag[bagName] = orderCounter++;
+                }
+            }
             if (pack.contains("isModified") && pack["isModified"].is_boolean()) {
                 entry.isModified = pack["isModified"].get<bool>();
             }
@@ -439,6 +453,14 @@ void TrainingPackManager::SavePacksToFile(const std::filesystem::path& filePath)
                 bagCatsArray.push_back(cat);
             }
             p["bagCategories"] = bagCatsArray;
+            // Save orderInBag as object
+            if (!pack.orderInBag.empty()) {
+                nlohmann::json orderObj;
+                for (const auto& [bagName, order] : pack.orderInBag) {
+                    orderObj[bagName] = order;
+                }
+                p["orderInBag"] = orderObj;
+            }
             p["isModified"] = pack.isModified;
 
             packsArray.push_back(p);
@@ -643,6 +665,18 @@ std::vector<TrainingEntry> TrainingPackManager::GetPacksInBag(const std::string&
             result.push_back(pack);
         }
     }
+
+    // Sort by orderInBag
+    std::sort(result.begin(), result.end(), [&bagName](const TrainingEntry& a, const TrainingEntry& b) {
+        auto it_a = a.orderInBag.find(bagName);
+        auto it_b = b.orderInBag.find(bagName);
+
+        int order_a = (it_a != a.orderInBag.end()) ? it_a->second : INT_MAX;
+        int order_b = (it_b != b.orderInBag.end()) ? it_b->second : INT_MAX;
+
+        return order_a < order_b;
+    });
+
     return result;
 }
 
@@ -666,6 +700,18 @@ void TrainingPackManager::AddPackToBag(const std::string& code, const std::strin
         for (auto& pack : RLTraining) {
             if (pack.code == code) {
                 if (pack.bagCategories.insert(bagName).second) {
+                    // Assign order (append to end)
+                    int maxOrder = -1;
+                    for (const auto& p : RLTraining) {
+                        if (p.bagCategories.count(bagName) > 0) {
+                            auto orderIt = p.orderInBag.find(bagName);
+                            if (orderIt != p.orderInBag.end()) {
+                                maxOrder = std::max(maxOrder, orderIt->second);
+                            }
+                        }
+                    }
+                    pack.orderInBag[bagName] = maxOrder + 1;
+
                     shouldSave = true;
                     LOG("SuiteSpot: Added pack '{}' to bag '{}'", pack.name, bagName);
                 }
@@ -750,6 +796,54 @@ bool TrainingPackManager::IsPackInBag(const std::string& code, const std::string
         }
     }
     return false;
+}
+
+void TrainingPackManager::SwapPacksInBag(const std::string& bagName, int idx1, int idx2)
+{
+    std::lock_guard<std::mutex> lock(packMutex);
+
+    // Get all packs in bag (in order they appear after sorting)
+    std::vector<TrainingEntry*> packsInBag;
+    for (auto& pack : RLTraining) {
+        if (pack.bagCategories.count(bagName) > 0) {
+            packsInBag.push_back(&pack);
+        }
+    }
+
+    // Sort to match display order
+    std::sort(packsInBag.begin(), packsInBag.end(), [&bagName](const TrainingEntry* a, const TrainingEntry* b) {
+        auto it_a = a->orderInBag.find(bagName);
+        auto it_b = b->orderInBag.find(bagName);
+
+        int order_a = (it_a != a->orderInBag.end()) ? it_a->second : INT_MAX;
+        int order_b = (it_b != b->orderInBag.end()) ? it_b->second : INT_MAX;
+
+        return order_a < order_b;
+    });
+
+    // Validate indices
+    if (idx1 < 0 || idx1 >= (int)packsInBag.size() ||
+        idx2 < 0 || idx2 >= (int)packsInBag.size()) {
+        return;
+    }
+
+    TrainingEntry* pack1 = packsInBag[idx1];
+    TrainingEntry* pack2 = packsInBag[idx2];
+
+    // Swap order values
+    int order1 = pack1->orderInBag[bagName];
+    int order2 = pack2->orderInBag[bagName];
+    pack1->orderInBag[bagName] = order2;
+    pack2->orderInBag[bagName] = order1;
+
+    // Mark as modified
+    pack1->isModified = true;
+    pack2->isModified = true;
+
+    // Save to disk
+    if (!currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
 }
 
 void TrainingPackManager::SetBagEnabled(const std::string& bagName, bool enabled)

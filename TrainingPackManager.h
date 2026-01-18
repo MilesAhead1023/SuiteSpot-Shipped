@@ -72,6 +72,9 @@ public:
     void RemovePackFromAllBags(const std::string& code);
     bool IsPackInBag(const std::string& code, const std::string& bagName) const;
 
+    // Pack reordering within a bag
+    void SwapPacksInBag(const std::string& bagName, int idx1, int idx2);
+
     // Bag management
     void SetBagEnabled(const std::string& bagName, bool enabled);
     bool CreateCustomBag(const std::string& name, const std::string& icon, const float color[4]);

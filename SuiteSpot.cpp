@@ -359,9 +359,20 @@ void SuiteSpot::SetImGuiContext(uintptr_t ctx) {
 
 
 bool SuiteSpot::ShouldBlockInput() {
+    if (!isBrowserOpen) {
+        return false;  // Browser closed → no blocking
+    }
 
-    return isBrowserOpen;
+    // Selective input blocking - consistent with TrainingPackUI
+    ImGuiIO& io = ImGui::GetIO();
 
+    // Block when actively typing in text fields (settings UI)
+    if (io.WantTextInput && ImGui::IsAnyItemActive()) {
+        return true;
+    }
+
+    // Allow normal mouse interaction without blocking game input
+    return false;
 }
 
 

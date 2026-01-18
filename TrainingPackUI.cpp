@@ -563,6 +563,17 @@ void TrainingPackUI::Render() {
                 lastSelectedRowIndex = row;
             }
 
+            // === DRAG SOURCE for drag-and-drop to bag manager ===
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                // Payload: pack code as null-terminated string
+                ImGui::SetDragDropPayload("TRAINING_PACK_CODE", pack.code.c_str(), pack.code.length() + 1);
+
+                // Preview during drag
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Dragging: %s", pack.name.c_str());
+
+                ImGui::EndDragDropSource();
+            }
+
             // Right-click context menu for quick bag management
             if (ImGui::BeginPopupContextItem(("PackContext_" + pack.code).c_str())) {
                 ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "%s", pack.name.c_str());
@@ -670,72 +681,180 @@ void TrainingPackUI::Render() {
 void TrainingPackUI::RenderBagManagerModal() {
     if (!showBagManagerModal) return;
 
-    ImGui::SetNextWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
-    if (ImGui::BeginPopupModal("Bag Manager", &showBagManagerModal, ImGuiWindowFlags_None)) {
-        ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Training Bag Configuration");
-        ImGui::Text("Enable/disable bags to control which packs are included in rotation.");
+    // Use a separate floating window instead of a modal popup
+    // This allows interaction with the browser window for drag-and-drop
+    ImGui::SetNextWindowSize(ImVec2(900, 600), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin("Bag Manager", &showBagManagerModal, ImGuiWindowFlags_None)) {
+        ImGui::TextWrapped("Drag training packs from the browser into any bag below. Use up/down arrows to reorder packs within a bag.");
         ImGui::Separator();
         ImGui::Spacing();
 
         const auto* manager = plugin_->trainingPackMgr;
         const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
 
-        // Table header
-        ImGui::Columns(4, "BagTable", true);
-        ImGui::Text("Status");
-        ImGui::NextColumn();
-        ImGui::Text("Bag");
-        ImGui::NextColumn();
-        ImGui::Text("Packs");
-        ImGui::NextColumn();
-        ImGui::Text("Priority");
-        ImGui::NextColumn();
-        ImGui::Separator();
+        // Calculate child window dimensions
+        ImGuiStyle& style = ImGui::GetStyle();
+        float childWidth = (ImGui::GetContentRegionAvail().x - 2 * style.ItemSpacing.x) / 3.0f;
+        float childHeight = 250.0f;
 
-        // Render each bag
-        for (const auto& bag : bags) {
-            int packCount = manager ? manager->GetBagPackCount(bag.name) : 0;
-            ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
+        // Render 6 bags in 3x2 grid
+        for (int bagIdx = 0; bagIdx < 6 && bagIdx < (int)bags.size(); bagIdx++) {
+            const auto& bag = bags[bagIdx];
 
-            // Enabled checkbox
-            bool enabled = bag.enabled;
-            if (ImGui::Checkbox(("##enabled_" + bag.name).c_str(), &enabled)) {
-                if (plugin_->trainingPackMgr) {
-                    plugin_->trainingPackMgr->SetBagEnabled(bag.name, enabled);
-                }
-            }
-            ImGui::NextColumn();
+            // Layout: 3 per row
+            if (bagIdx % 3 != 0) ImGui::SameLine();
 
-            // Bag name with icon and color
-            ImGui::TextColored(badgeColor, "%s %s", bag.icon.c_str(), bag.name.c_str());
-            ImGui::NextColumn();
-
-            // Pack count
-            ImGui::Text("%d", packCount);
-            ImGui::NextColumn();
-
-            // Priority (lower = first)
-            ImGui::Text("%d", bag.priority);
-            ImGui::NextColumn();
+            ImGui::PushID(bagIdx);
+            RenderBagChildWindow(bag, childWidth, childHeight);
+            ImGui::PopID();
         }
-
-        ImGui::Columns(1);
-        ImGui::Separator();
-        ImGui::Spacing();
-
-        ImGui::TextWrapped("Tip: Right-click on any pack in the browser to add it to a bag. Use the 'Add to Bag' button for multi-select.");
 
         ImGui::Spacing();
         if (ImGui::Button("Close", ImVec2(120, 0))) {
             showBagManagerModal = false;
         }
 
-        ImGui::EndPopup();
+        ImGui::End();
+    }
+}
+
+void TrainingPackUI::RenderBagChildWindow(const TrainingBag& bag, float width, float height) {
+    const auto* manager = plugin_->trainingPackMgr;
+
+    // Get packs in this bag
+    auto packsInBag = manager ? manager->GetPacksInBag(bag.name) : std::vector<TrainingEntry>();
+
+    // Bag header with icon and color
+    ImVec4 bagColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
+    ImGui::PushStyleColor(ImGuiCol_Border, bagColor);
+
+    ImGui::BeginChild(bag.name.c_str(), ImVec2(width, height), true);
+
+    // === HEADER ===
+    ImGui::TextColored(bagColor, "%s %s", bag.icon.c_str(), bag.name.c_str());
+    ImGui::SameLine();
+
+    // Active checkbox
+    bool enabled = bag.enabled;
+    if (ImGui::Checkbox("Active", &enabled)) {
+        if (manager) {
+            plugin_->trainingPackMgr->SetBagEnabled(bag.name, enabled);
+        }
     }
 
-    // Open modal when flag is set
-    if (showBagManagerModal) {
-        ImGui::OpenPopup("Bag Manager");
+    // Up/Down arrow buttons (positioned on same line)
+    ImGui::SameLine();
+    if (ImGui::ArrowButton("##up", ImGuiDir_Up)) {
+        MoveSelectedPackUp(bag.name);
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Move selected pack up");
+
+    ImGui::SameLine();
+    if (ImGui::ArrowButton("##down", ImGuiDir_Down)) {
+        MoveSelectedPackDown(bag.name);
+    }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Move selected pack down");
+
+    ImGui::SameLine();
+    ImGui::TextDisabled("(%d)", (int)packsInBag.size());
+
+    ImGui::Separator();
+
+    // === PACK LIST (Scrollable) ===
+    if (packsInBag.empty()) {
+        ImGui::TextDisabled("Drop packs here");
+    } else {
+        // Render each pack in the bag
+        for (int i = 0; i < (int)packsInBag.size(); i++) {
+            const auto& pack = packsInBag[i];
+
+            // Selectable pack row
+            bool isSelected = selectedPackInBag[bag.name] == pack.code;
+            if (ImGui::Selectable(pack.name.c_str(), isSelected)) {
+                selectedPackInBag[bag.name] = pack.code;
+            }
+
+            // Context menu for quick remove
+            if (ImGui::BeginPopupContextItem(("PackInBagCtx_" + pack.code).c_str())) {
+                if (ImGui::MenuItem("Remove from bag")) {
+                    if (manager) {
+                        plugin_->trainingPackMgr->RemovePackFromBag(pack.code, bag.name);
+                    }
+                }
+                ImGui::EndPopup();
+            }
+        }
+    }
+
+    // === DROP TARGET (Entire child region) ===
+    if (ImGui::BeginDragDropTarget()) {
+        // Accept packs from browser
+        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TRAINING_PACK_CODE")) {
+            // Payload contains pack code string
+            const char* packCode = (const char*)payload->Data;
+            if (manager) {
+                plugin_->trainingPackMgr->AddPackToBag(packCode, bag.name);
+                browserStatus.ShowSuccess("Added to " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+            }
+        }
+        ImGui::EndDragDropTarget();
+    }
+
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+}
+
+void TrainingPackUI::MoveSelectedPackUp(const std::string& bagName) {
+    auto it = selectedPackInBag.find(bagName);
+    if (it == selectedPackInBag.end()) return;  // No selection
+
+    std::string packCode = it->second;
+    const auto* manager = plugin_->trainingPackMgr;
+    if (!manager) return;
+
+    auto packsInBag = manager->GetPacksInBag(bagName);
+
+    // Find pack index
+    int currentIdx = -1;
+    for (int i = 0; i < (int)packsInBag.size(); i++) {
+        if (packsInBag[i].code == packCode) {
+            currentIdx = i;
+            break;
+        }
+    }
+
+    if (currentIdx <= 0) return;  // Already at top or not found
+
+    // Swap with previous pack
+    if (plugin_->trainingPackMgr) {
+        plugin_->trainingPackMgr->SwapPacksInBag(bagName, currentIdx, currentIdx - 1);
+    }
+}
+
+void TrainingPackUI::MoveSelectedPackDown(const std::string& bagName) {
+    auto it = selectedPackInBag.find(bagName);
+    if (it == selectedPackInBag.end()) return;  // No selection
+
+    std::string packCode = it->second;
+    const auto* manager = plugin_->trainingPackMgr;
+    if (!manager) return;
+
+    auto packsInBag = manager->GetPacksInBag(bagName);
+
+    // Find pack index
+    int currentIdx = -1;
+    for (int i = 0; i < (int)packsInBag.size(); i++) {
+        if (packsInBag[i].code == packCode) {
+            currentIdx = i;
+            break;
+        }
+    }
+
+    if (currentIdx < 0 || currentIdx >= (int)packsInBag.size() - 1) return;  // At bottom or not found
+
+    // Swap with next pack
+    if (plugin_->trainingPackMgr) {
+        plugin_->trainingPackMgr->SwapPacksInBag(bagName, currentIdx, currentIdx + 1);
     }
 }
 
@@ -932,7 +1051,40 @@ void TrainingPackUI::SetImGuiContext(uintptr_t ctx) {
 }
 
 bool TrainingPackUI::ShouldBlockInput() {
-    return isWindowOpen_;
+    if (!isWindowOpen_) {
+        return false;  // Window closed → no blocking
+    }
+
+    // ============================================================================
+    // INPUT BLOCKING STRATEGY
+    // ============================================================================
+    //
+    // The default PluginWindowBase::ShouldBlockInput() blocks ALL application
+    // input whenever ImGui wants mouse or keyboard input. This is too aggressive
+    // and prevents multi-window interactions like drag-and-drop.
+    //
+    // Our selective approach:
+    // 1. Allow drag-and-drop between browser and bag manager (modal popups)
+    // 2. Block only when user is actively typing in text fields
+    // 3. Allow normal mouse interactions (clicking, hovering, scrolling)
+    //
+    // This enables the drag-and-drop UX while maintaining text input safety.
+    // Based on: docs/Examples/ManagingMultipleWindows.md:163-180
+    // ============================================================================
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    // Block when actively typing in text fields (search box, custom pack form)
+    // This prevents game commands from firing while typing
+    if (io.WantTextInput && ImGui::IsAnyItemActive()) {
+        return true;
+    }
+
+    // Allow normal mouse interaction without blocking game input
+    // This includes drag-and-drop operations between browser and bag manager modal
+    // Note: We intentionally DON'T block for popups/modals because the Bag Manager modal
+    // needs to allow drag operations from the parent browser window (same ImGui context)
+    return false;
 }
 
 bool TrainingPackUI::IsActiveOverlay() {

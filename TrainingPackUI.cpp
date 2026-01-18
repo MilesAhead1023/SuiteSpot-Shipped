@@ -47,7 +47,22 @@ void TrainingPackUI::Render() {
     }
 
     ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-    if (!ImGui::Begin(GetMenuTitle().c_str(), &isWindowOpen_, ImGuiWindowFlags_None)) {
+
+    // Bring window to front when first opened
+    if (needsFocusOnNextRender_) {
+        ImGui::SetNextWindowFocus();
+        needsFocusOnNextRender_ = false;
+    }
+
+    // Only prevent bringing to front when bag manager is open
+    // This allows normal window interaction (clicking to bring forward) when bag manager is closed
+    // But keeps browser in back during drag-and-drop when bag manager is visible
+    ImGuiWindowFlags browserFlags = ImGuiWindowFlags_None;
+    if (showBagManagerModal) {
+        browserFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+    }
+
+    if (!ImGui::Begin(GetMenuTitle().c_str(), &isWindowOpen_, browserFlags)) {
         ImGui::End();
         return;
     }
@@ -323,32 +338,26 @@ void TrainingPackUI::Render() {
     if (browserStatus.IsVisible()) ImGui::Spacing();
 
     {
-        int numSelected = (int)selectedPackCodes.size();
+        bool hasSelection = !selectedPackCode.empty();
         
-        // Watch Video
-        bool canWatch = false;
-        std::string videoUrl = "";
-        bool singleSelection = numSelected == 1;
-        if (singleSelection) {
-             for (const auto& pack : filteredPacks) {
-                 if (selectedPackCodes.count(pack.code)) {
-                     videoUrl = pack.videoUrl;
-                     break;
-                 }
-             }
-             canWatch = !videoUrl.empty();
+        // Find selected pack data
+        const TrainingEntry* selectedPack = nullptr;
+        if (hasSelection) {
+            for (const auto& pack : filteredPacks) {
+                if (pack.code == selectedPackCode) {
+                    selectedPack = &pack;
+                    break;
+                }
+            }
         }
 
-        std::string watchLabel = "Watch Video";
-        if (numSelected > 1) {
-            watchLabel = "No Video";
-        } else if (singleSelection && !canWatch) {
-            watchLabel = "No Video";
-        }
+        // Watch Video
+        bool canWatch = (selectedPack && !selectedPack->videoUrl.empty());
+        std::string watchLabel = (hasSelection && !canWatch) ? "No Video" : "Watch Video";
         
-        if (singleSelection && canWatch) {
+        if (hasSelection && canWatch) {
             if (ImGui::Button(watchLabel.c_str())) {
-                ShellExecuteA(NULL, "open", videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                ShellExecuteA(NULL, "open", selectedPack->videoUrl.c_str(), NULL, NULL, SW_SHOWNORMAL);
             }
         } else {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
@@ -360,21 +369,16 @@ void TrainingPackUI::Render() {
         ImGui::SameLine();
 
         // Load Pack
-        if (numSelected == 1) {
+        if (hasSelection) {
             if (ImGui::Button("Load Pack")) {
-                for (const auto& pack : filteredPacks) {
-                    if (selectedPackCodes.count(pack.code)) {
-                         SuiteSpot* plugin = plugin_;
-                         std::string code = pack.code;
-                         std::string name = pack.name;
-                         plugin_->gameWrapper->SetTimeout([plugin, code, name](GameWrapper* gw) {
-                            std::string cmd = "load_training " + code;
-                            plugin->cvarManager->executeCommand(cmd);
-                            LOG("SuiteSpot: Loading training pack: " + name);
-                        }, 0.0f);
-                        break;
-                    }
-                }
+                 SuiteSpot* plugin = plugin_;
+                 std::string code = selectedPack->code;
+                 std::string name = selectedPack->name;
+                 plugin_->gameWrapper->SetTimeout([plugin, code, name](GameWrapper* gw) {
+                    std::string cmd = "load_training " + code;
+                    plugin->cvarManager->executeCommand(cmd);
+                    LOG("SuiteSpot: Loading training pack: " + name);
+                }, 0.0f);
             }
         } else {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
@@ -385,12 +389,12 @@ void TrainingPackUI::Render() {
         ImGui::SameLine();
 
         // Add to Bag (opens popup to select bag)
-        if (numSelected > 0) {
+        if (hasSelection) {
             if (ImGui::Button("Add to Bag...")) {
                 ImGui::OpenPopup("BagPickerPopup");
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Add selected pack(s) to a training bag");
+                ImGui::SetTooltip("Add selected pack to a training bag");
             }
         } else {
              ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
@@ -411,11 +415,9 @@ void TrainingPackUI::Render() {
                 if (ImGui::Selectable(label.c_str())) {
                     if (plugin_->trainingPackMgr) {
                         std::vector<std::string> codes;
-                        for (const auto& code : selectedPackCodes) {
-                            codes.push_back(code);
-                        }
+                        codes.push_back(selectedPackCode);
                         plugin_->trainingPackMgr->AddPacksToBag(codes, bag.name);
-                        browserStatus.ShowSuccess("Added " + std::to_string(codes.size()) + " pack(s) to " + bag.name, 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                        browserStatus.ShowSuccess("Added pack to " + bag.name, 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
                     }
                 }
                 ImGui::PopStyleColor();
@@ -426,18 +428,12 @@ void TrainingPackUI::Render() {
         ImGui::SameLine();
 
         // Delete (Custom only)
-        if (numSelected > 0) {
+        if (hasSelection) {
              if (ImGui::Button("Delete Custom Pack")) {
                  if (plugin_->trainingPackMgr) {
-                     int deletedCount = (int)selectedPackCodes.size();
-                     std::vector<std::string> toDelete;
-                     for(const auto& code : selectedPackCodes) toDelete.push_back(code);
-                     
-                     for(const auto& code : toDelete) {
-                         plugin_->trainingPackMgr->DeletePack(code);
-                     }
-                     browserStatus.ShowSuccess("Deleted " + std::to_string(deletedCount) + " custom pack(s)", 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-                     selectedPackCodes.clear();
+                     plugin_->trainingPackMgr->DeletePack(selectedPackCode);
+                     browserStatus.ShowSuccess("Deleted custom pack", 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                     selectedPackCode = "";
                  }
              }
         } else {
@@ -449,9 +445,9 @@ void TrainingPackUI::Render() {
         ImGui::SameLine();
 
         // Clear Selection
-        if (numSelected > 0) {
+        if (hasSelection) {
             if (ImGui::Button("Clear Selection")) {
-                selectedPackCodes.clear();
+                selectedPackCode = "";
             }
         } else {
             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
@@ -537,16 +533,16 @@ void TrainingPackUI::Render() {
             const auto& pack = filteredPacks[row];
 
             // Name column with Selection Logic
-            bool isSelected = selectedPackCodes.count(pack.code) > 0;
+            bool isSelected = (selectedPackCode == pack.code);
             ImGui::PushID(pack.code.c_str());
 
             // SpanAllColumns allows clicking anywhere in the row
-            // Simple toggle-on-click behavior (Checklist style)
+            // Simple toggle-on-click behavior
             if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
                 if (isSelected) {
-                    selectedPackCodes.erase(pack.code);
+                    selectedPackCode = "";
                 } else {
-                    selectedPackCodes.insert(pack.code);
+                    selectedPackCode = pack.code;
 
                     // Sync with AutoLoadFeature by updating the global index
                     // This ensures match end logic respects the last selected map
@@ -1093,6 +1089,7 @@ bool TrainingPackUI::IsActiveOverlay() {
 
 void TrainingPackUI::OnOpen() {
     isWindowOpen_ = true;
+    needsFocusOnNextRender_ = true;  // Bring window to front on next render
 }
 
 void TrainingPackUI::OnClose() {

@@ -11,12 +11,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | [BAKKESMOD_API_REFERENCE.md](docs/standards/BAKKESMOD_API_REFERENCE.md) | Complete SDK API reference - wrappers, methods, data structures |
 | [CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Code patterns, naming conventions, anti-patterns |
 | [THREAD_SAFETY.md](docs/standards/THREAD_SAFETY.md) | Threading model, Execute pattern, synchronization |
+| [IMGUI_ADVANCED_PATTERNS.md](docs/standards/IMGUI_ADVANCED_PATTERNS.md) | Window management, drag-and-drop, focus control |
+| [BAKKESMOD_INPUT_BLOCKING.md](docs/standards/BAKKESMOD_INPUT_BLOCKING.md) | Input blocking best practices for multi-window UIs |
 
 **Quick rules:**
 - Always null-check wrappers before use: `if (!car) return;`
 - Use `gameWrapper->Execute()` for game operations from render thread
 - Use `gameWrapper->SetTimeout()` for delayed operations (never `sleep()`)
 - Prefix CVars with `suitespot_`
+- Override `ShouldBlockInput()` to only block for text input, not mouse interactions
 
 ## Project Overview
 
@@ -100,9 +103,18 @@ void RenderSettings() {
 
 ## ImGui Notes
 
-- Custom widgets in `imgui/`: `imgui_rangeslider.h`, `imgui_searchablecombo.h`, `imgui_timeline.h`
-- TrainingPackUI uses `ImGuiListClipper` for virtual scrolling of 2000+ packs
-- Browser window uses hybrid rendering to stay open when F2 menu closes
+**Version**: ImGui 1.75 (shipped with BakkesMod)
+
+**Custom Widgets**: `imgui/` contains `imgui_rangeslider.h`, `imgui_searchablecombo.h`, `imgui_timeline.h`
+
+**Key Patterns**:
+- **Virtual Scrolling**: TrainingPackUI uses `ImGuiListClipper` for 2000+ packs
+- **Window Independence**: Browser uses `ImGui::Begin()` not `BeginPopupModal()` for concurrent interaction
+- **Input Blocking**: Override `ShouldBlockInput()` for selective blocking (see [BAKKESMOD_INPUT_BLOCKING.md](docs/standards/BAKKESMOD_INPUT_BLOCKING.md))
+- **Drag-and-Drop**: Payload-based transfer between windows sharing same ImGui context
+- **Focus Management**: Use `SetNextWindowFocus()` + `ImGuiWindowFlags_NoBringToFrontOnFocus` conditionally
+
+**Real-World Example**: See `TrainingPackUI.cpp` for drag-and-drop from browser to bag manager with proper input blocking and z-order management.
 
 ## Logging
 

@@ -65,6 +65,7 @@ public:
 private:
     SuiteSpot* plugin_;
     bool isWindowOpen_ = false;
+    bool needsFocusOnNextRender_ = false;  // Bring to front when first opened
 
     char packSearchText[256] = {0};
     std::string packDifficultyFilter = "All";
@@ -87,7 +88,7 @@ private:
     std::vector<TrainingEntry> filteredPacks;
 
     // Selection state
-    std::unordered_set<std::string> selectedPackCodes;
+    std::string selectedPackCode;
     int lastSelectedRowIndex = -1;
     bool packListInitialized = false;
 

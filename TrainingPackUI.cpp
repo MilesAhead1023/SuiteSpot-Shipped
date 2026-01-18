@@ -603,7 +603,9 @@ void TrainingPackUI::Render() {
                     ImVec2 mPos = ImGui::GetMousePos();
                     ImGui::SetNextWindowPos(ImVec2(mPos.x + 20, mPos.y + 20));
                     ImGui::BeginTooltip();
-                    ImGui::Text("%s", tooltip.c_str());
+                    ImGui::PushTextWrapPos(450.0f);
+                    ImGui::TextUnformatted(tooltip.c_str());
+                    ImGui::PopTextWrapPos();
                     ImGui::EndTooltip();
                 }
             }

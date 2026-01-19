@@ -5,8 +5,8 @@
 
 #include "TrainingPackUI.h"
 #include "TrainingPackManager.h"
-#include "ModernUI.h"
 #include "SuiteSpot.h"
+#include "SettingsSync.h"
 #include "ConstantsUI.h"
 #include "HelpersUI.h"
 
@@ -80,7 +80,7 @@ void TrainingPackUI::Render() {
     }
 
     // Apply font scale to this window
-    ImGui::SetWindowFontScale(UI::Modern::Theme::FontScale);
+    ImGui::SetWindowFontScale(UI::FONT_SCALE);
 
     const auto* manager = plugin_->trainingPackMgr;
     static const std::vector<TrainingEntry> emptyPacks;
@@ -94,7 +94,7 @@ void TrainingPackUI::Render() {
     ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Training Pack Browser");
     ImGui::Spacing();
 
-    // Status line: pack count and last updated
+    // Status line: pack count, last updated, auto-load, and buttons on same row
     if (packCount > 0) {
         ImGui::Text("Loaded: %d packs", packCount);
         ImGui::SameLine();
@@ -103,13 +103,8 @@ void TrainingPackUI::Render() {
         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "No packs loaded - click 'Update Pack List' to download");
     }
 
-    // Control buttons
-    ImGui::SameLine();
-    float buttonX = ImGui::GetWindowWidth() - UI::TrainingPackUI::BUTTON_GROUP_OFFSET_FROM_RIGHT;
-    if (buttonX > ImGui::GetCursorPosX()) {
-        ImGui::SetCursorPosX(buttonX);
-    }
-
+    // Control buttons (same line with spacing)
+    ImGui::SameLine(0.0f, 20.0f);
     if (scraping) {
         ImGui::TextColored(UI::TrainingPackUI::SCRAPING_STATUS_TEXT_COLOR, "Updating...");
     } else {
@@ -127,6 +122,33 @@ void TrainingPackUI::Render() {
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Reload packs from cached json file");
+    }
+
+    // Set Auto-Load button (enabled only when a pack is selected)
+    ImGui::SameLine();
+    bool hasSelection = !selectedPackCode.empty();
+    if (!hasSelection) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
+    if (ImGui::Button("Set Auto-Load") && hasSelection) {
+        // Find the pack in filteredPacks to get its name for the status message
+        auto it = std::find_if(filteredPacks.begin(), filteredPacks.end(),
+            [&](const TrainingEntry& e) { return e.code == selectedPackCode; });
+        if (it != filteredPacks.end()) {
+            // Update SettingsSync directly for immediate UI update
+            plugin_->settingsSync->SetCurrentTrainingCode(selectedPackCode);
+            // Also set CVar for persistence
+            plugin_->cvarManager->getCvar("suitespot_current_training_code").setValue(selectedPackCode);
+            browserStatus.ShowSuccess("Auto-Load set: " + it->name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+        } else {
+            browserStatus.ShowError("Pack not found in current filter", 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+        }
+    }
+    if (!hasSelection) {
+        ImGui::PopStyleVar();
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(hasSelection ? "Set selected pack as auto-load for match end" : "Select a pack first");
     }
 
     ImGui::Separator();
@@ -554,24 +576,12 @@ void TrainingPackUI::Render() {
             }
 
             // SpanAllColumns allows clicking anywhere in the row
-            // Simple toggle-on-click behavior
+            // Simple toggle-on-click behavior (selection only, does not set auto-load)
             if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
                 if (isSelected) {
                     selectedPackCode = "";
                 } else {
                     selectedPackCode = pack.code;
-
-                    // Sync with AutoLoadFeature by updating the global index
-                    // This ensures match end logic respects the last selected map
-                    for (int i = 0; i < (int)RLTraining.size(); ++i) {
-                        if (RLTraining[i].code == pack.code) {
-                            SuiteSpot* p = plugin_;
-                            p->gameWrapper->SetTimeout([p, i](GameWrapper* gw) {
-                                p->cvarManager->getCvar("suitespot_current_training_index").setValue(i);
-                            }, 0.0f);
-                            break;
-                        }
-                    }
                 }
                 lastSelectedRowIndex = row;
             }
@@ -587,27 +597,16 @@ void TrainingPackUI::Render() {
                 ImGui::EndDragDropSource();
             }
 
-            // Right-click context menu for quick bag management
+            // Right-click context menu for auto-load
             if (ImGui::BeginPopupContextItem(("PackContext_" + pack.code).c_str())) {
                 ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "%s", pack.name.c_str());
                 ImGui::Separator();
 
-                const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
-                for (const auto& bag : bags) {
-                    bool inBag = pack.bagCategories.count(bag.name) > 0;
-                    std::string label = (inBag ? "[X] " : "[ ] ") + bag.name;
-
-                    if (ImGui::Selectable(label.c_str())) {
-                        if (plugin_->trainingPackMgr) {
-                            if (inBag) {
-                                plugin_->trainingPackMgr->RemovePackFromBag(pack.code, bag.name);
-                                browserStatus.ShowSuccess("Removed from " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-                            } else {
-                                plugin_->trainingPackMgr->AddPackToBag(pack.code, bag.name);
-                                browserStatus.ShowSuccess("Added to " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-                            }
-                        }
-                    }
+                // Set as Auto-Load option
+                if (ImGui::Selectable("Set as Auto-Load")) {
+                    plugin_->settingsSync->SetCurrentTrainingCode(pack.code);
+                    plugin_->cvarManager->getCvar("suitespot_current_training_code").setValue(pack.code);
+                    browserStatus.ShowSuccess("Auto-Load set: " + pack.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
                 }
                 ImGui::EndPopup();
             }

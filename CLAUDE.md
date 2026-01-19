@@ -9,10 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Document | Purpose |
 |----------|---------|
 | [BAKKESMOD_API_REFERENCE.md](docs/standards/BAKKESMOD_API_REFERENCE.md) | Complete SDK API reference - wrappers, methods, data structures |
-| [CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Code patterns, naming conventions, anti-patterns |
+| [CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Code patterns, naming conventions, ImGui patterns, anti-patterns |
 | [THREAD_SAFETY.md](docs/standards/THREAD_SAFETY.md) | Threading model, Execute pattern, synchronization |
-| [IMGUI_ADVANCED_PATTERNS.md](docs/standards/IMGUI_ADVANCED_PATTERNS.md) | Window management, drag-and-drop, focus control |
-| [BAKKESMOD_INPUT_BLOCKING.md](docs/standards/BAKKESMOD_INPUT_BLOCKING.md) | Input blocking best practices for multi-window UIs |
 
 **Quick rules:**
 - Always null-check wrappers before use: `if (!car) return;`
@@ -54,15 +52,17 @@ SuiteSpot is a BakkesMod plugin for Rocket League that automates game mode trans
 
 ```
 SuiteSpot (Plugin Hub)
-├── MapManager         - Discovers workshop maps from filesystem
-├── TrainingPackManager - Manages 2000+ training packs
-├── SettingsSync       - CVar persistence (BakkesMod settings)
-├── AutoLoadFeature    - Core logic: what to load when match ends
-├── LoadoutManager     - Car preset switching (thread-safe)
+├── MapManager          - Discovers workshop maps from filesystem
+├── TrainingPackManager - Manages 2000+ training packs, shuffle bags
+├── SettingsSync        - CVar registration and settings cache
+├── AutoLoadFeature     - Core logic: what to load when match ends
+├── LoadoutManager      - Car preset switching (thread-safe)
 └── UI Layer
-    ├── SettingsUI     - F2 settings menu
-    ├── TrainingPackUI - Floating browser window for packs
-    └── LoadoutUI      - Loadout dropdown
+    ├── SettingsUI      - F2 settings menu (tabs, controls)
+    ├── TrainingPackUI  - Floating browser window with drag-drop
+    ├── LoadoutUI       - Loadout dropdown selector
+    ├── StatusMessageUI - Toast-style user feedback
+    └── HelpersUI       - Shared UI utilities
 ```
 
 **Event Flow:** Match ends → BakkesMod hook → `SuiteSpot::GameEndedEvent()` → `AutoLoadFeature::OnMatchEnded()` → schedules game command via `gameWrapper->SetTimeout()`
@@ -76,6 +76,8 @@ SuiteSpot (Plugin Hub)
 | `TrainingPackManager.cpp` | Training pack loading, filtering, shuffle bag |
 | `SettingsSync.cpp` | All CVar registrations and settings cache |
 | `MapList.h` | Data structures: `MapEntry`, `TrainingEntry`, `WorkshopEntry` |
+| `ConstantsUI.h` | UI constants, colors, sizing, font scale |
+| `HelpersUI.cpp/h` | Shared UI helper functions |
 | `logging.h` | `LOG()` and `DEBUGLOG()` macros with source location |
 
 ## Data Persistence
@@ -105,16 +107,16 @@ void RenderSettings() {
 
 **Version**: ImGui 1.75 (shipped with BakkesMod)
 
-**Custom Widgets**: `imgui/` contains `imgui_rangeslider.h`, `imgui_searchablecombo.h`, `imgui_timeline.h`
+**Custom Widgets**: `IMGUI/` contains `imgui_rangeslider.h`, `imgui_searchablecombo.h`, `imgui_timeline.h`
 
 **Key Patterns**:
 - **Virtual Scrolling**: TrainingPackUI uses `ImGuiListClipper` for 2000+ packs
 - **Window Independence**: Browser uses `ImGui::Begin()` not `BeginPopupModal()` for concurrent interaction
-- **Input Blocking**: Override `ShouldBlockInput()` for selective blocking (see [BAKKESMOD_INPUT_BLOCKING.md](docs/standards/BAKKESMOD_INPUT_BLOCKING.md))
+- **Input Blocking**: Override `ShouldBlockInput()` - only block for text input, not mouse interactions
 - **Drag-and-Drop**: Payload-based transfer between windows sharing same ImGui context
 - **Focus Management**: Use `SetNextWindowFocus()` + `ImGuiWindowFlags_NoBringToFrontOnFocus` conditionally
 
-**Real-World Example**: See `TrainingPackUI.cpp` for drag-and-drop from browser to bag manager with proper input blocking and z-order management.
+**Real-World Example**: See `TrainingPackUI.cpp` for drag-and-drop from browser to bag manager with proper input blocking and z-order management. See `CODING_STANDARDS.md` for detailed ImGui patterns.
 
 ## Logging
 
@@ -122,6 +124,18 @@ void RenderSettings() {
 LOG("Message with {} args", value);           // Always logged
 DEBUGLOG("Debug only: {}", value);            // Only when DEBUG_LOG = true in logging.h
 ```
+
+## Debugging
+
+**BakkesMod Console Commands:**
+```bash
+plugin reload suitespot           # Hot-reload the plugin
+load_training XXXX-XXXX-XXXX-XXXX # Load a training pack by code
+load_freeplay                     # Load freeplay mode
+togglemenu suitespot              # Toggle the browser window
+```
+
+**Enable debug logging** by setting `DEBUG_LOG = true` in `logging.h` and rebuilding.
 
 ## No Tests
 

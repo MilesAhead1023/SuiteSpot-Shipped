@@ -62,9 +62,7 @@
 ### Step 3: UI Integration
 - [ ] Create `CoachUI.h` and `CoachUI.cpp`.
 - [ ] Add "The Coach" tab to `SettingsUI`.
-- [ ] Implement stats table rendering using `ModernUI` styled components.
+- [ ] Implement stats table rendering using ImGui and `ConstantsUI` styling.
 
 ### Step 4: Verification
-- [ ] Run `run_guardrails.ps1`.
-- [ ] Run `run_pioneer_tests.cpp` (Update with Session tests).
 - [ ] Build and Verify.

@@ -962,14 +962,7 @@ TrainingEntry TrainingPackManager::GetNextFromRotation()
     }
 
     if (enabledBags.empty()) {
-        // Fallback: random from all packs
-        if (!RLTraining.empty()) {
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::uniform_int_distribution<int> dist(0, static_cast<int>(RLTraining.size()) - 1);
-            return RLTraining[dist(gen)];
-        }
-        return TrainingEntry{};  // Empty
+        return TrainingEntry{};  // No enabled bags = no pack
     }
 
     // Sort by priority

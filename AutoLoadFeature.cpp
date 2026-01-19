@@ -24,9 +24,9 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
     const int delayTrainingSec = settings.GetDelayTrainingSec();
     const int delayWorkshopSec = settings.GetDelayWorkshopSec();
 
-    int currentIndex = settings.GetCurrentIndex();
-    int currentTrainingIndex = settings.GetCurrentTrainingIndex();
-    int currentWorkshopIndex = settings.GetCurrentWorkshopIndex();
+    std::string currentFreeplayCode = settings.GetCurrentFreeplayCode();
+    std::string currentTrainingCode = settings.GetCurrentTrainingCode();
+    std::string currentWorkshopPath = settings.GetCurrentWorkshopPath();
 
     auto safeExecute = [&](int delaySec, const std::string& cmd) {
         // Enforce a minimum delay of 0.1s to ensure the game state has settled after the match.
@@ -41,12 +41,19 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
     int mapLoadDelay = 0;
 
     if (mapType == 0) { // Freeplay
-        if (currentIndex < 0 || currentIndex >= static_cast<int>(maps.size())) {
-            LOG("SuiteSpot: Freeplay index out of range; skipping load.");
+        if (currentFreeplayCode.empty()) {
+            LOG("SuiteSpot: No freeplay map selected; skipping load.");
         } else {
-            safeExecute(delayFreeplaySec, "load_freeplay " + maps[currentIndex].code);
-            mapLoadDelay = delayFreeplaySec;
-            LOG("SuiteSpot: Loading freeplay map: " + maps[currentIndex].name);
+            // Verify the map code exists in the list
+            auto it = std::find_if(maps.begin(), maps.end(),
+                [&](const MapEntry& e) { return e.code == currentFreeplayCode; });
+            if (it != maps.end()) {
+                safeExecute(delayFreeplaySec, "load_freeplay " + currentFreeplayCode);
+                mapLoadDelay = delayFreeplaySec;
+                LOG("SuiteSpot: Loading freeplay map: " + it->name);
+            } else {
+                LOG("SuiteSpot: Freeplay map code not found: " + currentFreeplayCode);
+            }
         }
     } else if (mapType == 1) { // Training
         std::string codeToLoad;
@@ -56,12 +63,16 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
         if (useBagRotation && !selectedBagPack.code.empty()) {
             codeToLoad = selectedBagPack.code;
             nameToLoad = selectedBagPack.name;
-        } else if (!training.empty()) {
-            // Fall back to specific training index
-            currentTrainingIndex = std::clamp(currentTrainingIndex, 0, static_cast<int>(training.size() - 1));
-            settings.SetCurrentTrainingIndex(currentTrainingIndex);
-            codeToLoad = training[currentTrainingIndex].code;
-            nameToLoad = training[currentTrainingIndex].name;
+        } else if (!currentTrainingCode.empty()) {
+            // Fall back to specific training code (only if explicitly selected)
+            auto it = std::find_if(training.begin(), training.end(),
+                [&](const TrainingEntry& e) { return e.code == currentTrainingCode; });
+            if (it != training.end()) {
+                codeToLoad = currentTrainingCode;
+                nameToLoad = it->name;
+            } else {
+                LOG("SuiteSpot: Training pack code not found: " + currentTrainingCode);
+            }
         }
 
         if (!codeToLoad.empty()) {
@@ -72,14 +83,19 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             LOG("SuiteSpot: No training pack to load.");
         }
     } else if (mapType == 2) { // Workshop
-        if (workshop.empty()) {
-            LOG("SuiteSpot: No workshop maps configured.");
+        if (currentWorkshopPath.empty()) {
+            LOG("SuiteSpot: No workshop map selected; skipping load.");
         } else {
-            currentWorkshopIndex = std::clamp(currentWorkshopIndex, 0, static_cast<int>(workshop.size() - 1));
-            settings.SetCurrentWorkshopIndex(currentWorkshopIndex);
-            safeExecute(delayWorkshopSec, "load_workshop \"" + workshop[currentWorkshopIndex].filePath + "\"");
-            mapLoadDelay = delayWorkshopSec;
-            LOG("SuiteSpot: Loading workshop map: " + workshop[currentWorkshopIndex].name);
+            // Verify the workshop map exists in the list
+            auto it = std::find_if(workshop.begin(), workshop.end(),
+                [&](const WorkshopEntry& e) { return e.filePath == currentWorkshopPath; });
+            if (it != workshop.end()) {
+                safeExecute(delayWorkshopSec, "load_workshop \"" + currentWorkshopPath + "\"");
+                mapLoadDelay = delayWorkshopSec;
+                LOG("SuiteSpot: Loading workshop map: " + it->name);
+            } else {
+                LOG("SuiteSpot: Workshop map path not found: " + currentWorkshopPath);
+            }
         }
     }
 

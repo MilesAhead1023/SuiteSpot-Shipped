@@ -42,18 +42,18 @@ public:
     int GetDelayWorkshopSec() const { return delayWorkshopSec; }
 
     // Selection getters (Which map/pack is selected?)
-    int GetCurrentIndex() const { return currentIndex; }
-    int GetCurrentTrainingIndex() const { return currentTrainingIndex; }
-    int GetCurrentWorkshopIndex() const { return currentWorkshopIndex; }
+    std::string GetCurrentFreeplayCode() const { return currentFreeplayCode; }
+    std::string GetCurrentTrainingCode() const { return currentTrainingCode; }
+    std::string GetCurrentWorkshopPath() const { return currentWorkshopPath; }
 
     // Bag navigation getters (Which bag and pack index are we on?)
     std::string GetCurrentBag() const { return currentBag; }
     int GetCurrentBagPackIndex() const { return currentBagPackIndex; }
 
     // Setters: Update the local value (used when loading data)
-    void SetCurrentIndex(int value);
-    void SetCurrentTrainingIndex(int value);
-    void SetCurrentWorkshopIndex(int value);
+    void SetCurrentFreeplayCode(const std::string& code);
+    void SetCurrentTrainingCode(const std::string& code);
+    void SetCurrentWorkshopPath(const std::string& path);
     void SetCurrentBag(const std::string& bagName);
     void SetCurrentBagPackIndex(int value);
 
@@ -69,9 +69,9 @@ private:
     int delayTrainingSec = 0;
     int delayWorkshopSec = 0;
 
-    int currentIndex = 0;        // Freeplay
-    int currentTrainingIndex = 0; // Training
-    int currentWorkshopIndex = 0; // Workshop
+    std::string currentFreeplayCode;   // Freeplay map code (e.g., "beckwith_park_p")
+    std::string currentTrainingCode;   // Training pack code (e.g., "XXXX-XXXX-XXXX-XXXX")
+    std::string currentWorkshopPath;   // Workshop map path (e.g., "C:/path/to/map.udk")
 
     // Bag navigation state (for Next Pack feature)
     std::string currentBag = "";   // Current bag being played through

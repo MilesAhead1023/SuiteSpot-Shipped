@@ -22,7 +22,7 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
             autoQueue = cvar.getBoolValue();
         });
 
-    cvarManager->registerCvar("suitespot_bag_rotation", "1", "Enable categorized bag rotation for training", true, true, 0, true, 1)
+    cvarManager->registerCvar("suitespot_bag_rotation", "0", "Enable categorized bag rotation for training", true, true, 0, true, 1)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
             bagRotationEnabled = cvar.getBoolValue();
         });
@@ -47,19 +47,19 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
             delayWorkshopSec = std::max(0, cvar.getIntValue());
         });
 
-    cvarManager->registerCvar("suitespot_current_freeplay_index", "0", "Currently selected freeplay map index", true, true, 0, true, 1000)
+    cvarManager->registerCvar("suitespot_current_freeplay_code", "", "Currently selected freeplay map code", true)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
-            currentIndex = std::max(0, cvar.getIntValue());
+            currentFreeplayCode = cvar.getStringValue();
         });
 
-    cvarManager->registerCvar("suitespot_current_training_index", "0", "Currently selected training map index", true, true, 0, true, 1000)
+    cvarManager->registerCvar("suitespot_current_training_code", "", "Currently selected training pack code", true)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
-            currentTrainingIndex = std::max(0, cvar.getIntValue());
+            currentTrainingCode = cvar.getStringValue();
         });
 
-    cvarManager->registerCvar("suitespot_current_workshop_index", "0", "Currently selected workshop map index", true, true, 0, true, 1000)
+    cvarManager->registerCvar("suitespot_current_workshop_path", "", "Currently selected workshop map path", true)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
-            currentWorkshopIndex = std::max(0, cvar.getIntValue());
+            currentWorkshopPath = cvar.getStringValue();
         });
 
     cvarManager->registerCvar("ss_training_maps", "", "Stored training maps", true, false, 0, false, 0);
@@ -83,26 +83,26 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->getCvar("suitespot_delay_freeplay_sec").setValue(delayFreeplaySec);
     cvarManager->getCvar("suitespot_delay_training_sec").setValue(delayTrainingSec);
     cvarManager->getCvar("suitespot_delay_workshop_sec").setValue(delayWorkshopSec);
-    cvarManager->getCvar("suitespot_current_freeplay_index").setValue(currentIndex);
-    cvarManager->getCvar("suitespot_current_training_index").setValue(currentTrainingIndex);
-    cvarManager->getCvar("suitespot_current_workshop_index").setValue(currentWorkshopIndex);
+    cvarManager->getCvar("suitespot_current_freeplay_code").setValue(currentFreeplayCode);
+    cvarManager->getCvar("suitespot_current_training_code").setValue(currentTrainingCode);
+    cvarManager->getCvar("suitespot_current_workshop_path").setValue(currentWorkshopPath);
     cvarManager->getCvar("suitespot_current_bag").setValue(currentBag);
     cvarManager->getCvar("suitespot_current_bag_pack_index").setValue(currentBagPackIndex);
 }
 
-void SettingsSync::SetCurrentIndex(int value)
+void SettingsSync::SetCurrentFreeplayCode(const std::string& code)
 {
-    currentIndex = std::max(0, value);
+    currentFreeplayCode = code;
 }
 
-void SettingsSync::SetCurrentTrainingIndex(int value)
+void SettingsSync::SetCurrentTrainingCode(const std::string& code)
 {
-    currentTrainingIndex = std::max(0, value);
+    currentTrainingCode = code;
 }
 
-void SettingsSync::SetCurrentWorkshopIndex(int value)
+void SettingsSync::SetCurrentWorkshopPath(const std::string& path)
 {
-    currentWorkshopIndex = std::max(0, value);
+    currentWorkshopPath = path;
 }
 
 void SettingsSync::SetCurrentBag(const std::string& bagName)

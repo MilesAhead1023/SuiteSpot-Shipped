@@ -122,12 +122,13 @@ public:
     int GetDelayFreeplaySec() const;
     int GetDelayTrainingSec() const;
     int GetDelayWorkshopSec() const;
-    int GetCurrentIndex() const;
-    int GetCurrentTrainingIndex() const;
-    int GetCurrentWorkshopIndex() const;
+    std::string GetCurrentFreeplayCode() const;
+    std::string GetCurrentTrainingCode() const;
+    std::string GetCurrentWorkshopPath() const;
 
-    // Bag pack navigation (for Next Pack command)
+    // Bag pack navigation (for Next/Previous Pack commands)
     void AdvanceToNextBagPack();
+    void RetreatToPreviousBagPack();
 
 private:
     // Loadout management

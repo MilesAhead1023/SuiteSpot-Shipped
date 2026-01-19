@@ -8,6 +8,13 @@
 namespace UI {
 
 	// ===================================================================
+	// GLOBAL UI CONSTANTS
+	// ===================================================================
+
+	// Font scale applied to all SuiteSpot windows (per-window, not global)
+	constexpr float FONT_SCALE = 1.12f;
+
+	// ===================================================================
 	// SETTINGS UI CONSTANTS
 	// ===================================================================
 	namespace SettingsUI {

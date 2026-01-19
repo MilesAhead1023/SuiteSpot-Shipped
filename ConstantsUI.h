@@ -8,6 +8,13 @@
 namespace UI {
 
 	// ===================================================================
+	// GLOBAL UI CONSTANTS
+	// ===================================================================
+
+	// Font scale applied to all SuiteSpot windows (per-window, not global)
+	constexpr float FONT_SCALE = 1.12f;
+
+	// ===================================================================
 	// SETTINGS UI CONSTANTS
 	// ===================================================================
 	namespace SettingsUI {
@@ -141,9 +148,6 @@ namespace UI {
 		// Button group width offset from right edge of window
 		constexpr float BUTTON_GROUP_OFFSET_FROM_RIGHT = 280.0f;
 
-		// Horizontal position for shuffle checkbox in filter row
-		constexpr float SHUFFLE_CHECKBOX_POSITION_X = 400.0f;
-
 		// Indentation amount for custom pack form section
 		constexpr float CUSTOM_PACK_FORM_INDENT = 10.0f;
 
@@ -239,32 +243,32 @@ namespace UI {
 
 		// === Difficulty Badge Colors ===
 
-		// Background color for Default/Unknown difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_DEFAULT_COLOR = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+		// Background color for Unranked/Unknown difficulty badge
+		inline const ImVec4 DIFFICULTY_BADGE_UNRANKED_COLOR = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
 
-		// Background color for Bronze difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_BRONZE_COLOR = ImVec4(0.8f, 0.5f, 0.2f, 1.0f);
+		// Background color for Bronze difficulty badge (#925732)
+		inline const ImVec4 DIFFICULTY_BADGE_BRONZE_COLOR = ImVec4(0.57f, 0.34f, 0.20f, 1.0f);
 
-		// Background color for Silver difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_SILVER_COLOR = ImVec4(0.75f, 0.75f, 0.75f, 1.0f);
+		// Background color for Silver difficulty badge (#91969B)
+		inline const ImVec4 DIFFICULTY_BADGE_SILVER_COLOR = ImVec4(0.57f, 0.59f, 0.61f, 1.0f);
 
-		// Background color for Gold difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_GOLD_COLOR = ImVec4(1.0f, 0.84f, 0.0f, 1.0f);
+		// Background color for Gold difficulty badge (#C3A11C)
+		inline const ImVec4 DIFFICULTY_BADGE_GOLD_COLOR = ImVec4(0.76f, 0.63f, 0.11f, 1.0f);
 
-		// Background color for Platinum difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_PLATINUM_COLOR = ImVec4(0.4f, 0.8f, 1.0f, 1.0f);
+		// Background color for Platinum difficulty badge (#43F8F0)
+		inline const ImVec4 DIFFICULTY_BADGE_PLATINUM_COLOR = ImVec4(0.26f, 0.97f, 0.94f, 1.0f);
 
-		// Background color for Diamond difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_DIAMOND_COLOR = ImVec4(0.4f, 0.4f, 1.0f, 1.0f);
+		// Background color for Diamond difficulty badge (#00BBFF)
+		inline const ImVec4 DIFFICULTY_BADGE_DIAMOND_COLOR = ImVec4(0.00f, 0.73f, 1.00f, 1.0f);
 
-		// Background color for Champion difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_CHAMPION_COLOR = ImVec4(0.8f, 0.3f, 0.8f, 1.0f);
+		// Background color for Champion difficulty badge (#990099)
+		inline const ImVec4 DIFFICULTY_BADGE_CHAMPION_COLOR = ImVec4(0.60f, 0.00f, 0.60f, 1.0f);
 
-		// Background color for Grand Champion difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_GRAND_CHAMPION_COLOR = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+		// Background color for Grand Champion difficulty badge (#FC272F)
+		inline const ImVec4 DIFFICULTY_BADGE_GRAND_CHAMPION_COLOR = ImVec4(0.99f, 0.15f, 0.18f, 1.0f);
 
-		// Background color for Supersonic Legend difficulty badge in Training Packs table
-		inline const ImVec4 DIFFICULTY_BADGE_SUPERSONIC_LEGEND_COLOR = ImVec4(1.0f, 0.0f, 1.0f, 1.0f);
+		// Background color for Supersonic Legend difficulty badge (#F6FAFF)
+		inline const ImVec4 DIFFICULTY_BADGE_SUPERSONIC_LEGEND_COLOR = ImVec4(0.96f, 0.98f, 1.00f, 1.0f);
 
 		// === UI State Colors ===
 
@@ -277,8 +281,8 @@ namespace UI {
 		// Text color for scraping status message (yellow warning)
 		inline const ImVec4 SCRAPING_STATUS_TEXT_COLOR = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
 
-		// Text color for shuffle bag active status message (green)
-		inline const ImVec4 SHUFFLE_ACTIVE_STATUS_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+		// Text color for bag rotation active status message (green)
+		inline const ImVec4 BAG_ROTATION_STATUS_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
 
 		// Text color for success message "Pack added!" in custom pack form (green)
 		inline const ImVec4 SUCCESS_MESSAGE_TEXT_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
@@ -291,8 +295,8 @@ namespace UI {
 
 		// === Button Colors ===
 
-		// Background color for "Add to Shuffle" button when pack is in shuffle bag (green)
-		inline const ImVec4 IN_SHUFFLE_BUTTON_BG_COLOR = ImVec4(0.2f, 0.6f, 0.2f, 1.0f);
+		// Background color for "In Bag" badge indicator (green)
+		inline const ImVec4 IN_BAG_BUTTON_BG_COLOR = ImVec4(0.2f, 0.6f, 0.2f, 1.0f);
 
 		// Background color for "Delete" button in Training Packs table (red)
 		inline const ImVec4 DELETE_BUTTON_BG_COLOR = ImVec4(0.6f, 0.2f, 0.2f, 1.0f);

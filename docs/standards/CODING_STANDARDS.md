@@ -151,7 +151,7 @@ Always prefix CVars with `suitespot_`:
 - `suitespot_enabled`
 - `suitespot_auto_queue`
 - `suitespot_delay_freeplay_sec`
-- `suitespot_training_shuffle_enabled`
+- `suitespot_bag_rotation`
 
 ---
 
@@ -304,7 +304,7 @@ CarWrapper GetCurrentCar() {
 LOG("Loading training packs from: {}", filePath.string());
 
 // Debug logging (only when DEBUG_LOG = true)
-DEBUGLOG("Shuffle bag contains {} packs", shuffleBag.size());
+DEBUGLOG("Bag contains {} packs", bag.size());
 ```
 
 ### Graceful Degradation
@@ -380,7 +380,7 @@ float delaySeconds = 3.0f;
 ```cpp
 "suitespot_enabled"              // lowercase with underscores
 "suitespot_delay_freeplay_sec"   // plugin prefix
-"suitespot_training_shuffle"
+"suitespot_bag_rotation"
 ```
 
 ### Constants
@@ -459,6 +459,8 @@ void MyClass::PrivateHelper() { }
 
 ## ImGui Patterns
 
+**CRITICAL**: See [IMGUI_ADVANCED_PATTERNS.md](IMGUI_ADVANCED_PATTERNS.md) and [BAKKESMOD_INPUT_BLOCKING.md](BAKKESMOD_INPUT_BLOCKING.md) for comprehensive guides.
+
 ### Settings Window Rendering
 
 ```cpp
@@ -495,8 +497,9 @@ void TrainingPackUI::RenderPackList() {
 }
 ```
 
-### Modal Dialogs
+### Modal Dialogs vs Floating Windows
 
+**Use BeginPopupModal for confirmations** (blocks parent interaction):
 ```cpp
 if (ImGui::Button("Delete Pack")) {
     ImGui::OpenPopup("Confirm Delete");
@@ -518,6 +521,128 @@ if (ImGui::BeginPopupModal("Confirm Delete", nullptr,
     ImGui::EndPopup();
 }
 ```
+
+**Use ImGui::Begin() for multi-window workflows** (allows concurrent interaction):
+```cpp
+// Floating window that doesn't block parent
+void RenderToolWindow() {
+    if (!isOpen) return;
+
+    if (ImGui::Begin("Tool Window", &isOpen)) {
+        // User can interact with this AND parent window simultaneously
+        ImGui::Text("This doesn't block other windows");
+        ImGui::End();
+    }
+}
+```
+
+### Window Focus Management
+
+```cpp
+class MyWindow {
+private:
+    bool isOpen_ = false;
+    bool needsFocusOnNextRender_ = false;  // State flag
+
+public:
+    void OnOpen() {
+        isOpen_ = true;
+        needsFocusOnNextRender_ = true;  // Request focus on next render
+    }
+
+    void Render() {
+        if (!isOpen_) return;
+
+        // Bring to front ONLY on first render after opening
+        if (needsFocusOnNextRender_) {
+            ImGui::SetNextWindowFocus();
+            needsFocusOnNextRender_ = false;
+        }
+
+        // Conditionally prevent focus stealing during drag operations
+        ImGuiWindowFlags flags = ImGuiWindowFlags_None;
+        if (isDragInProgress) {
+            flags |= ImGuiWindowFlags_NoBringToFrontOnFocus;
+        }
+
+        if (ImGui::Begin("My Window", &isOpen_, flags)) {
+            // Window content
+            ImGui::End();
+        }
+    }
+};
+```
+
+### Drag-and-Drop Between Windows
+
+**Drag Source** (browser table):
+```cpp
+// In table rendering loop
+for (const auto& item : items) {
+    ImGui::PushID(item.id.c_str());
+
+    if (ImGui::Selectable(item.name.c_str(), isSelected)) {
+        // Handle selection
+    }
+
+    // Add drag source
+    if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+        // Payload: string with null terminator
+        ImGui::SetDragDropPayload("ITEM_ID", item.id.c_str(), item.id.length() + 1);
+
+        // Preview during drag
+        ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Dragging: %s", item.name.c_str());
+
+        ImGui::EndDragDropSource();
+    }
+
+    ImGui::PopID();
+}
+```
+
+**Drop Target** (bag window):
+```cpp
+// Make entire child region a drop target
+ImGui::BeginChild("BagWindow", ImVec2(200, 300), true);
+
+if (ImGui::BeginDragDropTarget()) {
+    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ITEM_ID")) {
+        const char* itemId = (const char*)payload->Data;
+        AddItemToBag(itemId);
+    }
+    ImGui::EndDragDropTarget();
+}
+
+ImGui::EndChild();
+```
+
+### Input Blocking (CRITICAL)
+
+**Override ShouldBlockInput() for selective blocking**:
+
+```cpp
+bool MyWindow::ShouldBlockInput() override {
+    if (!isWindowOpen) {
+        return false;  // Window closed → no blocking
+    }
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    // ONLY block when actively typing in text fields
+    // This prevents game commands while typing but allows mouse interactions
+    if (io.WantTextInput && ImGui::IsAnyItemActive()) {
+        return true;
+    }
+
+    // Allow normal mouse interaction including drag-and-drop
+    return false;
+}
+```
+
+**Why this matters**:
+- Default `PluginWindowBase::ShouldBlockInput()` blocks ALL input when mouse is over window
+- This prevents drag-and-drop and makes UI feel sluggish
+- Selective blocking only blocks for text input (prevents typing 'w' from driving car forward)
 
 ### Thread Safety in RenderSettings
 

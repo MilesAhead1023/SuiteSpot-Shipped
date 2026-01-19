@@ -6,6 +6,7 @@
 #include "SuiteSpot.h"
 #include "MapManager.h"
 #include "TrainingPackManager.h"
+#include "SettingsSync.h"
 #include "ConstantsUI.h"
 #include "HelpersUI.h"
 
@@ -21,6 +22,8 @@ void SettingsUI::RenderMainSettingsWindow() {
         return;
     }
 
+    ImGui::SetWindowFontScale(UI::FONT_SCALE);
+
     // Header with metadata
     ImGui::TextUnformatted("SuiteSpot");
     ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "By: Flicks Creations");
@@ -33,14 +36,14 @@ void SettingsUI::RenderMainSettingsWindow() {
     bool enabledValue = plugin_->IsEnabled();
     int mapTypeValue = plugin_->GetMapType();
     bool autoQueueValue = plugin_->IsAutoQueueEnabled();
-    bool trainingShuffleEnabledValue = plugin_->IsTrainingShuffleEnabled();
+    bool bagRotationEnabledValue = plugin_->IsBagRotationEnabled();
     int delayQueueSecValue = plugin_->GetDelayQueueSec();
     int delayFreeplaySecValue = plugin_->GetDelayFreeplaySec();
     int delayTrainingSecValue = plugin_->GetDelayTrainingSec();
     int delayWorkshopSecValue = plugin_->GetDelayWorkshopSec();
-    int currentIndexValue = plugin_->GetCurrentIndex();
-    int currentTrainingIndexValue = plugin_->GetCurrentTrainingIndex();
-    int currentWorkshopIndexValue = plugin_->GetCurrentWorkshopIndex();
+    std::string currentFreeplayCode = plugin_->GetCurrentFreeplayCode();
+    std::string currentTrainingCode = plugin_->GetCurrentTrainingCode();
+    std::string currentWorkshopPath = plugin_->GetCurrentWorkshopPath();
 
     // Only show status if enabled
     if (enabledValue) {
@@ -54,33 +57,47 @@ void SettingsUI::RenderMainSettingsWindow() {
 
         // Get current selection and appropriate delay
         if (mapTypeValue == 0) {
-            if (!RLMaps.empty() && currentIndexValue >= 0 && currentIndexValue < (int)RLMaps.size()) {
-                currentMap = RLMaps[currentIndexValue].name;
+            // Find freeplay map by code
+            auto it = std::find_if(RLMaps.begin(), RLMaps.end(),
+                [&](const MapEntry& e) { return e.code == currentFreeplayCode; });
+            if (it != RLMaps.end()) {
+                currentMap = it->name;
             }
             mapDelayStr = std::to_string(delayFreeplaySecValue) + "s";
         } else if (mapTypeValue == 1) {
-            if (!RLTraining.empty() && currentTrainingIndexValue >= 0 && currentTrainingIndexValue < (int)RLTraining.size()) {
-                currentMap = RLTraining[currentTrainingIndexValue].name + " (Shots:" + std::to_string(RLTraining[currentTrainingIndexValue].shotCount) + ")";
-            }
             mapDelayStr = std::to_string(delayTrainingSecValue) + "s";
 
-            if (trainingShuffleEnabledValue && plugin_->trainingPackMgr) {
-                int shuffleCount = plugin_->trainingPackMgr->GetShuffleBagCount();
-                if (shuffleCount > 0) {
-                    if (shuffleCount == 1) {
-                        auto shuffleBag = plugin_->trainingPackMgr->GetShuffleBagPacks();
-                        if (!shuffleBag.empty()) {
-                            const auto& entry = shuffleBag.front();
-                            currentMap = entry.name + " (Shots:" + std::to_string(entry.shotCount) + ")";
-                        }
-                    } else {
-                        currentMap = "Shuffle (" + std::to_string(shuffleCount) + " packs)";
+            // Get packs from manager for consistent lookup
+            const auto& trainingPacks = plugin_->trainingPackMgr ?
+                plugin_->trainingPackMgr->GetPacks() : RLTraining;
+
+            if (bagRotationEnabledValue && plugin_->trainingPackMgr) {
+                // Show current bag in rotation
+                std::string currentBag = plugin_->settingsSync->GetCurrentBag();
+                if (!currentBag.empty()) {
+                    currentMap = "Bag Rotation: " + currentBag;
+                } else if (!currentTrainingCode.empty()) {
+                    // Find training pack by code
+                    auto it = std::find_if(trainingPacks.begin(), trainingPacks.end(),
+                        [&](const TrainingEntry& e) { return e.code == currentTrainingCode; });
+                    if (it != trainingPacks.end()) {
+                        currentMap = it->name;
                     }
+                }
+            } else if (!currentTrainingCode.empty()) {
+                // Find training pack by code
+                auto it = std::find_if(trainingPacks.begin(), trainingPacks.end(),
+                    [&](const TrainingEntry& e) { return e.code == currentTrainingCode; });
+                if (it != trainingPacks.end()) {
+                    currentMap = it->name + " (Shots:" + std::to_string(it->shotCount) + ")";
                 }
             }
         } else if (mapTypeValue == 2) {
-            if (!RLWorkshop.empty() && currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
-                currentMap = RLWorkshop[currentWorkshopIndexValue].name;
+            // Find workshop map by path
+            auto it = std::find_if(RLWorkshop.begin(), RLWorkshop.end(),
+                [&](const WorkshopEntry& e) { return e.filePath == currentWorkshopPath; });
+            if (it != RLWorkshop.end()) {
+                currentMap = it->name;
             }
             mapDelayStr = std::to_string(delayWorkshopSecValue) + "s";
         }
@@ -166,8 +183,8 @@ void SettingsUI::RenderMainSettingsWindow() {
             ImGui::Spacing();
 
             // 2) Map Selection Logic
-            RenderMapSelectionTab(mapTypeValue, trainingShuffleEnabledValue, currentIndexValue,
-                currentTrainingIndexValue, currentWorkshopIndexValue, delayFreeplaySecValue,
+            RenderMapSelectionTab(mapTypeValue, bagRotationEnabledValue, currentFreeplayCode,
+                currentTrainingCode, currentWorkshopPath, delayFreeplaySecValue,
                 delayTrainingSecValue, delayWorkshopSecValue, delayQueueSecValue);
 
             ImGui::EndTabItem();
@@ -210,10 +227,10 @@ void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
 }
 
 void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
-    bool trainingShuffleEnabledValue,
-    int& currentIndexValue,
-    int& currentTrainingIndexValue,
-    int& currentWorkshopIndexValue,
+    bool bagRotationEnabledValue,
+    std::string& currentFreeplayCode,
+    std::string& currentTrainingCode,
+    std::string& currentWorkshopPath,
     int& delayFreeplaySecValue,
     int& delayTrainingSecValue,
     int& delayWorkshopSecValue,
@@ -222,33 +239,38 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
     ImGui::Spacing();
 
     if (mapTypeValue == 0) {
-        RenderFreeplayMode(currentIndexValue);
+        RenderFreeplayMode(currentFreeplayCode);
     } else if (mapTypeValue == 1) {
-        RenderTrainingMode(trainingShuffleEnabledValue, currentTrainingIndexValue);
+        RenderTrainingMode(bagRotationEnabledValue, currentTrainingCode);
     } else if (mapTypeValue == 2) {
-        RenderWorkshopMode(currentWorkshopIndexValue);
+        RenderWorkshopMode(currentWorkshopPath);
     }
 }
 
-void SettingsUI::RenderFreeplayMode(int& currentIndexValue) {
-    if (!RLMaps.empty()) {
-        currentIndexValue = std::clamp(currentIndexValue, 0, static_cast<int>(RLMaps.size() - 1));
-    } else {
-        currentIndexValue = 0;
+void SettingsUI::RenderFreeplayMode(std::string& currentFreeplayCode) {
+    // Find current selection index for display
+    int currentIndex = 0;
+    if (!currentFreeplayCode.empty()) {
+        for (int i = 0; i < (int)RLMaps.size(); i++) {
+            if (RLMaps[i].code == currentFreeplayCode) {
+                currentIndex = i;
+                break;
+            }
+        }
     }
 
-    const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndexValue].name.c_str();
+    const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndex].name.c_str();
     if (UI::Helpers::ComboWithTooltip("Freeplay Maps", freeplayLabel,
         "Select which stadium to load after matches", UI::SettingsUI::FREEPLAY_MAPS_DROPDOWN_WIDTH)) {
         ImGuiListClipper clipper;
         clipper.Begin((int)RLMaps.size());
         while (clipper.Step()) {
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                bool selected = (row == currentIndexValue);
+                bool selected = (RLMaps[row].code == currentFreeplayCode);
                 if (ImGui::Selectable(RLMaps[row].name.c_str(), selected)) {
-                    currentIndexValue = row;
-                    UI::Helpers::SetCVarSafely("suitespot_current_freeplay_index", currentIndexValue, 
-                        plugin_->cvarManager, plugin_->gameWrapper);
+                    currentFreeplayCode = RLMaps[row].code;
+                    plugin_->settingsSync->SetCurrentFreeplayCode(currentFreeplayCode);
+                    plugin_->cvarManager->getCvar("suitespot_current_freeplay_code").setValue(currentFreeplayCode);
                 }
             }
         }
@@ -257,8 +279,8 @@ void SettingsUI::RenderFreeplayMode(int& currentIndexValue) {
 
     ImGui::SameLine();
     if (ImGui::Button("Load Now##freeplay")) {
-        if (!RLMaps.empty() && currentIndexValue >= 0 && currentIndexValue < (int)RLMaps.size()) {
-            std::string mapCode = RLMaps[currentIndexValue].code;
+        if (!currentFreeplayCode.empty()) {
+            std::string mapCode = currentFreeplayCode;
             SuiteSpot* p = plugin_;
             p->gameWrapper->SetTimeout([p, mapCode](GameWrapper* gw) {
                 p->cvarManager->executeCommand("load_freeplay " + mapCode);
@@ -267,8 +289,18 @@ void SettingsUI::RenderFreeplayMode(int& currentIndexValue) {
     }
 }
 
-void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& currentTrainingIndexValue) {
+void SettingsUI::RenderTrainingMode(bool bagRotationEnabledValue, std::string& currentTrainingCode) {
     ImGui::TextUnformatted("Training Settings:");
+
+    // Show bag rotation status
+    if (bagRotationEnabledValue && plugin_->trainingPackMgr) {
+        std::string currentBag = plugin_->settingsSync->GetCurrentBag();
+        if (!currentBag.empty()) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Bag Rotation Active - Current: %s", currentBag.c_str());
+        } else {
+            ImGui::TextDisabled("Bag Rotation: No packs in any bag");
+        }
+    }
 
     ImGui::Spacing();
     if (ImGui::Button("Open Training Pack Browser", ImVec2(250, 30))) {
@@ -278,30 +310,35 @@ void SettingsUI::RenderTrainingMode(bool trainingShuffleEnabledValue, int& curre
         }, 0.0f);
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Open the full training pack browser in a separate window");
+        ImGui::SetTooltip("Open the full training pack browser to manage bags and packs");
     }
 }
 
-void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue) {
-    if (!RLWorkshop.empty()) {
-        currentWorkshopIndexValue = std::clamp(currentWorkshopIndexValue, 0, static_cast<int>(RLWorkshop.size() - 1));
-    } else {
-        currentWorkshopIndexValue = 0;
+void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
+    // Find current selection index for display
+    int currentIndex = 0;
+    if (!currentWorkshopPath.empty()) {
+        for (int i = 0; i < (int)RLWorkshop.size(); i++) {
+            if (RLWorkshop[i].filePath == currentWorkshopPath) {
+                currentIndex = i;
+                break;
+            }
+        }
     }
 
-    const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentWorkshopIndexValue].name.c_str();
+    const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentIndex].name.c_str();
     if (UI::Helpers::ComboWithTooltip("Workshop Maps", workshopLabel,
         "Select which workshop map to load after matches", UI::SettingsUI::WORKSHOP_MAPS_DROPDOWN_WIDTH)) {
         ImGuiListClipper clipper;
         clipper.Begin((int)RLWorkshop.size());
         while (clipper.Step()) {
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
-                bool selected = (row == currentWorkshopIndexValue);
+                bool selected = (RLWorkshop[row].filePath == currentWorkshopPath);
                 std::string label = RLWorkshop[row].name + "##" + std::to_string(row);
                 if (ImGui::Selectable(label.c_str(), selected)) {
-                    currentWorkshopIndexValue = row;
-                    UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, 
-                        plugin_->cvarManager, plugin_->gameWrapper);
+                    currentWorkshopPath = RLWorkshop[row].filePath;
+                    plugin_->settingsSync->SetCurrentWorkshopPath(currentWorkshopPath);
+                    plugin_->cvarManager->getCvar("suitespot_current_workshop_path").setValue(currentWorkshopPath);
                 }
             }
         }
@@ -310,26 +347,14 @@ void SettingsUI::RenderWorkshopMode(int& currentWorkshopIndexValue) {
 
     ImGui::SameLine();
     if (ImGui::Button("Refresh Workshop##maps")) {
-        std::string previousPath;
-        if (currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
-            previousPath = RLWorkshop[currentWorkshopIndexValue].filePath;
-        }
+        // After refresh, selection persists automatically since we use path-based lookup
         plugin_->LoadWorkshopMaps();
-        if (!previousPath.empty()) {
-            auto it = std::find_if(RLWorkshop.begin(), RLWorkshop.end(),
-                [&](const WorkshopEntry& entry){ return entry.filePath == previousPath; });
-            if (it != RLWorkshop.end()) {
-                currentWorkshopIndexValue = static_cast<int>(std::distance(RLWorkshop.begin(), it));
-                UI::Helpers::SetCVarSafely("suitespot_current_workshop_index", currentWorkshopIndexValue, 
-                    plugin_->cvarManager, plugin_->gameWrapper);
-            }
-        }
     }
 
     ImGui::SameLine();
     if (ImGui::Button("Load Now##workshop")) {
-        if (!RLWorkshop.empty() && currentWorkshopIndexValue >= 0 && currentWorkshopIndexValue < (int)RLWorkshop.size()) {
-            std::string filePath = RLWorkshop[currentWorkshopIndexValue].filePath;
+        if (!currentWorkshopPath.empty()) {
+            std::string filePath = currentWorkshopPath;
             SuiteSpot* p = plugin_;
             p->gameWrapper->SetTimeout([p, filePath](GameWrapper* gw) {
                 p->cvarManager->executeCommand("load_workshop \"" + filePath + "\"");

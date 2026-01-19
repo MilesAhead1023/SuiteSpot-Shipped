@@ -6,6 +6,15 @@
 #include <string>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
+#include <cstring>
+
+// Payload structure for dragging packs FROM bags (includes source bag info)
+// This allows the drop target to know where the pack came from for removal
+struct BagPackPayload {
+    char packCode[32];
+    char sourceBag[32];
+};
 
 /*
  * ======================================================================================
@@ -64,7 +73,7 @@ public:
 private:
     SuiteSpot* plugin_;
     bool isWindowOpen_ = false;
-    bool cachedShuffleEnabled = false;
+    bool needsFocusOnNextRender_ = false;  // Bring to front when first opened
 
     char packSearchText[256] = {0};
     std::string packDifficultyFilter = "All";
@@ -73,6 +82,7 @@ private:
     int packMaxShots = 100;
     int packSortColumn = 0;
     bool packSortAscending = true;
+    bool packVideoFilter = false;  // Filter for packs with video URLs
 
     char lastSearchText[256] = {0};
     std::string lastDifficultyFilter = "All";
@@ -80,6 +90,7 @@ private:
     int lastMinShots = 0;
     int lastSortColumn = 0;
     bool lastSortAscending = true;
+    bool lastVideoFilter = false;
 
     std::vector<std::string> availableTags;
     bool tagsInitialized = false;
@@ -87,7 +98,7 @@ private:
     std::vector<TrainingEntry> filteredPacks;
 
     // Selection state
-    std::unordered_set<std::string> selectedPackCodes;
+    std::string selectedPackCode;
     int lastSelectedRowIndex = -1;
     bool packListInitialized = false;
 
@@ -103,8 +114,16 @@ private:
     UI::StatusMessage customPackStatus;
     UI::StatusMessage browserStatus;
 
+    // Bag manager modal state
+    bool showBagManagerModal = false;
+    std::unordered_map<std::string, std::string> selectedPackInBag;  // bagName → packCode
+
     // Helper methods
     void RenderCustomPackForm();
+    void RenderBagManagerModal();
+    void RenderBagChildWindow(const TrainingBag& bag, float width, float height);
+    void MoveSelectedPackUp(const std::string& bagName);
+    void MoveSelectedPackDown(const std::string& bagName);
     bool ValidatePackCode(const char* code) const;
     void ClearCustomPackForm();
     void CalculateOptimalColumnWidths();
@@ -114,4 +133,7 @@ private:
     bool columnWidthsDirty = true;
     bool columnWidthsInitialized = false;
     float lastWindowWidth = 0.0f;
+
+    // Icons
+    std::shared_ptr<ImageWrapper> youtubeIcon;
 };

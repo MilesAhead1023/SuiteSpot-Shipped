@@ -1,3 +1,5 @@
+#include "bakkesmod/wrappers/gfx/GfxDataTrainingWrapper.h"
+#include "bakkesmod/wrappers/GameEvent/SaveData/TrainingEditorSaveDataWrapper.h"
 #include "pch.h"
 #include "TrainingPackManager.h"
 #include "EmbeddedPackGrabber.h"
@@ -6,6 +8,7 @@
 #include <chrono>
 #include <fstream>
 #include <iomanip>
+#include <random>
 #include <set>
 #include <sstream>
 #include <thread>
@@ -101,8 +104,30 @@ void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePat
             } else {
                 entry.source = "prejump"; // Default for backward compatibility
             }
-            if (pack.contains("inShuffleBag") && pack["inShuffleBag"].is_boolean()) {
-                entry.inShuffleBag = pack["inShuffleBag"].get<bool>();
+            // Handle bagCategories (new system) or migrate from inShuffleBag (legacy)
+            if (pack.contains("bagCategories") && pack["bagCategories"].is_array()) {
+                for (const auto& cat : pack["bagCategories"]) {
+                    if (cat.is_string()) {
+                        entry.bagCategories.insert(cat.get<std::string>());
+                    }
+                }
+            } else if (pack.contains("inShuffleBag") && pack["inShuffleBag"].is_boolean() && pack["inShuffleBag"].get<bool>()) {
+                // Legacy migration: packs marked for shuffle go to "Warmup" by default
+                entry.bagCategories.insert("Warmup");
+            }
+            // Load orderInBag (position within each bag)
+            if (pack.contains("orderInBag") && pack["orderInBag"].is_object()) {
+                for (auto& [bagName, order] : pack["orderInBag"].items()) {
+                    if (order.is_number_integer()) {
+                        entry.orderInBag[bagName] = order.get<int>();
+                    }
+                }
+            } else {
+                // Migration: If orderInBag missing, auto-assign based on load order
+                int orderCounter = 0;
+                for (const auto& bagName : entry.bagCategories) {
+                    entry.orderInBag[bagName] = orderCounter++;
+                }
             }
             if (pack.contains("isModified") && pack["isModified"].is_boolean()) {
                 entry.isModified = pack["isModified"].get<bool>();
@@ -124,6 +149,12 @@ void TrainingPackManager::LoadPacksFromFile(const std::filesystem::path& filePat
         packCount = static_cast<int>(RLTraining.size());
         lastUpdated = GetLastUpdatedTime(filePath);
         currentFilePath = filePath;
+
+        // Initialize default bags if not already done
+        if (availableBags.empty()) {
+            InitializeDefaultBags();
+        }
+
         LOG("SuiteSpot: Loaded {} training packs from file", packCount);
 
     } catch (const std::exception& e) {
@@ -267,6 +298,7 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
                                             const std::string& difficultyFilter,
                                             const std::string& tagFilter,
                                             int minShots,
+                                            bool videoFilter,
                                             int sortColumn,
                                             bool sortAscending,
                                             std::vector<TrainingEntry>& out) const
@@ -279,6 +311,11 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     for (const auto& pack : RLTraining) {
+        // Video filter - skip packs without video if filter is enabled
+        if (videoFilter && pack.videoUrl.empty()) {
+            continue;
+        }
+
         if (!searchLower.empty()) {
             std::string nameLower = pack.name;
             std::string creatorLower = pack.creator;
@@ -306,8 +343,18 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
             }
         }
 
-        if (difficultyFilter != "All" && pack.difficulty != difficultyFilter) {
-            continue;
+        if (difficultyFilter != "All") {
+            if (difficultyFilter == "Unranked") {
+                // Match "Unranked" filter against all "no difficulty" values
+                if (!pack.difficulty.empty() && pack.difficulty != "Unknown" && pack.difficulty != "All" && pack.difficulty != "Unranked") {
+                    continue;
+                }
+            } else {
+                // Standard strict match for ranked tiers
+                if (pack.difficulty != difficultyFilter) {
+                    continue;
+                }
+            }
         }
 
         if (!tagFilter.empty()) {
@@ -416,7 +463,20 @@ void TrainingPackManager::SavePacksToFile(const std::filesystem::path& filePath)
 
             // Unified system fields
             p["source"] = pack.source;
-            p["inShuffleBag"] = pack.inShuffleBag;
+            // Save bag categories as array
+            nlohmann::json bagCatsArray = nlohmann::json::array();
+            for (const auto& cat : pack.bagCategories) {
+                bagCatsArray.push_back(cat);
+            }
+            p["bagCategories"] = bagCatsArray;
+            // Save orderInBag as object
+            if (!pack.orderInBag.empty()) {
+                nlohmann::json orderObj;
+                for (const auto& [bagName, order] : pack.orderInBag) {
+                    orderObj[bagName] = order;
+                }
+                p["orderInBag"] = orderObj;
+            }
             p["isModified"] = pack.isModified;
 
             packsArray.push_back(p);
@@ -549,58 +609,344 @@ bool TrainingPackManager::DeletePack(const std::string& code)
     return true;
 }
 
-void TrainingPackManager::ToggleShuffleBag(const std::string& code)
+// ============================================================================
+// CATEGORIZED BAG SYSTEM
+// ============================================================================
+
+void TrainingPackManager::InitializeDefaultBags()
 {
-    {
-        std::lock_guard<std::mutex> lock(packMutex);
-        for (auto& pack : RLTraining) {
-            if (pack.code == code) {
-                pack.inShuffleBag = !pack.inShuffleBag;
-                LOG("SuiteSpot: {} pack from shuffle bag: {}", std::string(pack.inShuffleBag ? "Added" : "Removed"), pack.name);
-                break;
-            }
+    availableBags.clear();
+
+    // Defense bag - saves, clears, defensive plays
+    availableBags.push_back({
+        "Defense", "Defense", "D",
+        {"Saves", "Defensive", "Clears", "Shadow"},
+        false, 1, false, {0.3f, 0.6f, 0.9f, 1.0f}  // Blue
+    });
+
+    // Offense bag - shots, finishing
+    availableBags.push_back({
+        "Offense", "Offense", "O",
+        {"Offensive", "Shots", "Finishing", "Power"},
+        false, 2, false, {0.9f, 0.4f, 0.3f, 1.0f}  // Red
+    });
+
+    // Air Control bag - aerials, air dribbles
+    availableBags.push_back({
+        "Air", "Air Control", "A",
+        {"Aerials", "Air rolls", "Air dribble"},
+        false, 3, false, {0.5f, 0.8f, 0.9f, 1.0f}  // Cyan
+    });
+
+    // Dribble bag - ground dribbles, flicks
+    availableBags.push_back({
+        "Dribble", "Dribble", "Dr",
+        {"Dribbling", "Ground", "Flicks", "Ball control"},
+        false, 4, false, {0.9f, 0.7f, 0.2f, 1.0f}  // Orange
+    });
+
+    // Rebounds bag - backboard, redirects
+    availableBags.push_back({
+        "Rebounds", "Rebounds", "R",
+        {"Rebounds", "Redirects", "Backboard", "Double"},
+        false, 5, false, {0.7f, 0.4f, 0.9f, 1.0f}  // Purple
+    });
+
+    // Warmup bag - general, variety
+    availableBags.push_back({
+        "Warmup", "Warmup", "W",
+        {"Good for beginners", "Variety", "Warmup"},
+        false, 0, false, {0.4f, 0.9f, 0.4f, 1.0f}  // Green
+    });
+
+    LOG("SuiteSpot: Initialized {} default training bags", availableBags.size());
+}
+
+const TrainingBag* TrainingPackManager::GetBag(const std::string& bagName) const
+{
+    for (const auto& bag : availableBags) {
+        if (bag.name == bagName) {
+            return &bag;
+        }
+    }
+    return nullptr;
+}
+
+std::vector<TrainingEntry> TrainingPackManager::GetPacksInBag(const std::string& bagName) const
+{
+    std::lock_guard<std::mutex> lock(packMutex);
+    std::vector<TrainingEntry> result;
+    for (const auto& pack : RLTraining) {
+        if (pack.bagCategories.count(bagName) > 0) {
+            result.push_back(pack);
         }
     }
 
-    // Auto-save outside the lock
-    if (!currentFilePath.empty()) {
-        SavePacksToFile(currentFilePath);
-    }
+    // Sort by orderInBag
+    std::sort(result.begin(), result.end(), [&bagName](const TrainingEntry& a, const TrainingEntry& b) {
+        auto it_a = a.orderInBag.find(bagName);
+        auto it_b = b.orderInBag.find(bagName);
+
+        int order_a = (it_a != a.orderInBag.end()) ? it_a->second : INT_MAX;
+        int order_b = (it_b != b.orderInBag.end()) ? it_b->second : INT_MAX;
+
+        return order_a < order_b;
+    });
+
+    return result;
 }
 
-void TrainingPackManager::AddToShuffleBag(const std::string& code)
+int TrainingPackManager::GetBagPackCount(const std::string& bagName) const
+{
+    std::lock_guard<std::mutex> lock(packMutex);
+    int count = 0;
+    for (const auto& pack : RLTraining) {
+        if (pack.bagCategories.count(bagName) > 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
+void TrainingPackManager::AddPackToBag(const std::string& code, const std::string& bagName)
 {
     bool shouldSave = false;
     {
         std::lock_guard<std::mutex> lock(packMutex);
         for (auto& pack : RLTraining) {
             if (pack.code == code) {
-                if (!pack.inShuffleBag) {
-                    pack.inShuffleBag = true;
+                if (pack.bagCategories.insert(bagName).second) {
+                    // Assign order (append to end)
+                    int maxOrder = -1;
+                    for (const auto& p : RLTraining) {
+                        if (p.bagCategories.count(bagName) > 0) {
+                            auto orderIt = p.orderInBag.find(bagName);
+                            if (orderIt != p.orderInBag.end()) {
+                                maxOrder = std::max(maxOrder, orderIt->second);
+                            }
+                        }
+                    }
+                    pack.orderInBag[bagName] = maxOrder + 1;
+
                     shouldSave = true;
-                    LOG("SuiteSpot: Added pack to shuffle bag: {}", pack.name);
+                    LOG("SuiteSpot: Added pack '{}' to bag '{}'", pack.name, bagName);
                 }
                 break;
             }
         }
     }
-
-    // Auto-save outside the lock
     if (shouldSave && !currentFilePath.empty()) {
         SavePacksToFile(currentFilePath);
     }
 }
 
-std::vector<TrainingEntry> TrainingPackManager::GetShuffleBagPacks() const
+void TrainingPackManager::AddPacksToBag(const std::vector<std::string>& codes, const std::string& bagName)
 {
-    std::lock_guard<std::mutex> lock(packMutex);
-    std::vector<TrainingEntry> shuffleBag;
-    for (const auto& pack : RLTraining) {
-        if (pack.inShuffleBag) {
-            shuffleBag.push_back(pack);
+    bool shouldSave = false;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            for (const auto& code : codes) {
+                if (pack.code == code) {
+                    if (pack.bagCategories.insert(bagName).second) {
+                        shouldSave = true;
+                    }
+                    break;
+                }
+            }
         }
     }
-    return shuffleBag;
+    if (shouldSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+        LOG("SuiteSpot: Added {} packs to bag '{}'", codes.size(), bagName);
+    }
+}
+
+void TrainingPackManager::RemovePackFromBag(const std::string& code, const std::string& bagName)
+{
+    bool shouldSave = false;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.code == code) {
+                if (pack.bagCategories.erase(bagName) > 0) {
+                    shouldSave = true;
+                    LOG("SuiteSpot: Removed pack '{}' from bag '{}'", pack.name, bagName);
+                }
+                break;
+            }
+        }
+    }
+    if (shouldSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
+}
+
+void TrainingPackManager::RemovePackFromAllBags(const std::string& code)
+{
+    bool shouldSave = false;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.code == code) {
+                if (!pack.bagCategories.empty()) {
+                    pack.bagCategories.clear();
+                    shouldSave = true;
+                    LOG("SuiteSpot: Removed pack '{}' from all bags", pack.name);
+                }
+                break;
+            }
+        }
+    }
+    if (shouldSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
+}
+
+void TrainingPackManager::ClearBag(const std::string& bagName)
+{
+    bool shouldSave = false;
+    int removedCount = 0;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.bagCategories.erase(bagName) > 0) {
+                // Also remove orderInBag entry
+                pack.orderInBag.erase(bagName);
+                shouldSave = true;
+                removedCount++;
+            }
+        }
+    }
+    if (shouldSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+        LOG("SuiteSpot: Cleared {} packs from bag '{}'", removedCount, bagName);
+    }
+}
+
+bool TrainingPackManager::IsPackInBag(const std::string& code, const std::string& bagName) const
+{
+    std::lock_guard<std::mutex> lock(packMutex);
+    for (const auto& pack : RLTraining) {
+        if (pack.code == code) {
+            return pack.bagCategories.count(bagName) > 0;
+        }
+    }
+    return false;
+}
+
+void TrainingPackManager::SwapPacksInBag(const std::string& bagName, int idx1, int idx2)
+{
+    std::lock_guard<std::mutex> lock(packMutex);
+
+    // Get all packs in bag (in order they appear after sorting)
+    std::vector<TrainingEntry*> packsInBag;
+    for (auto& pack : RLTraining) {
+        if (pack.bagCategories.count(bagName) > 0) {
+            packsInBag.push_back(&pack);
+        }
+    }
+
+    // Sort to match display order
+    std::sort(packsInBag.begin(), packsInBag.end(), [&bagName](const TrainingEntry* a, const TrainingEntry* b) {
+        auto it_a = a->orderInBag.find(bagName);
+        auto it_b = b->orderInBag.find(bagName);
+
+        int order_a = (it_a != a->orderInBag.end()) ? it_a->second : INT_MAX;
+        int order_b = (it_b != b->orderInBag.end()) ? it_b->second : INT_MAX;
+
+        return order_a < order_b;
+    });
+
+    // Validate indices
+    if (idx1 < 0 || idx1 >= (int)packsInBag.size() ||
+        idx2 < 0 || idx2 >= (int)packsInBag.size()) {
+        return;
+    }
+
+    TrainingEntry* pack1 = packsInBag[idx1];
+    TrainingEntry* pack2 = packsInBag[idx2];
+
+    // Swap order values
+    int order1 = pack1->orderInBag[bagName];
+    int order2 = pack2->orderInBag[bagName];
+    pack1->orderInBag[bagName] = order2;
+    pack2->orderInBag[bagName] = order1;
+
+    // Mark as modified
+    pack1->isModified = true;
+    pack2->isModified = true;
+
+    // Save to disk
+    if (!currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
+}
+
+void TrainingPackManager::SetBagEnabled(const std::string& bagName, bool enabled)
+{
+    for (auto& bag : availableBags) {
+        if (bag.name == bagName) {
+            bag.enabled = enabled;
+            LOG("SuiteSpot: Bag '{}' {}", bagName, enabled ? "enabled" : "disabled");
+            break;
+        }
+    }
+}
+
+bool TrainingPackManager::CreateCustomBag(const std::string& name, const std::string& icon, const float color[4])
+{
+    // Check for max bags (6 predefined + 6 custom = 12)
+    if (availableBags.size() >= 12) {
+        LOG("SuiteSpot: Cannot create bag '{}' - maximum 12 bags reached", name);
+        return false;
+    }
+
+    // Check for duplicate name
+    for (const auto& bag : availableBags) {
+        if (bag.name == name) {
+            LOG("SuiteSpot: Cannot create bag '{}' - name already exists", name);
+            return false;
+        }
+    }
+
+    TrainingBag newBag;
+    newBag.name = name;
+    newBag.displayName = name;
+    newBag.icon = icon;
+    newBag.enabled = true;
+    newBag.priority = static_cast<int>(availableBags.size());
+    newBag.isUserCreated = true;
+    newBag.color[0] = color[0];
+    newBag.color[1] = color[1];
+    newBag.color[2] = color[2];
+    newBag.color[3] = color[3];
+
+    availableBags.push_back(newBag);
+    LOG("SuiteSpot: Created custom bag '{}'", name);
+    return true;
+}
+
+bool TrainingPackManager::DeleteCustomBag(const std::string& bagName)
+{
+    for (auto it = availableBags.begin(); it != availableBags.end(); ++it) {
+        if (it->name == bagName && it->isUserCreated) {
+            availableBags.erase(it);
+            // Also remove this bag from all packs
+            {
+                std::lock_guard<std::mutex> lock(packMutex);
+                for (auto& pack : RLTraining) {
+                    pack.bagCategories.erase(bagName);
+                }
+            }
+            if (!currentFilePath.empty()) {
+                SavePacksToFile(currentFilePath);
+            }
+            LOG("SuiteSpot: Deleted custom bag '{}'", bagName);
+            return true;
+        }
+    }
+    return false;
 }
 
 TrainingEntry* TrainingPackManager::GetPackByCode(const std::string& code)
@@ -614,14 +960,60 @@ TrainingEntry* TrainingPackManager::GetPackByCode(const std::string& code)
     return nullptr;
 }
 
-int TrainingPackManager::GetShuffleBagCount() const
+void TrainingPackManager::TestHealerFetch(std::shared_ptr<GameWrapper> gw, std::string code) {
+    if (!gw) return;
+
+    auto gfxTraining = gw->GetGfxTrainingData();
+    if (gfxTraining.IsNull()) {
+        LOG("Healer: GfxTrainingData is null");
+        return;
+    }
+
+    LOG("Healer: Attempting to set playlist to code: {0}", code);
+    
+    // Attempt to set the playlist context to the code.
+    // Hypothesis: This triggers the game to fetch metadata to populate the 'Browse' UI state.
+    gfxTraining.SetCurrentPlaylist(code);
+
+    // We delay the read slightly to allow for any async fetch
+    gw->SetTimeout([gw, code](GameWrapper* gw_ptr) {
+        auto gfx = gw_ptr->GetGfxTrainingData();
+        if (gfx.IsNull()) return;
+
+        int rounds = gfx.GetTotalRounds();
+        std::string diff = gfx.GetDifficulty().ToString();
+        std::string type = gfx.GetTrainingType();
+
+        LOG("Healer: Result for code {0}: Rounds={1}, Difficulty={2}, Type={3}", code, rounds, diff, type);
+    }, 1.5f);
+}
+#include "pch.h"
+#include "TrainingPackManager.h"
+#include "bakkesmod/wrappers/GameWrapper.h"
+#include "logging.h"
+
+
+
+
+
+void TrainingPackManager::HealPack(const std::string& code, int shots)
 {
-    std::lock_guard<std::mutex> lock(packMutex);
-    int count = 0;
-    for (const auto& pack : RLTraining) {
-        if (pack.inShuffleBag) {
-            count++;
+    bool needsSave = false;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.code == code) {
+                if (pack.shotCount <= 0) {
+                    pack.shotCount = shots;
+                    needsSave = true;
+                    LOG("SuiteSpot: Healed metadata for pack: {}", code);
+                }
+                break;
+            }
         }
     }
-    return count;
+
+    if (needsSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+    }
 }

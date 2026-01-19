@@ -11,7 +11,8 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
                                    const std::vector<MapEntry>& maps,
                                    const std::vector<TrainingEntry>& training,
                                    const std::vector<WorkshopEntry>& workshop,
-                                   const std::vector<TrainingEntry>& shuffleBag,
+                                   bool useBagRotation,
+                                   const TrainingEntry& selectedBagPack,
                                    SettingsSync& settings)
 {
     if (!gameWrapper || !cvarManager) return;
@@ -22,67 +23,79 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
     const int delayFreeplaySec = settings.GetDelayFreeplaySec();
     const int delayTrainingSec = settings.GetDelayTrainingSec();
     const int delayWorkshopSec = settings.GetDelayWorkshopSec();
-    const bool trainingShuffleEnabled = settings.IsTrainingShuffleEnabled();
 
-    int currentIndex = settings.GetCurrentIndex();
-    int currentTrainingIndex = settings.GetCurrentTrainingIndex();
-    int currentWorkshopIndex = settings.GetCurrentWorkshopIndex();
+    std::string currentFreeplayCode = settings.GetCurrentFreeplayCode();
+    std::string currentTrainingCode = settings.GetCurrentTrainingCode();
+    std::string currentWorkshopPath = settings.GetCurrentWorkshopPath();
 
     auto safeExecute = [&](int delaySec, const std::string& cmd) {
-        if (delaySec <= 0) {
+        // Enforce a minimum delay of 0.1s to ensure the game state has settled after the match.
+        // Even if the user sets 0s, we want to force a context switch out of the event stack.
+        float actualDelay = (delaySec <= 0) ? 0.1f : static_cast<float>(delaySec);
+
+        gameWrapper->SetTimeout([cvarManager, cmd](GameWrapper* gw) {
             cvarManager->executeCommand(cmd);
-        } else {
-            gameWrapper->SetTimeout([cvarManager, cmd](GameWrapper* gw) {
-                cvarManager->executeCommand(cmd);
-            }, static_cast<float>(delaySec));
-        }
+        }, actualDelay);
     };
 
     int mapLoadDelay = 0;
 
     if (mapType == 0) { // Freeplay
-        if (currentIndex < 0 || currentIndex >= static_cast<int>(maps.size())) {
-            LOG("SuiteSpot: Freeplay index out of range; skipping load.");
+        if (currentFreeplayCode.empty()) {
+            LOG("SuiteSpot: No freeplay map selected; skipping load.");
         } else {
-            safeExecute(delayFreeplaySec, "load_freeplay " + maps[currentIndex].code);
-            mapLoadDelay = delayFreeplaySec;
-            LOG("SuiteSpot: Loading freeplay map: " + maps[currentIndex].name);
+            // Verify the map code exists in the list
+            auto it = std::find_if(maps.begin(), maps.end(),
+                [&](const MapEntry& e) { return e.code == currentFreeplayCode; });
+            if (it != maps.end()) {
+                safeExecute(delayFreeplaySec, "load_freeplay " + currentFreeplayCode);
+                mapLoadDelay = delayFreeplaySec;
+                LOG("SuiteSpot: Loading freeplay map: " + it->name);
+            } else {
+                LOG("SuiteSpot: Freeplay map code not found: " + currentFreeplayCode);
+            }
         }
     } else if (mapType == 1) { // Training
-        if (training.empty() && shuffleBag.empty()) {
-            LOG("SuiteSpot: No training maps configured.");
-        } else {
-            std::string codeToLoad;
-            std::string nameToLoad;
+        std::string codeToLoad;
+        std::string nameToLoad;
 
-            if (trainingShuffleEnabled && !shuffleBag.empty()) {
-                static std::mt19937 rng(std::random_device{}());
-                std::uniform_int_distribution<int> dist(0, static_cast<int>(shuffleBag.size()) - 1);
-                int bagIndex = dist(rng);
-                codeToLoad = shuffleBag[bagIndex].code;
-                nameToLoad = shuffleBag[bagIndex].name;
-            } else if (!training.empty()) {
-                currentTrainingIndex = std::clamp(currentTrainingIndex, 0, static_cast<int>(training.size() - 1));
-                settings.SetCurrentTrainingIndex(currentTrainingIndex);
-                codeToLoad = training[currentTrainingIndex].code;
-                nameToLoad = training[currentTrainingIndex].name;
-            }
-
-            if (!codeToLoad.empty()) {
-                safeExecute(delayTrainingSec, "load_training " + codeToLoad);
-                mapLoadDelay = delayTrainingSec;
-                LOG("SuiteSpot: Loading training map: " + nameToLoad);
+        // Use bag rotation if enabled and a pack was selected
+        if (useBagRotation && !selectedBagPack.code.empty()) {
+            codeToLoad = selectedBagPack.code;
+            nameToLoad = selectedBagPack.name;
+        } else if (!currentTrainingCode.empty()) {
+            // Fall back to specific training code (only if explicitly selected)
+            auto it = std::find_if(training.begin(), training.end(),
+                [&](const TrainingEntry& e) { return e.code == currentTrainingCode; });
+            if (it != training.end()) {
+                codeToLoad = currentTrainingCode;
+                nameToLoad = it->name;
+            } else {
+                LOG("SuiteSpot: Training pack code not found: " + currentTrainingCode);
             }
         }
-    } else if (mapType == 2) { // Workshop
-        if (workshop.empty()) {
-            LOG("SuiteSpot: No workshop maps configured.");
+
+        if (!codeToLoad.empty()) {
+            safeExecute(delayTrainingSec, "load_training " + codeToLoad);
+            mapLoadDelay = delayTrainingSec;
+            LOG("SuiteSpot: Loading training pack: " + nameToLoad);
         } else {
-            currentWorkshopIndex = std::clamp(currentWorkshopIndex, 0, static_cast<int>(workshop.size() - 1));
-            settings.SetCurrentWorkshopIndex(currentWorkshopIndex);
-            safeExecute(delayWorkshopSec, "load_workshop \"" + workshop[currentWorkshopIndex].filePath + "\"");
-            mapLoadDelay = delayWorkshopSec;
-            LOG("SuiteSpot: Loading workshop map: " + workshop[currentWorkshopIndex].name);
+            LOG("SuiteSpot: No training pack to load.");
+        }
+    } else if (mapType == 2) { // Workshop
+        if (currentWorkshopPath.empty()) {
+            LOG("SuiteSpot: No workshop map selected; skipping load.");
+        } else {
+            // Verify the workshop map exists in the list
+            auto it = std::find_if(workshop.begin(), workshop.end(),
+                [&](const WorkshopEntry& e) { return e.filePath == currentWorkshopPath; });
+            if (it != workshop.end()) {
+                safeExecute(delayWorkshopSec, "load_workshop \"" + currentWorkshopPath + "\"");
+                mapLoadDelay = delayWorkshopSec;
+                LOG("SuiteSpot: Loading workshop map: " + it->name);
+            } else {
+                LOG("SuiteSpot: Workshop map path not found: " + currentWorkshopPath);
+            }
         }
     }
 

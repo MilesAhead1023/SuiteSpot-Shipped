@@ -29,15 +29,11 @@ public:
     // Tells BakkesMod about all our settings
     void RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& cvarManager);
     
-    // Updates the "Bag Size" setting (special case because it changes dynamically)
-    void UpdateTrainingBagSize(int bagSize, const std::shared_ptr<CVarManagerWrapper>& cvarManager);
-
     // Getters: Fast, safe ways to ask "Is this feature on?"
     bool IsEnabled() const { return enabled; }
     int GetMapType() const { return mapType; }
     bool IsAutoQueue() const { return autoQueue; }
-    bool IsTrainingShuffleEnabled() const { return trainingShuffleEnabled; }
-    int GetTrainingBagSize() const { return trainingBagSize; }
+    bool IsBagRotationEnabled() const { return bagRotationEnabled; }
 
     // Delay getters (How long to wait?)
     int GetDelayQueueSec() const { return delayQueueSec; }
@@ -46,29 +42,38 @@ public:
     int GetDelayWorkshopSec() const { return delayWorkshopSec; }
 
     // Selection getters (Which map/pack is selected?)
-    int GetCurrentIndex() const { return currentIndex; }
-    int GetCurrentTrainingIndex() const { return currentTrainingIndex; }
-    int GetCurrentWorkshopIndex() const { return currentWorkshopIndex; }
+    std::string GetCurrentFreeplayCode() const { return currentFreeplayCode; }
+    std::string GetCurrentTrainingCode() const { return currentTrainingCode; }
+    std::string GetCurrentWorkshopPath() const { return currentWorkshopPath; }
+
+    // Bag navigation getters (Which bag and pack index are we on?)
+    std::string GetCurrentBag() const { return currentBag; }
+    int GetCurrentBagPackIndex() const { return currentBagPackIndex; }
 
     // Setters: Update the local value (used when loading data)
-    void SetCurrentIndex(int value);
-    void SetCurrentTrainingIndex(int value);
-    void SetCurrentWorkshopIndex(int value);
+    void SetCurrentFreeplayCode(const std::string& code);
+    void SetCurrentTrainingCode(const std::string& code);
+    void SetCurrentWorkshopPath(const std::string& path);
+    void SetCurrentBag(const std::string& bagName);
+    void SetCurrentBagPackIndex(int value);
 
 private:
     // Local copies of settings for fast access
     bool enabled = false;
     int mapType = 0; // 0=Freeplay, 1=Training, 2=Workshop
     bool autoQueue = false;
-    bool trainingShuffleEnabled = false;
-    int trainingBagSize = 0;
+    bool bagRotationEnabled = true;  // Use categorized bag rotation for training
 
     int delayQueueSec = 0;
     int delayFreeplaySec = 0;
     int delayTrainingSec = 0;
     int delayWorkshopSec = 0;
 
-    int currentIndex = 0;        // Freeplay
-    int currentTrainingIndex = 0; // Training
-    int currentWorkshopIndex = 0; // Workshop
+    std::string currentFreeplayCode;   // Freeplay map code (e.g., "beckwith_park_p")
+    std::string currentTrainingCode;   // Training pack code (e.g., "XXXX-XXXX-XXXX-XXXX")
+    std::string currentWorkshopPath;   // Workshop map path (e.g., "C:/path/to/map.udk")
+
+    // Bag navigation state (for Next Pack feature)
+    std::string currentBag = "";   // Current bag being played through
+    int currentBagPackIndex = 0;   // Current pack index within the bag
 };

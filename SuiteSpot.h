@@ -116,16 +116,20 @@ public:
     
     bool IsEnabled() const;
     bool IsAutoQueueEnabled() const;
-    bool IsTrainingShuffleEnabled() const;
+    bool IsBagRotationEnabled() const;
     int GetMapType() const;
     int GetDelayQueueSec() const;
     int GetDelayFreeplaySec() const;
     int GetDelayTrainingSec() const;
     int GetDelayWorkshopSec() const;
-    int GetCurrentIndex() const;
-    int GetCurrentTrainingIndex() const;
-    int GetCurrentWorkshopIndex() const;
-    int GetTrainingBagSize() const;
+    std::string GetCurrentFreeplayCode() const;
+    std::string GetCurrentTrainingCode() const;
+    std::string GetCurrentWorkshopPath() const;
+
+    // Bag pack navigation (for Next/Previous Pack commands)
+    void AdvanceToNextBagPack();
+    void RetreatToPreviousBagPack();
+    std::pair<TrainingEntry, std::string> AdvanceAndGetNextBagPack();
 
 private:
     // Loadout management

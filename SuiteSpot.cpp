@@ -125,6 +125,86 @@ int SuiteSpot::GetCurrentWorkshopIndex() const {
     return settingsSync ? settingsSync->GetCurrentWorkshopIndex() : 0;
 }
 
+void SuiteSpot::AdvanceToNextBagPack() {
+    if (!trainingPackMgr || !settingsSync) return;
+
+    // Get current bag and index from CVars
+    auto currentBagCvar = cvarManager->getCvar("suitespot_current_bag");
+    auto currentIdxCvar = cvarManager->getCvar("suitespot_current_bag_pack_index");
+
+    std::string currentBag = currentBagCvar ? currentBagCvar.getStringValue() : "";
+    int currentIdx = currentIdxCvar ? currentIdxCvar.getIntValue() : 0;
+
+    // Get available bags
+    const auto& bags = trainingPackMgr->GetAvailableBags();
+
+    // Get packs in current bag (if any)
+    std::vector<TrainingEntry> packsInBag;
+    if (!currentBag.empty()) {
+        packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
+    }
+
+    // Advance index
+    currentIdx++;
+
+    // If past end of current bag (or no current bag), move to next enabled bag
+    if (currentIdx >= (int)packsInBag.size() || currentBag.empty()) {
+        // Find current bag position and get next enabled bag
+        bool foundCurrent = currentBag.empty();
+        bool foundNext = false;
+
+        for (const auto& bag : bags) {
+            if (!bag.enabled) continue;
+            int bagPackCount = trainingPackMgr->GetBagPackCount(bag.name);
+            if (bagPackCount == 0) continue;
+
+            if (foundCurrent) {
+                // This is the next valid bag
+                currentBag = bag.name;
+                currentIdx = 0;
+                packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
+                foundNext = true;
+                break;
+            }
+
+            if (bag.name == currentBag) {
+                foundCurrent = true;
+            }
+        }
+
+        // If we didn't find a next bag, wrap around to first enabled bag with packs
+        if (!foundNext) {
+            for (const auto& bag : bags) {
+                if (bag.enabled && trainingPackMgr->GetBagPackCount(bag.name) > 0) {
+                    currentBag = bag.name;
+                    currentIdx = 0;
+                    packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Update CVars
+    if (currentBagCvar) currentBagCvar.setValue(currentBag);
+    if (currentIdxCvar) currentIdxCvar.setValue(currentIdx);
+
+    // Load the pack
+    if (!packsInBag.empty() && currentIdx < (int)packsInBag.size()) {
+        std::string code = packsInBag[currentIdx].code;
+        std::string name = packsInBag[currentIdx].name;
+        std::string bagName = currentBag;
+
+        gameWrapper->SetTimeout([this, code, name, bagName](GameWrapper* gw) {
+            std::string cmd = "load_training " + code;
+            cvarManager->executeCommand(cmd);
+            LOG("SuiteSpot: Next bag pack: {} from {} ({})", name, bagName, code);
+        }, 0.0f);
+    } else {
+        LOG("SuiteSpot: No packs available in any enabled bag");
+    }
+}
+
 std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
     return GetSuiteTrainingDir() / "training_packs.json";
 }
@@ -280,6 +360,12 @@ void SuiteSpot::onLoad() {
             trainingPackMgr->TestHealerFetch(gameWrapper, args[1]);
         }
     }, "Test the training pack metadata healer", PERMISSION_ALL);
+
+    // Next pack command - advances to next pack in current bag (wraps to next bag)
+    cvarManager->registerNotifier("suitespot_next_bag_pack", [this](std::vector<std::string> args) {
+        AdvanceToNextBagPack();
+    }, "Load next pack in current bag (wraps to next bag)", PERMISSION_ALL);
+
     LOG("SuiteSpot: Plugin initialization complete");
 }
 

@@ -46,6 +46,7 @@ public:
                           const std::string& difficultyFilter,
                           const std::string& tagFilter,
                           int minShots,
+                          bool videoFilter,
                           int sortColumn,
                           bool sortAscending,
                           std::vector<TrainingEntry>& out) const;
@@ -70,6 +71,7 @@ public:
     void AddPacksToBag(const std::vector<std::string>& codes, const std::string& bagName);
     void RemovePackFromBag(const std::string& code, const std::string& bagName);
     void RemovePackFromAllBags(const std::string& code);
+    void ClearBag(const std::string& bagName);  // Remove all packs from a bag
     bool IsPackInBag(const std::string& code, const std::string& bagName) const;
 
     // Pack reordering within a bag

@@ -187,7 +187,7 @@ void TrainingPackUI::Render() {
             int bagCount = manager ? manager->GetBagPackCount(bag.name) : 0;
             if (bagCount > 0) {
                 ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
-                ImGui::TextColored(badgeColor, "%s %s(%d)", bag.icon.c_str(), bag.name.c_str(), bagCount);
+                ImGui::TextColored(badgeColor, "%s (%d)", bag.name.c_str(), bagCount);
                 ImGui::SameLine();
             }
         }
@@ -232,7 +232,8 @@ void TrainingPackUI::Render() {
                           (packTagFilter != lastTagFilter) ||
                           (packMinShots != lastMinShots) ||
                           (packSortColumn != lastSortColumn) ||
-                          (packSortAscending != lastSortAscending);
+                          (packSortAscending != lastSortAscending) ||
+                          (packVideoFilter != lastVideoFilter);
 
     // Fixed widths for filter controls
     // Search box
@@ -304,12 +305,23 @@ void TrainingPackUI::Render() {
     }
 
     ImGui::SameLine();
+
+    // Video filter checkbox
+    if (ImGui::Checkbox("Has Video", &packVideoFilter)) {
+        filtersChanged = true;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Show only packs with video tutorials");
+    }
+
+    ImGui::SameLine();
     if (ImGui::Button("Clear Filters")) {
         packSearchText[0] = '\0';
         packDifficultyFilter = "All";
         packTagFilter = "";
         packMinShots = 0;
         packMaxShots = 100;
+        packVideoFilter = false;
         filtersChanged = true;
     }
 
@@ -323,7 +335,7 @@ void TrainingPackUI::Render() {
     if (filtersChanged || packsSourceChanged || !packListInitialized) {
         if (manager) {
             manager->FilterAndSortPacks(packSearchText, packDifficultyFilter, packTagFilter,
-                packMinShots, packSortColumn, packSortAscending, filteredPacks);
+                packMinShots, packVideoFilter, packSortColumn, packSortAscending, filteredPacks);
         } else {
             filteredPacks.clear();
         }
@@ -333,9 +345,10 @@ void TrainingPackUI::Render() {
         lastDifficultyFilter = packDifficultyFilter;
         lastTagFilter = packTagFilter;
         lastMinShots = packMinShots;
+        lastVideoFilter = packVideoFilter;
         lastSortColumn = packSortColumn;
         lastSortAscending = packSortAscending;
-        
+
         // Flag to recalculate column widths
         columnWidthsDirty = true;
         packListInitialized = true;
@@ -409,7 +422,7 @@ void TrainingPackUI::Render() {
             for (const auto& bag : bags) {
                 ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
                 ImGui::PushStyleColor(ImGuiCol_Text, badgeColor);
-                std::string label = bag.icon + " " + bag.name;
+                std::string label = bag.name;
                 if (ImGui::Selectable(label.c_str())) {
                     if (plugin_->trainingPackMgr) {
                         std::vector<std::string> codes;
@@ -596,7 +609,7 @@ void TrainingPackUI::Render() {
                 const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
                 for (const auto& bag : bags) {
                     bool inBag = pack.bagCategories.count(bag.name) > 0;
-                    std::string label = (inBag ? "[X] " : "[ ] ") + bag.icon + " " + bag.name;
+                    std::string label = (inBag ? "[X] " : "[ ] ") + bag.name;
 
                     if (ImGui::Selectable(label.c_str())) {
                         if (plugin_->trainingPackMgr) {
@@ -710,6 +723,34 @@ void TrainingPackUI::RenderBagManagerModal() {
             ImGui::PopID();
         }
 
+        // === REMOVE ZONE ===
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Red drop zone for removing packs from bags
+        ImVec2 removeZoneSize(ImGui::GetContentRegionAvail().x, 40.0f);
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.15f, 0.15f, 0.6f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.7f, 0.2f, 0.2f, 0.8f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.8f, 0.25f, 0.25f, 1.0f));
+
+        ImGui::Button("Drop here to remove from bag", removeZoneSize);
+
+        ImGui::PopStyleColor(3);
+
+        // Accept drops from bags (PACK_FROM_BAG only - not browser packs)
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PACK_FROM_BAG")) {
+                const BagPackPayload* data = (const BagPackPayload*)payload->Data;
+                if (plugin_->trainingPackMgr) {
+                    plugin_->trainingPackMgr->RemovePackFromBag(data->packCode, data->sourceBag);
+                    browserStatus.ShowSuccess("Removed from " + std::string(data->sourceBag), 2.0f,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
+
         ImGui::Spacing();
         if (ImGui::Button("Close", ImVec2(120, 0))) {
             showBagManagerModal = false;
@@ -731,20 +772,92 @@ void TrainingPackUI::RenderBagChildWindow(const TrainingBag& bag, float width, f
 
     ImGui::BeginChild(bag.name.c_str(), ImVec2(width, height), true);
 
-    // === HEADER ===
-    ImGui::TextColored(bagColor, "%s %s", bag.icon.c_str(), bag.name.c_str());
+    // === HEADER (Row 1: Name + Active checkbox) ===
+    ImGui::TextColored(bagColor, "%s", bag.name.c_str());
     ImGui::SameLine();
 
     // Active checkbox
     bool enabled = bag.enabled;
-    if (ImGui::Checkbox("Active", &enabled)) {
+    if (ImGui::Checkbox("##Active", &enabled)) {
         if (manager) {
             plugin_->trainingPackMgr->SetBagEnabled(bag.name, enabled);
         }
     }
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Include this bag in rotation");
 
-    // Up/Down arrow buttons (positioned on same line)
     ImGui::SameLine();
+    ImGui::TextDisabled("(%d)", (int)packsInBag.size());
+
+    // === HEADER (Row 2: Action buttons) ===
+    // Play button - loads first pack in bag
+    bool bagEmpty = packsInBag.empty();
+    if (bagEmpty) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    if (ImGui::SmallButton("Play")) {
+        if (!bagEmpty && plugin_) {
+            // Set current bag state via CVars
+            auto currentBagCvar = plugin_->cvarManager->getCvar("suitespot_current_bag");
+            if (currentBagCvar) currentBagCvar.setValue(bag.name);
+
+            auto currentIdxCvar = plugin_->cvarManager->getCvar("suitespot_current_bag_pack_index");
+            if (currentIdxCvar) currentIdxCvar.setValue(0);
+
+            // Load first pack
+            std::string code = packsInBag[0].code;
+            std::string name = packsInBag[0].name;
+            SuiteSpot* p = plugin_;
+            p->gameWrapper->SetTimeout([p, code, name](GameWrapper* gw) {
+                std::string cmd = "load_training " + code;
+                p->cvarManager->executeCommand(cmd);
+                LOG("SuiteSpot: Playing bag pack: {}", name);
+            }, 0.0f);
+
+            browserStatus.ShowSuccess("Playing: " + packsInBag[0].name, 2.0f,
+                UI::StatusMessage::DisplayMode::TimerWithFade);
+        }
+    }
+    if (bagEmpty) ImGui::PopStyleVar();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(bagEmpty ? "Bag is empty" : "Load first pack and set as current bag");
+    }
+
+    ImGui::SameLine();
+
+    // Empty button - clears all packs from bag
+    if (bagEmpty) ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    if (ImGui::SmallButton("Empty")) {
+        if (!bagEmpty) {
+            // Store bag name for confirmation popup (unique per bag)
+            ImGui::OpenPopup(("ConfirmEmptyBag_" + bag.name).c_str());
+        }
+    }
+    if (bagEmpty) ImGui::PopStyleVar();
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(bagEmpty ? "Bag is already empty" : "Remove all packs from this bag");
+    }
+
+    // Confirmation popup for Empty
+    if (ImGui::BeginPopupModal(("ConfirmEmptyBag_" + bag.name).c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Remove all %d packs from %s?", (int)packsInBag.size(), bag.name.c_str());
+        ImGui::Separator();
+
+        if (ImGui::Button("Yes, Empty Bag", ImVec2(120, 0))) {
+            if (plugin_->trainingPackMgr) {
+                plugin_->trainingPackMgr->ClearBag(bag.name);
+                browserStatus.ShowSuccess("Cleared " + bag.name, 2.0f,
+                    UI::StatusMessage::DisplayMode::TimerWithFade);
+            }
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel", ImVec2(80, 0))) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::SameLine();
+
+    // Up/Down arrow buttons for reordering
     if (ImGui::ArrowButton("##up", ImGuiDir_Up)) {
         MoveSelectedPackUp(bag.name);
     }
@@ -756,14 +869,32 @@ void TrainingPackUI::RenderBagChildWindow(const TrainingBag& bag, float width, f
     }
     if (ImGui::IsItemHovered()) ImGui::SetTooltip("Move selected pack down");
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("(%d)", (int)packsInBag.size());
-
     ImGui::Separator();
 
     // === PACK LIST (Scrollable) ===
     if (packsInBag.empty()) {
         ImGui::TextDisabled("Drop packs here");
+
+        // Make the "Drop packs here" text a drop target
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TRAINING_PACK_CODE")) {
+                const char* packCode = (const char*)payload->Data;
+                if (manager) {
+                    plugin_->trainingPackMgr->AddPackToBag(packCode, bag.name);
+                    browserStatus.ShowSuccess("Added to " + bag.name, 2.0f,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
+                }
+            }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PACK_FROM_BAG")) {
+                const BagPackPayload* data = (const BagPackPayload*)payload->Data;
+                if (manager && std::string(data->sourceBag) != bag.name) {
+                    plugin_->trainingPackMgr->AddPackToBag(data->packCode, bag.name);
+                    browserStatus.ShowSuccess("Added to " + bag.name, 2.0f,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
+                }
+            }
+            ImGui::EndDragDropTarget();
+        }
     } else {
         // Render each pack in the bag
         for (int i = 0; i < (int)packsInBag.size(); i++) {
@@ -773,6 +904,44 @@ void TrainingPackUI::RenderBagChildWindow(const TrainingBag& bag, float width, f
             bool isSelected = selectedPackInBag[bag.name] == pack.code;
             if (ImGui::Selectable(pack.name.c_str(), isSelected)) {
                 selectedPackInBag[bag.name] = pack.code;
+            }
+
+            // === DRAG SOURCE: Allow dragging packs out of bags ===
+            if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
+                // Use compound payload with source bag info
+                BagPackPayload payload;
+                strncpy(payload.packCode, pack.code.c_str(), sizeof(payload.packCode) - 1);
+                strncpy(payload.sourceBag, bag.name.c_str(), sizeof(payload.sourceBag) - 1);
+                payload.packCode[sizeof(payload.packCode) - 1] = '\0';
+                payload.sourceBag[sizeof(payload.sourceBag) - 1] = '\0';
+
+                ImGui::SetDragDropPayload("PACK_FROM_BAG", &payload, sizeof(BagPackPayload));
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "Moving: %s", pack.name.c_str());
+                ImGui::TextDisabled("From: %s", bag.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+
+            // === DROP TARGET: Accept drops on this pack row ===
+            if (ImGui::BeginDragDropTarget()) {
+                // Accept from browser
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TRAINING_PACK_CODE")) {
+                    const char* packCode = (const char*)payload->Data;
+                    if (manager) {
+                        plugin_->trainingPackMgr->AddPackToBag(packCode, bag.name);
+                        browserStatus.ShowSuccess("Added to " + bag.name, 2.0f,
+                            UI::StatusMessage::DisplayMode::TimerWithFade);
+                    }
+                }
+                // Accept from another bag
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PACK_FROM_BAG")) {
+                    const BagPackPayload* data = (const BagPackPayload*)payload->Data;
+                    if (manager && std::string(data->sourceBag) != bag.name) {
+                        plugin_->trainingPackMgr->AddPackToBag(data->packCode, bag.name);
+                        browserStatus.ShowSuccess("Added to " + bag.name, 2.0f,
+                            UI::StatusMessage::DisplayMode::TimerWithFade);
+                    }
+                }
+                ImGui::EndDragDropTarget();
             }
 
             // Context menu for quick remove
@@ -787,18 +956,33 @@ void TrainingPackUI::RenderBagChildWindow(const TrainingBag& bag, float width, f
         }
     }
 
-    // === DROP TARGET (Entire child region) ===
-    if (ImGui::BeginDragDropTarget()) {
-        // Accept packs from browser
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TRAINING_PACK_CODE")) {
-            // Payload contains pack code string
-            const char* packCode = (const char*)payload->Data;
-            if (manager) {
-                plugin_->trainingPackMgr->AddPackToBag(packCode, bag.name);
-                browserStatus.ShowSuccess("Added to " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+    // === DROP TARGET: Remaining empty space ===
+    ImVec2 remaining = ImGui::GetContentRegionAvail();
+    if (remaining.y > 5.0f) {
+        // Create invisible button filling remaining area
+        ImGui::InvisibleButton(("##BagDropArea_" + bag.name).c_str(), ImVec2(-1, remaining.y));
+
+        if (ImGui::BeginDragDropTarget()) {
+            // Accept from browser
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TRAINING_PACK_CODE")) {
+                const char* packCode = (const char*)payload->Data;
+                if (manager) {
+                    plugin_->trainingPackMgr->AddPackToBag(packCode, bag.name);
+                    browserStatus.ShowSuccess("Added to " + bag.name, 2.0f,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
+                }
             }
+            // Accept from another bag
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PACK_FROM_BAG")) {
+                const BagPackPayload* data = (const BagPackPayload*)payload->Data;
+                if (manager && std::string(data->sourceBag) != bag.name) {
+                    plugin_->trainingPackMgr->AddPackToBag(data->packCode, bag.name);
+                    browserStatus.ShowSuccess("Added to " + bag.name, 2.0f,
+                        UI::StatusMessage::DisplayMode::TimerWithFade);
+                }
+            }
+            ImGui::EndDragDropTarget();
         }
-        ImGui::EndDragDropTarget();
     }
 
     ImGui::EndChild();

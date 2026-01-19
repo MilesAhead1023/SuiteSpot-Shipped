@@ -126,6 +126,9 @@ public:
     int GetCurrentTrainingIndex() const;
     int GetCurrentWorkshopIndex() const;
 
+    // Bag pack navigation (for Next Pack command)
+    void AdvanceToNextBagPack();
+
 private:
     // Loadout management
     std::unique_ptr<LoadoutManager> loadoutManager;

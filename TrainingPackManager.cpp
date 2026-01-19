@@ -298,6 +298,7 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
                                             const std::string& difficultyFilter,
                                             const std::string& tagFilter,
                                             int minShots,
+                                            bool videoFilter,
                                             int sortColumn,
                                             bool sortAscending,
                                             std::vector<TrainingEntry>& out) const
@@ -310,6 +311,11 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
     for (const auto& pack : RLTraining) {
+        // Video filter - skip packs without video if filter is enabled
+        if (videoFilter && pack.videoUrl.empty()) {
+            continue;
+        }
+
         if (!searchLower.empty()) {
             std::string nameLower = pack.name;
             std::string creatorLower = pack.creator;
@@ -794,6 +800,27 @@ void TrainingPackManager::RemovePackFromAllBags(const std::string& code)
     }
     if (shouldSave && !currentFilePath.empty()) {
         SavePacksToFile(currentFilePath);
+    }
+}
+
+void TrainingPackManager::ClearBag(const std::string& bagName)
+{
+    bool shouldSave = false;
+    int removedCount = 0;
+    {
+        std::lock_guard<std::mutex> lock(packMutex);
+        for (auto& pack : RLTraining) {
+            if (pack.bagCategories.erase(bagName) > 0) {
+                // Also remove orderInBag entry
+                pack.orderInBag.erase(bagName);
+                shouldSave = true;
+                removedCount++;
+            }
+        }
+    }
+    if (shouldSave && !currentFilePath.empty()) {
+        SavePacksToFile(currentFilePath);
+        LOG("SuiteSpot: Cleared {} packs from bag '{}'", removedCount, bagName);
     }
 }
 

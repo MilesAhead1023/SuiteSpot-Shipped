@@ -46,10 +46,16 @@ public:
     int GetCurrentTrainingIndex() const { return currentTrainingIndex; }
     int GetCurrentWorkshopIndex() const { return currentWorkshopIndex; }
 
+    // Bag navigation getters (Which bag and pack index are we on?)
+    std::string GetCurrentBag() const { return currentBag; }
+    int GetCurrentBagPackIndex() const { return currentBagPackIndex; }
+
     // Setters: Update the local value (used when loading data)
     void SetCurrentIndex(int value);
     void SetCurrentTrainingIndex(int value);
     void SetCurrentWorkshopIndex(int value);
+    void SetCurrentBag(const std::string& bagName);
+    void SetCurrentBagPackIndex(int value);
 
 private:
     // Local copies of settings for fast access
@@ -66,4 +72,8 @@ private:
     int currentIndex = 0;        // Freeplay
     int currentTrainingIndex = 0; // Training
     int currentWorkshopIndex = 0; // Workshop
+
+    // Bag navigation state (for Next Pack feature)
+    std::string currentBag = "";   // Current bag being played through
+    int currentBagPackIndex = 0;   // Current pack index within the bag
 };

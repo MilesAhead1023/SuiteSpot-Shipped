@@ -7,6 +7,14 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <cstring>
+
+// Payload structure for dragging packs FROM bags (includes source bag info)
+// This allows the drop target to know where the pack came from for removal
+struct BagPackPayload {
+    char packCode[32];
+    char sourceBag[32];
+};
 
 /*
  * ======================================================================================
@@ -74,6 +82,7 @@ private:
     int packMaxShots = 100;
     int packSortColumn = 0;
     bool packSortAscending = true;
+    bool packVideoFilter = false;  // Filter for packs with video URLs
 
     char lastSearchText[256] = {0};
     std::string lastDifficultyFilter = "All";
@@ -81,6 +90,7 @@ private:
     int lastMinShots = 0;
     int lastSortColumn = 0;
     bool lastSortAscending = true;
+    bool lastVideoFilter = false;
 
     std::vector<std::string> availableTags;
     bool tagsInitialized = false;

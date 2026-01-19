@@ -337,8 +337,18 @@ void TrainingPackManager::FilterAndSortPacks(const std::string& searchText,
             }
         }
 
-        if (difficultyFilter != "All" && pack.difficulty != difficultyFilter) {
-            continue;
+        if (difficultyFilter != "All") {
+            if (difficultyFilter == "Unranked") {
+                // Match "Unranked" filter against all "no difficulty" values
+                if (!pack.difficulty.empty() && pack.difficulty != "Unknown" && pack.difficulty != "All" && pack.difficulty != "Unranked") {
+                    continue;
+                }
+            } else {
+                // Standard strict match for ranked tiers
+                if (pack.difficulty != difficultyFilter) {
+                    continue;
+                }
+            }
         }
 
         if (!tagFilter.empty()) {

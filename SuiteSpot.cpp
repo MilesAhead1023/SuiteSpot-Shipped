@@ -123,8 +123,8 @@ std::string SuiteSpot::GetCurrentWorkshopPath() const {
     return settingsSync ? settingsSync->GetCurrentWorkshopPath() : "";
 }
 
-void SuiteSpot::AdvanceToNextBagPack() {
-    if (!trainingPackMgr || !settingsSync) return;
+std::pair<TrainingEntry, std::string> SuiteSpot::AdvanceAndGetNextBagPack() {
+    if (!trainingPackMgr || !settingsSync) return {{}, ""};
 
     // Get current bag and index from CVars
     auto currentBagCvar = cvarManager->getCvar("suitespot_current_bag");
@@ -187,11 +187,20 @@ void SuiteSpot::AdvanceToNextBagPack() {
     if (currentBagCvar) currentBagCvar.setValue(currentBag);
     if (currentIdxCvar) currentIdxCvar.setValue(currentIdx);
 
-    // Load the pack
+    // Return the pack
     if (!packsInBag.empty() && currentIdx < (int)packsInBag.size()) {
-        std::string code = packsInBag[currentIdx].code;
-        std::string name = packsInBag[currentIdx].name;
-        std::string bagName = currentBag;
+        return { packsInBag[currentIdx], currentBag };
+    }
+    
+    return { {}, "" };
+}
+
+void SuiteSpot::AdvanceToNextBagPack() {
+    auto [pack, bagName] = AdvanceAndGetNextBagPack();
+    
+    if (!pack.code.empty()) {
+        std::string code = pack.code;
+        std::string name = pack.name;
 
         gameWrapper->SetTimeout([this, code, name, bagName](GameWrapper* gw) {
             std::string cmd = "load_training " + code;
@@ -393,8 +402,9 @@ void SuiteSpot::GameEndedEvent(std::string name) {
         TrainingEntry selectedPack;
 
         if (useBagRotation) {
-            // Get next pack from bag rotation system
-            selectedPack = trainingPackMgr->GetNextFromRotation();
+            // Get next pack from bag rotation system (advances sequentially)
+            auto [pack, bagName] = AdvanceAndGetNextBagPack();
+            selectedPack = pack;
             useBagRotation = !selectedPack.code.empty();  // Only use if we got a valid pack
         }
 

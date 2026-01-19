@@ -53,7 +53,7 @@ SuiteSpot is a BakkesMod plugin for Rocket League that automates game mode trans
 ```
 SuiteSpot (Plugin Hub)
 ├── MapManager          - Discovers workshop maps from filesystem
-├── TrainingPackManager - Manages 2000+ training packs, shuffle bags
+├── TrainingPackManager - Manages 2000+ training packs, bag rotation
 ├── SettingsSync        - CVar registration and settings cache
 ├── AutoLoadFeature     - Core logic: what to load when match ends
 ├── LoadoutManager      - Car preset switching (thread-safe)
@@ -73,7 +73,7 @@ SuiteSpot (Plugin Hub)
 |------|---------|
 | `SuiteSpot.h/cpp` | Plugin entry point, lifecycle, window management |
 | `AutoLoadFeature.cpp` | Core automation logic (single `OnMatchEnded()` entry point) |
-| `TrainingPackManager.cpp` | Training pack loading, filtering, shuffle bag |
+| `TrainingPackManager.cpp` | Training pack loading, filtering, bag rotation |
 | `SettingsSync.cpp` | All CVar registrations and settings cache |
 | `MapList.h` | Data structures: `MapEntry`, `TrainingEntry`, `WorkshopEntry` |
 | `ConstantsUI.h` | UI constants, colors, sizing, font scale |

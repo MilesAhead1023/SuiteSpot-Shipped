@@ -82,10 +82,6 @@ public:
     bool CreateCustomBag(const std::string& name, const std::string& icon, const float color[4]);
     bool DeleteCustomBag(const std::string& bagName);
 
-    // Rotation
-    TrainingEntry GetNextFromRotation();
-    std::string GetNextBagInRotation() const;
-
     // Accessors
     const std::vector<TrainingEntry>& GetPacks() const { return RLTraining; }
     int GetPackCount() const { return packCount; }
@@ -106,7 +102,6 @@ private:
     std::string lastUpdated = "Never";
     bool scrapingInProgress = false;
     std::filesystem::path currentFilePath;
-    int currentRotationIndex = 0;  // Tracks which bag is next in rotation
 };
 
 

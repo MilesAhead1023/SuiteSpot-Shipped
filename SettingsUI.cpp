@@ -72,10 +72,10 @@ void SettingsUI::RenderMainSettingsWindow() {
                 plugin_->trainingPackMgr->GetPacks() : RLTraining;
 
             if (bagRotationEnabledValue && plugin_->trainingPackMgr) {
-                // Show next bag in rotation
-                std::string nextBag = plugin_->trainingPackMgr->GetNextBagInRotation();
-                if (nextBag != "None") {
-                    currentMap = "Bag Rotation: " + nextBag;
+                // Show current bag in rotation
+                std::string currentBag = plugin_->settingsSync->GetCurrentBag();
+                if (!currentBag.empty()) {
+                    currentMap = "Bag Rotation: " + currentBag;
                 } else if (!currentTrainingCode.empty()) {
                     // Find training pack by code
                     auto it = std::find_if(trainingPacks.begin(), trainingPacks.end(),
@@ -294,9 +294,9 @@ void SettingsUI::RenderTrainingMode(bool bagRotationEnabledValue, std::string& c
 
     // Show bag rotation status
     if (bagRotationEnabledValue && plugin_->trainingPackMgr) {
-        std::string nextBag = plugin_->trainingPackMgr->GetNextBagInRotation();
-        if (nextBag != "None") {
-            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Bag Rotation Active - Next: %s", nextBag.c_str());
+        std::string currentBag = plugin_->settingsSync->GetCurrentBag();
+        if (!currentBag.empty()) {
+            ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Bag Rotation Active - Current: %s", currentBag.c_str());
         } else {
             ImGui::TextDisabled("Bag Rotation: No packs in any bag");
         }

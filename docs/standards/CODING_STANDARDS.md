@@ -151,7 +151,7 @@ Always prefix CVars with `suitespot_`:
 - `suitespot_enabled`
 - `suitespot_auto_queue`
 - `suitespot_delay_freeplay_sec`
-- `suitespot_training_shuffle_enabled`
+- `suitespot_bag_rotation`
 
 ---
 
@@ -304,7 +304,7 @@ CarWrapper GetCurrentCar() {
 LOG("Loading training packs from: {}", filePath.string());
 
 // Debug logging (only when DEBUG_LOG = true)
-DEBUGLOG("Shuffle bag contains {} packs", shuffleBag.size());
+DEBUGLOG("Bag contains {} packs", bag.size());
 ```
 
 ### Graceful Degradation
@@ -380,7 +380,7 @@ float delaySeconds = 3.0f;
 ```cpp
 "suitespot_enabled"              // lowercase with underscores
 "suitespot_delay_freeplay_sec"   // plugin prefix
-"suitespot_training_shuffle"
+"suitespot_bag_rotation"
 ```
 
 ### Constants

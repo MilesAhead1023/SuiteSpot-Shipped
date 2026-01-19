@@ -129,6 +129,7 @@ public:
     // Bag pack navigation (for Next/Previous Pack commands)
     void AdvanceToNextBagPack();
     void RetreatToPreviousBagPack();
+    std::pair<TrainingEntry, std::string> AdvanceAndGetNextBagPack();
 
 private:
     // Loadout management

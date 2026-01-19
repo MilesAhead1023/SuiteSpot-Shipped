@@ -258,9 +258,12 @@ shared_ptr<CVarManagerWrapper> _globalCvarManager;
 
 void SuiteSpot::LoadHooks() {
     // ===== MATCH EVENT HOOKS =====
-    // Re-queue/transition at match end or when main menu appears after a match
-    gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
-    gameWrapper->HookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded", bind(&SuiteSpot::GameEndedEvent, this, placeholders::_1));
+    // Re-queue/transition at match end. We use HookEventPost to ensure the game has finished
+    // its internal match-end logic before we attempt to load a new map.
+    gameWrapper->HookEventPost("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", 
+        [this](std::string eventName) { 
+            GameEndedEvent(eventName); 
+        });
 
     // Metadata Healing Hook
     gameWrapper->HookEvent("Function TAGame.GameInfo_TrainingEditor_TA.PostBeginPlay", [this](std::string eventName) {
@@ -371,8 +374,7 @@ void SuiteSpot::onLoad() {
 
 void SuiteSpot::onUnload() {
     // Match events
-    gameWrapper->UnhookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded");
-    gameWrapper->UnhookEvent("Function TAGame.AchievementManager_TA.HandleMatchEnded");
+    gameWrapper->UnhookEventPost("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded");
 
     delete settingsUI;
     settingsUI = nullptr;

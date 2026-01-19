@@ -29,13 +29,13 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
     int currentWorkshopIndex = settings.GetCurrentWorkshopIndex();
 
     auto safeExecute = [&](int delaySec, const std::string& cmd) {
-        if (delaySec <= 0) {
+        // Enforce a minimum delay of 0.1s to ensure the game state has settled after the match.
+        // Even if the user sets 0s, we want to force a context switch out of the event stack.
+        float actualDelay = (delaySec <= 0) ? 0.1f : static_cast<float>(delaySec);
+
+        gameWrapper->SetTimeout([cvarManager, cmd](GameWrapper* gw) {
             cvarManager->executeCommand(cmd);
-        } else {
-            gameWrapper->SetTimeout([cvarManager, cmd](GameWrapper* gw) {
-                cvarManager->executeCommand(cmd);
-            }, static_cast<float>(delaySec));
-        }
+        }, actualDelay);
     };
 
     int mapLoadDelay = 0;

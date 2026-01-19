@@ -159,21 +159,7 @@ void TrainingPackUI::Render() {
                 totalPacksInBags, totalPacksInBags == 1 ? "" : "s",
                 enabledBagCount, enabledBagCount == 1 ? "" : "s");
 
-            ImGui::SameLine();
-            if (ImGui::Button("Start Bag Rotation")) {
-                SuiteSpot* p = plugin_;
-                p->gameWrapper->SetTimeout([p](GameWrapper* gw) {
-                    // Enable plugin, set mode to Training, and enable bag rotation
-                    p->cvarManager->getCvar("suitespot_enabled").setValue(1);
-                    p->cvarManager->getCvar("suitespot_map_type").setValue(1);
-                    p->cvarManager->getCvar("suitespot_bag_rotation").setValue(1);
-                }, 0.0f);
 
-                LOG("SuiteSpot: Bag rotation started with " + std::to_string(totalPacksInBags) + " packs");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enable SuiteSpot, switch to Training mode, and enable bag rotation.");
-            }
         } else {
             ImGui::TextDisabled("No packs in rotation bags");
             ImGui::TextWrapped("Add packs to bags using the 'Add to Bag' button below, or right-click a pack row.");

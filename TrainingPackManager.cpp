@@ -621,42 +621,42 @@ void TrainingPackManager::InitializeDefaultBags()
     availableBags.push_back({
         "Defense", "Defense", "D",
         {"Saves", "Defensive", "Clears", "Shadow"},
-        true, 1, false, {0.3f, 0.6f, 0.9f, 1.0f}  // Blue
+        false, 1, false, {0.3f, 0.6f, 0.9f, 1.0f}  // Blue
     });
 
     // Offense bag - shots, finishing
     availableBags.push_back({
         "Offense", "Offense", "O",
         {"Offensive", "Shots", "Finishing", "Power"},
-        true, 2, false, {0.9f, 0.4f, 0.3f, 1.0f}  // Red
+        false, 2, false, {0.9f, 0.4f, 0.3f, 1.0f}  // Red
     });
 
     // Air Control bag - aerials, air dribbles
     availableBags.push_back({
         "Air", "Air Control", "A",
         {"Aerials", "Air rolls", "Air dribble"},
-        true, 3, false, {0.5f, 0.8f, 0.9f, 1.0f}  // Cyan
+        false, 3, false, {0.5f, 0.8f, 0.9f, 1.0f}  // Cyan
     });
 
     // Dribble bag - ground dribbles, flicks
     availableBags.push_back({
         "Dribble", "Dribble", "Dr",
         {"Dribbling", "Ground", "Flicks", "Ball control"},
-        true, 4, false, {0.9f, 0.7f, 0.2f, 1.0f}  // Orange
+        false, 4, false, {0.9f, 0.7f, 0.2f, 1.0f}  // Orange
     });
 
     // Rebounds bag - backboard, redirects
     availableBags.push_back({
         "Rebounds", "Rebounds", "R",
         {"Rebounds", "Redirects", "Backboard", "Double"},
-        true, 5, false, {0.7f, 0.4f, 0.9f, 1.0f}  // Purple
+        false, 5, false, {0.7f, 0.4f, 0.9f, 1.0f}  // Purple
     });
 
     // Warmup bag - general, variety
     availableBags.push_back({
         "Warmup", "Warmup", "W",
         {"Good for beginners", "Variety", "Warmup"},
-        true, 0, false, {0.4f, 0.9f, 0.4f, 1.0f}  // Green
+        false, 0, false, {0.4f, 0.9f, 0.4f, 1.0f}  // Green
     });
 
     LOG("SuiteSpot: Initialized {} default training bags", availableBags.size());

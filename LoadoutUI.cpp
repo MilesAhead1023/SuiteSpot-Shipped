@@ -8,6 +8,11 @@
 LoadoutUI::LoadoutUI(SuiteSpot* plugin) : plugin_(plugin) {}
 
 void LoadoutUI::RenderLoadoutControls() {
+    // BUG-003 FIX: Add null guard for plugin pointer
+    if (!plugin_) {
+        return;
+    }
+    
     ImGui::Spacing();
 
     auto* loadoutManager = plugin_->loadoutManager.get();

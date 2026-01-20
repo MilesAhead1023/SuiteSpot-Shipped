@@ -132,16 +132,15 @@ public:
     std::pair<TrainingEntry, std::string> AdvanceAndGetNextBagPack();
 
 private:
-    // Loadout management
+    // BUG-001 FIX: Use std::unique_ptr for all manager ownership
     std::unique_ptr<LoadoutManager> loadoutManager;
-
-    MapManager* mapManager = nullptr;
-    SettingsSync* settingsSync = nullptr;
-    AutoLoadFeature* autoLoadFeature = nullptr;
-    TrainingPackManager* trainingPackMgr = nullptr;
-    SettingsUI* settingsUI = nullptr;
-    std::shared_ptr<TrainingPackUI> trainingPackUI = nullptr;
-    LoadoutUI* loadoutUI = nullptr;
+    std::unique_ptr<MapManager> mapManager;
+    std::unique_ptr<SettingsSync> settingsSync;
+    std::unique_ptr<AutoLoadFeature> autoLoadFeature;
+    std::unique_ptr<TrainingPackManager> trainingPackMgr;
+    std::unique_ptr<SettingsUI> settingsUI;
+    std::shared_ptr<TrainingPackUI> trainingPackUI;
+    std::unique_ptr<LoadoutUI> loadoutUI;
 
     bool isBrowserOpen = false;
     uintptr_t imgui_ctx = 0;

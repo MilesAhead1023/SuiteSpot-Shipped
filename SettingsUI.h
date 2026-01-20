@@ -47,7 +47,8 @@ private:
     void RenderWorkshopMode(std::string& currentWorkshopPath);
 
     // Workshop path configuration state
-    char workshopPathBuf[512] = {0};
+    // BUG-004 FIX: Increased buffer size from 512 to 1024 to handle longer paths
+    char workshopPathBuf[1024] = {0};
     bool workshopPathInit = false;
     std::string workshopPathCache = "";
 };

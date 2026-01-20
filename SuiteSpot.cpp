@@ -416,13 +416,14 @@ void SuiteSpot::GameEndedEvent(std::string name) {
 void SuiteSpot::onLoad() {
     _globalCvarManager = cvarManager;
     LOG("SuiteSpot loaded");
-    mapManager = new MapManager();
-    settingsSync = new SettingsSync();
-    autoLoadFeature = new AutoLoadFeature();
-    trainingPackMgr = new TrainingPackManager();
-    settingsUI = new SettingsUI(this);
+    // BUG-001 FIX: Use std::make_unique for all manager ownership
+    mapManager = std::make_unique<MapManager>();
+    settingsSync = std::make_unique<SettingsSync>();
+    autoLoadFeature = std::make_unique<AutoLoadFeature>();
+    trainingPackMgr = std::make_unique<TrainingPackManager>();
+    settingsUI = std::make_unique<SettingsUI>(this);
     trainingPackUI = std::make_shared<TrainingPackUI>(this);
-    loadoutUI = new LoadoutUI(this);
+    loadoutUI = std::make_unique<LoadoutUI>(this);
 
     EnsureDataDirectories();
     LoadWorkshopMaps();
@@ -474,19 +475,9 @@ void SuiteSpot::onLoad() {
 }
 
 void SuiteSpot::onUnload() {
-    delete settingsUI;
-    settingsUI = nullptr;
+    // BUG-001 FIX: std::unique_ptr handles cleanup automatically - no manual deletes needed
+    // Just reset the shared_ptr
     trainingPackUI = nullptr;
-    delete loadoutUI;
-    loadoutUI = nullptr;
-    delete trainingPackMgr;
-    trainingPackMgr = nullptr;
-    delete autoLoadFeature;
-    autoLoadFeature = nullptr;
-    delete settingsSync;
-    settingsSync = nullptr;
-    delete mapManager;
-    mapManager = nullptr;
     LOG("SuiteSpot unloaded");
 }
 

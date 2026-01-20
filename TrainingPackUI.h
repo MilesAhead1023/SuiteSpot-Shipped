@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <cstring>
+#include <mutex>  // BUG-002 FIX: Add mutex for thread safety
 
 // Payload structure for dragging packs FROM bags (includes source bag info)
 // This allows the drop target to know where the pack came from for removal
@@ -75,6 +76,9 @@ private:
     bool isWindowOpen_ = false;
     bool needsFocusOnNextRender_ = false;  // Bring to front when first opened
 
+    // BUG-002 FIX: Mutex to protect shared state accessed from multiple threads
+    mutable std::mutex stateMutex_;
+    
     char packSearchText[256] = {0};
     std::string packDifficultyFilter = "All";
     std::string packTagFilter = "";
@@ -95,9 +99,9 @@ private:
     std::vector<std::string> availableTags;
     bool tagsInitialized = false;
     int lastPackCount = 0;
-    std::vector<TrainingEntry> filteredPacks;
+    std::vector<TrainingEntry> filteredPacks;  // Protected by stateMutex_
 
-    // Selection state
+    // Selection state (protected by stateMutex_)
     std::string selectedPackCode;
     int lastSelectedRowIndex = -1;
     bool packListInitialized = false;
@@ -133,6 +137,12 @@ private:
     bool columnWidthsDirty = true;
     bool columnWidthsInitialized = false;
     float lastWindowWidth = 0.0f;
+    
+    // PERF-001 FIX: Dirty flag to avoid recalculating filters every frame
+    bool filtersDirty_ = true;
+    
+    // PERF-002 FIX: Threshold for column width recalculation (pixels)
+    static constexpr float COLUMN_RECALC_THRESHOLD = 10.0f;
 
     // Icons
     std::shared_ptr<ImageWrapper> youtubeIcon;

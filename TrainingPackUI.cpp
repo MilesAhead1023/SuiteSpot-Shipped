@@ -54,7 +54,8 @@ TrainingPackUI::TrainingPackUI(SuiteSpot* plugin) : plugin_(plugin) {
 }
 
 void TrainingPackUI::Render() {
-    if (!isWindowOpen_) {
+    // BUG-003 FIX: Add null guard for plugin pointer
+    if (!plugin_ || !isWindowOpen_) {
         return;
     }
 
@@ -235,19 +236,24 @@ void TrainingPackUI::Render() {
     ImGui::TextUnformatted("Search & Filters:");
     ImGui::Spacing();
 
-    bool filtersChanged = (strcmp(packSearchText, lastSearchText) != 0) ||
-                          (packDifficultyFilter != lastDifficultyFilter) ||
-                          (packTagFilter != lastTagFilter) ||
-                          (packMinShots != lastMinShots) ||
-                          (packSortColumn != lastSortColumn) ||
-                          (packSortAscending != lastSortAscending) ||
-                          (packVideoFilter != lastVideoFilter);
+    // PERF-001 FIX: Only check if filters changed when filtersDirty_ flag is set
+    bool filtersChanged = filtersDirty_;
+    if (!filtersChanged) {
+        filtersChanged = (strcmp(packSearchText, lastSearchText) != 0) ||
+                        (packDifficultyFilter != lastDifficultyFilter) ||
+                        (packTagFilter != lastTagFilter) ||
+                        (packMinShots != lastMinShots) ||
+                        (packSortColumn != lastSortColumn) ||
+                        (packSortAscending != lastSortAscending) ||
+                        (packVideoFilter != lastVideoFilter);
+    }
 
     // Fixed widths for filter controls
     // Search box
     ImGui::SetNextItemWidth(200.0f);
     if (ImGui::InputText("##search", packSearchText, IM_ARRAYSIZE(packSearchText))) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Search by pack name, creator, or tag");
@@ -263,6 +269,7 @@ void TrainingPackUI::Render() {
             if (ImGui::Selectable(difficulties[i], selected)) {
                 packDifficultyFilter = difficulties[i];
                 filtersChanged = true;
+                filtersDirty_ = true;  // PERF-001: Mark filters as dirty
             }
         }
         ImGui::EndCombo();
@@ -276,6 +283,7 @@ void TrainingPackUI::Render() {
     ImGui::SetNextItemWidth(150.0f);
     if (ImGui::SliderInt("Min Shots", &packMinShots, UI::TrainingPackUI::FILTER_MIN_SHOTS_MIN, UI::TrainingPackUI::FILTER_MIN_SHOTS_MAX)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Minimum number of shots in pack");
@@ -304,6 +312,7 @@ void TrainingPackUI::Render() {
             if (ImGui::Selectable(tag.c_str(), selected)) {
                 packTagFilter = (tag == "All Tags") ? "" : tag;
                 filtersChanged = true;
+                filtersDirty_ = true;  // PERF-001: Mark filters as dirty
             }
         }
         ImGui::EndCombo();
@@ -317,6 +326,7 @@ void TrainingPackUI::Render() {
     // Video filter checkbox
     if (ImGui::Checkbox("Has Video", &packVideoFilter)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty
     }
     if (ImGui::IsItemHovered()) {
         ImGui::SetTooltip("Show only packs with video tutorials");
@@ -331,6 +341,7 @@ void TrainingPackUI::Render() {
         packMaxShots = 100;
         packVideoFilter = false;
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty
     }
 
     ImGui::Spacing();
@@ -339,7 +350,7 @@ void TrainingPackUI::Render() {
 
     // ===== FILTERED & SORTED PACK LIST (cached) =====
 
-    // Rebuild filtered list only when needed
+    // PERF-001 FIX: Rebuild filtered list only when needed (filters changed or data source changed)
     if (filtersChanged || packsSourceChanged || !packListInitialized) {
         if (manager) {
             manager->FilterAndSortPacks(packSearchText, packDifficultyFilter, packTagFilter,
@@ -360,6 +371,7 @@ void TrainingPackUI::Render() {
         // Flag to recalculate column widths
         columnWidthsDirty = true;
         packListInitialized = true;
+        filtersDirty_ = false;  // PERF-001: Reset dirty flag after applying filters
     }
 
     // Display filtered count
@@ -478,10 +490,10 @@ void TrainingPackUI::Render() {
     // ===== TABLE WITH RESIZABLE COLUMNS & FROZEN HEADER =====
     ImGui::Separator();
 
-    // Only set initial column widths once, or when window width changes significantly
-    // This allows users to manually resize columns by dragging
+    // PERF-002 FIX: Only recalculate column widths when window width changes significantly
+    // Using COLUMN_RECALC_THRESHOLD (10px) instead of 50px for better responsiveness
     float currentWindowWidth = ImGui::GetWindowContentRegionWidth();
-    bool windowResized = std::abs(currentWindowWidth - lastWindowWidth) > 50.0f;
+    bool windowResized = std::abs(currentWindowWidth - lastWindowWidth) > COLUMN_RECALC_THRESHOLD;
 
     if (!columnWidthsInitialized || windowResized) {
         CalculateOptimalColumnWidths();
@@ -499,30 +511,35 @@ void TrainingPackUI::Render() {
     // Name column header (Sort ID 0)
     if (SortableColumnHeader("Name", 0, packSortColumn, packSortAscending)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty on sort change
     }
     ImGui::NextColumn();
 
     // Difficulty column header (Sort ID 2)
     if (SortableColumnHeader("Difficulty", 2, packSortColumn, packSortAscending)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty on sort change
     }
     ImGui::NextColumn();
 
     // Shots column header (Sort ID 3)
     if (SortableColumnHeader("Shots", 3, packSortColumn, packSortAscending)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty on sort change
     }
     ImGui::NextColumn();
 
     // Likes column header (Sort ID 4)
     if (SortableColumnHeader("Likes", 4, packSortColumn, packSortAscending)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty on sort change
     }
     ImGui::NextColumn();
 
     // Plays column header (Sort ID 5)
     if (SortableColumnHeader("Plays", 5, packSortColumn, packSortAscending)) {
         filtersChanged = true;
+        filtersDirty_ = true;  // PERF-001: Mark filters as dirty on sort change
     }
     ImGui::NextColumn();
 

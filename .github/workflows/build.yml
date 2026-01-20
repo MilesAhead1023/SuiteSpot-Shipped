@@ -1,0 +1,93 @@
+name: Build SuiteSpot Plugin
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Checkout BakkesMod SDK
+      uses: actions/checkout@v4
+      with:
+        repository: bakkesmodorg/BakkesModSDK
+        path: bakkesmod\bakkesmodsdk
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Build SuiteSpot
+      run: msbuild /m /p:Configuration=Release /p:Platform=x64 /p:BakkesModPath=$env:GITHUB_WORKSPACE\bakkesmod /p:PostBuildEventUseInBuild=false SuiteSpot.sln
+
+    - name: C/C++ Linter
+      if: github.event_name == 'pull_request'
+      uses: cpp-linter/cpp-linter-action@v2.16.7
+      with:
+        style: ''
+        files-changed-only: true
+        ignore: 'IMGUI|pch.h|pch.cpp'
+        extensions: 'cpp,h'
+        extra-args: '-I${{ github.workspace }}/bakkesmod/bakkesmodsdk/include'
+
+    - name: Prepare build artifacts
+      shell: pwsh
+      run: |
+        # Create artifacts directory structure
+        New-Item -ItemType Directory -Force -Path "artifacts/plugins"
+        New-Item -ItemType Directory -Force -Path "artifacts/data/SuiteSpot"
+        
+        # Copy plugin DLL
+        if (Test-Path "plugins/SuiteSpot.dll") {
+          Copy-Item "plugins/SuiteSpot.dll" -Destination "artifacts/plugins/" -Force
+          Write-Host "✓ Copied SuiteSpot.dll"
+        } else {
+          Write-Error "SuiteSpot.dll not found in plugins directory"
+          exit 1
+        }
+        
+        # Copy PDB for debugging symbols (if exists)
+        if (Test-Path "plugins/SuiteSpot.pdb") {
+          Copy-Item "plugins/SuiteSpot.pdb" -Destination "artifacts/plugins/" -Force
+          Write-Host "✓ Copied SuiteSpot.pdb"
+        }
+        
+        # Copy data files from DataToCopy structure
+        if (Test-Path "DataToCopy/SuiteSpot") {
+          Copy-Item -Path "DataToCopy/SuiteSpot/*" -Destination "artifacts/data/SuiteSpot/" -Recurse -Force
+          Write-Host "✓ Copied data files from DataToCopy/SuiteSpot"
+        }
+        
+        Write-Host "`nBuild artifacts prepared:"
+        Get-ChildItem -Path "artifacts" -Recurse | ForEach-Object {
+          Write-Host "  $($_.FullName.Replace($env:GITHUB_WORKSPACE, '.'))"
+        }
+
+    - name: Create release archive
+      shell: pwsh
+      run: |
+        # Create zip file with timestamp
+        $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+        $zipName = "SuiteSpot-$timestamp.zip"
+        
+        if (Test-Path "artifacts") {
+          Compress-Archive -Path "artifacts\*" -DestinationPath $zipName
+          Write-Host "✓ Created release archive: $zipName"
+          echo "RELEASE_ZIP=$zipName" >> $env:GITHUB_ENV
+        } else {
+          Write-Error "No artifacts found to archive"
+          exit 1
+        }
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SuiteSpot-Release-${{ github.sha }}
+        path: ${{ env.RELEASE_ZIP }}
+        retention-days: 30

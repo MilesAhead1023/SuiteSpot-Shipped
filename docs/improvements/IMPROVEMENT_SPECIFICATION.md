@@ -107,6 +107,7 @@ void SuiteSpot::onUnload() {
 
 **Priority**: HIGH  
 **Complexity**: MEDIUM  
+**Estimated Hours**: 5  
 **Risk**: Memory leaks on plugin unload/reload
 
 ---

@@ -145,6 +145,7 @@ exit /b 0</Command>
     <ClCompile Include="SettingsUI.cpp" />
     <ClCompile Include="SettingsSync.cpp" />
     <ClCompile Include="StatusMessageUI.cpp" />
+    <ClCompile Include="ThemeManager.cpp" />
     <ClCompile Include="HelpersUI.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -180,6 +181,7 @@ exit /b 0</Command>
     <ClInclude Include="SettingsUI.h" />
     <ClInclude Include="SettingsSync.h" />
     <ClInclude Include="StatusMessageUI.h" />
+    <ClInclude Include="ThemeManager.h" />
     <ClInclude Include="ConstantsUI.h" />
     <ClInclude Include="HelpersUI.h" />
     <ClInclude Include="pch.h" />

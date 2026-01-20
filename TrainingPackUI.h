@@ -76,7 +76,10 @@ private:
     bool isWindowOpen_ = false;
     bool needsFocusOnNextRender_ = false;  // Bring to front when first opened
 
-    // BUG-002 FIX: Mutex to protect shared state accessed from multiple threads
+    // BUG-002 FIX: Mutex to protect shared state (defensive programming)
+    // Note: Render() is called from render thread only, but this protects against
+    // potential future multi-threaded access. TrainingPackManager has its own packMutex
+    // that protects the underlying pack data during FilterAndSortPacks().
     mutable std::mutex stateMutex_;
     
     char packSearchText[256] = {0};

@@ -352,6 +352,9 @@ void TrainingPackUI::Render() {
 
     // PERF-001 FIX: Rebuild filtered list only when needed (filters changed or data source changed)
     if (filtersChanged || packsSourceChanged || !packListInitialized) {
+        // BUG-002 FIX: Lock mutex when modifying filteredPacks
+        std::lock_guard<std::mutex> lock(stateMutex_);
+        
         if (manager) {
             manager->FilterAndSortPacks(packSearchText, packDifficultyFilter, packTagFilter,
                 packMinShots, packVideoFilter, packSortColumn, packSortAscending, filteredPacks);

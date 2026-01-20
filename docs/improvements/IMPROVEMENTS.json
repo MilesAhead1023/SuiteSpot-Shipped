@@ -199,22 +199,7 @@
     }
   ],
   "ux_improvements": [
-    {
-      "id": "UX-001",
-      "title": "Color Accessibility",
-      "priority": "MEDIUM",
-      "complexity": "LOW",
-      "estimated_hours": 3,
-      "files_affected": ["ConstantsUI.h"],
-      "description": "Current colors have accessibility issues for color-blind users",
-      "new_constants": {
-        "SUCCESS_COLOR": "ImVec4(0.2f, 0.8f, 0.4f, 1.0f)",
-        "ERROR_COLOR": "ImVec4(0.9f, 0.3f, 0.3f, 1.0f)",
-        "WARNING_COLOR": "ImVec4(0.9f, 0.7f, 0.2f, 1.0f)",
-        "INFO_COLOR": "ImVec4(0.4f, 0.7f, 0.9f, 1.0f)"
-      }
-    },
-    {
+    {      
       "id": "UX-002",
       "title": "Enhanced Search/Filter",
       "priority": "HIGH",
@@ -281,57 +266,7 @@
       "description": "Move hardcoded values to named constants"
     }
   ],
-  "new_features": [
-    {
-      "id": "FEAT-001",
-      "title": "Performance Dashboard",
-      "priority": "LOW",
-      "complexity": "MEDIUM",
-      "estimated_hours": 10,
-      "new_files": ["PerformanceUI.h", "PerformanceUI.cpp"],
-      "description": "Tab showing render time, memory usage, pack counts"
-    },
-    {
-      "id": "FEAT-002",
-      "title": "Config Import/Export",
-      "priority": "MEDIUM",
-      "complexity": "MEDIUM",
-      "estimated_hours": 7,
-      "new_files": ["ConfigIO.h", "ConfigIO.cpp"],
-      "description": "Export/import settings and bags to JSON file"
-    },
-    {
-      "id": "FEAT-003",
-      "title": "Auto Loadout Switch",
-      "priority": "LOW",
-      "complexity": "MEDIUM",
-      "estimated_hours": 7,
-      "files_affected": ["SettingsSync.h", "SettingsSync.cpp", "AutoLoadFeature.cpp"],
-      "description": "Auto-switch car loadout based on map type"
-    }
-  ],
-  "implementation_phases": {
-    "phase_1_critical": {
-      "week": 1,
-      "items": ["BUG-001", "PERF-001", "BUG-002"],
-      "total_hours": 11
-    },
-    "phase_2_ux": {
-      "week": 2,
-      "items": ["UX-001", "UX-002", "UX-005"],
-      "total_hours": 16
-    },
-    "phase_3_quality": {
-      "week": 3,
-      "items": ["BUG-003", "CODE-001", "PERF-002"],
-      "total_hours": 8
-    },
-    "phase_4_features": {
-      "week": 4,
-      "items": ["UX-003", "FEAT-002"],
-      "total_hours": 12
-    }
-  },
+ },
   "coding_standards_reference": {
     "null_safety": "Always check wrappers with if (!wrapper) return;",
     "cvar_naming": "suitespot_snake_case",

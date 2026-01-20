@@ -69,6 +69,7 @@ SuiteSpot (Plugin Hub)
 void SuiteSpot::onUnload() {
     delete settingsUI;
     settingsUI = nullptr;
+    delete trainingPackUI;
     trainingPackUI = nullptr;
     delete loadoutUI;
     loadoutUI = nullptr;
@@ -750,7 +751,7 @@ private:
 // JSON format:
 {
     "version": "1.0",
-    "exportDate": "2025-01-19T12:00:00Z",
+    "exportDate": "YYYY-MM-DDTHH:MM:SSZ",
     "settings": {
         "enabled": true,
         "mapType": 1,

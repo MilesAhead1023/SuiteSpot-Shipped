@@ -69,6 +69,7 @@ SuiteSpot (Plugin Hub)
 void SuiteSpot::onUnload() {
     delete settingsUI;
     settingsUI = nullptr;
+    delete trainingPackUI;
     trainingPackUI = nullptr;
     delete loadoutUI;
     loadoutUI = nullptr;

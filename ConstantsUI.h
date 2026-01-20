@@ -33,19 +33,19 @@ namespace UI {
 		constexpr float WORKSHOP_MAPS_DROPDOWN_WIDTH = 350.0f;  // Was 260.0f
 
 		// === Input Box Widths ===
-		// MODERNIZATION: Increased input widths by ~40% to prevent text truncation
+		// MODERNIZATION: Significantly increased input widths for better usability with new theme padding
 
 		// Width of the "Delay Freeplay (sec)" input box in Map Selection tab
-		constexpr float DELAY_FREEPLAY_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
+		constexpr float DELAY_FREEPLAY_INPUT_WIDTH = 180.0f;  // Increased from 80px hard-coded value
 
 		// Width of the "Delay Training (sec)" input box in Map Selection tab
-		constexpr float DELAY_TRAINING_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
+		constexpr float DELAY_TRAINING_INPUT_WIDTH = 180.0f;  // Increased from 80px hard-coded value
 
 		// Width of the "Delay Workshop (sec)" input box in Map Selection tab
-		constexpr float DELAY_WORKSHOP_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
+		constexpr float DELAY_WORKSHOP_INPUT_WIDTH = 180.0f;  // Increased from 80px hard-coded value
 
 		// Width of the "Delay Queue (sec)" input box in Auto-Queue tab
-		constexpr float DELAY_QUEUE_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
+		constexpr float DELAY_QUEUE_INPUT_WIDTH = 180.0f;  // Increased from 80px hard-coded value
 
 		// Width of the "Workshop maps root folder" input in Workshop Source section
 		constexpr float WORKSHOP_PATH_INPUT_WIDTH = 550.0f;  // Was 420.0f - increased for long paths

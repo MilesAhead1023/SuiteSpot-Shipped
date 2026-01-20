@@ -152,7 +152,7 @@ void SettingsUI::RenderMainSettingsWindow() {
             // Queue Delay
             UI::Helpers::InputIntWithRange("Queue Delay", delayQueueSecValue,
                 UI::SettingsUI::DELAY_QUEUE_MIN_SECONDS, UI::SettingsUI::DELAY_QUEUE_MAX_SECONDS,
-                80.0f, "suitespot_delay_queue_sec", plugin_->cvarManager,
+                UI::SettingsUI::DELAY_QUEUE_INPUT_WIDTH, "suitespot_delay_queue_sec", plugin_->cvarManager,
                 plugin_->gameWrapper, "Wait before auto-queuing.", "0-300s");
 
             ImGui::SameLine(0, 20);
@@ -173,7 +173,7 @@ void SettingsUI::RenderMainSettingsWindow() {
             }
 
             UI::Helpers::InputIntWithRange("Map Delay", *currentMapDelayValue,
-                0, 300, 80.0f, currentMapDelayCVar, plugin_->cvarManager,
+                0, 300, UI::SettingsUI::DELAY_FREEPLAY_INPUT_WIDTH, currentMapDelayCVar, plugin_->cvarManager,
                 plugin_->gameWrapper, mapDelayTooltip, "0-300s");
 
             ImGui::EndGroup();

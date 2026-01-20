@@ -248,9 +248,9 @@ void TrainingPackUI::Render() {
                         (packVideoFilter != lastVideoFilter);
     }
 
-    // Fixed widths for filter controls
+    // MODERNIZATION: Use responsive widths from constants for filter controls
     // Search box
-    ImGui::SetNextItemWidth(200.0f);
+    ImGui::SetNextItemWidth(UI::TrainingPackUI::FILTER_SEARCH_MIN_WIDTH);
     if (ImGui::InputText("##search", packSearchText, IM_ARRAYSIZE(packSearchText))) {
         filtersChanged = true;
         filtersDirty_ = true;  // PERF-001: Mark filters as dirty
@@ -261,7 +261,7 @@ void TrainingPackUI::Render() {
 
     // Difficulty filter
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(150.0f);
+    ImGui::SetNextItemWidth(UI::TrainingPackUI::FILTER_DIFFICULTY_MIN_WIDTH);
     const char* difficulties[] = {"All", "Unranked", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Champion", "Grand Champion", "Supersonic Legend"};
     if (ImGui::BeginCombo("##difficulty", packDifficultyFilter.c_str())) {
         for (int i = 0; i < IM_ARRAYSIZE(difficulties); i++) {
@@ -280,7 +280,7 @@ void TrainingPackUI::Render() {
 
     // Shot count range filter
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(150.0f);
+    ImGui::SetNextItemWidth(UI::TrainingPackUI::FILTER_SHOTS_MIN_WIDTH);
     if (ImGui::SliderInt("Min Shots", &packMinShots, UI::TrainingPackUI::FILTER_MIN_SHOTS_MIN, UI::TrainingPackUI::FILTER_MIN_SHOTS_MAX)) {
         filtersChanged = true;
         filtersDirty_ = true;  // PERF-001: Mark filters as dirty

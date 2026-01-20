@@ -145,4 +145,8 @@ private:
     bool isBrowserOpen = false;
     uintptr_t imgui_ctx = 0;
     std::atomic<bool> isRenderingSettings{false};
+    
+    // Font management
+    ImFont* mainFont = nullptr;
+    bool fontLoadAttempted = false;
 };

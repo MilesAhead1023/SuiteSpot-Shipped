@@ -12,7 +12,8 @@ namespace UI {
 	// ===================================================================
 
 	// Font scale applied to all SuiteSpot windows (per-window, not global)
-	constexpr float FONT_SCALE = 1.12f;
+	// MODERNIZATION: Increased from 1.12f to 1.15f for better readability
+	constexpr float FONT_SCALE = 1.15f;
 
 	// ===================================================================
 	// SETTINGS UI CONSTANTS
@@ -20,32 +21,34 @@ namespace UI {
 	namespace SettingsUI {
 
 		// === Dropdown Widths ===
+		// MODERNIZATION: Increased all dropdown widths by ~35% for better content visibility
 
 		// Width of the "Freeplay Maps" dropdown in Map Selection tab
-		constexpr float FREEPLAY_MAPS_DROPDOWN_WIDTH = 260.0f;
+		constexpr float FREEPLAY_MAPS_DROPDOWN_WIDTH = 350.0f;  // Was 260.0f
 
 		// Width of the "Training Packs" dropdown in Map Selection tab
-		constexpr float TRAINING_PACKS_DROPDOWN_WIDTH = 260.0f;
+		constexpr float TRAINING_PACKS_DROPDOWN_WIDTH = 350.0f;  // Was 260.0f
 
 		// Width of the "Workshop Maps" dropdown in Map Selection tab
-		constexpr float WORKSHOP_MAPS_DROPDOWN_WIDTH = 260.0f;
+		constexpr float WORKSHOP_MAPS_DROPDOWN_WIDTH = 350.0f;  // Was 260.0f
 
 		// === Input Box Widths ===
+		// MODERNIZATION: Increased input widths by ~40% to prevent text truncation
 
 		// Width of the "Delay Freeplay (sec)" input box in Map Selection tab
-		constexpr float DELAY_FREEPLAY_INPUT_WIDTH = 220.0f;
+		constexpr float DELAY_FREEPLAY_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
 
 		// Width of the "Delay Training (sec)" input box in Map Selection tab
-		constexpr float DELAY_TRAINING_INPUT_WIDTH = 220.0f;
+		constexpr float DELAY_TRAINING_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
 
 		// Width of the "Delay Workshop (sec)" input box in Map Selection tab
-		constexpr float DELAY_WORKSHOP_INPUT_WIDTH = 220.0f;
+		constexpr float DELAY_WORKSHOP_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
 
 		// Width of the "Delay Queue (sec)" input box in Auto-Queue tab
-		constexpr float DELAY_QUEUE_INPUT_WIDTH = 220.0f;
+		constexpr float DELAY_QUEUE_INPUT_WIDTH = 120.0f;  // Was 220.0f - reduced for int input
 
 		// Width of the "Workshop maps root folder" input in Workshop Source section
-		constexpr float WORKSHOP_PATH_INPUT_WIDTH = 420.0f;
+		constexpr float WORKSHOP_PATH_INPUT_WIDTH = 550.0f;  // Was 420.0f - increased for long paths
 
 		// === Range Limits (Min/Max Values) ===
 
@@ -119,6 +122,7 @@ namespace UI {
 	namespace TrainingPackUI {
 
 		// === Filter Layout - Responsive Widths ===
+		// MODERNIZATION: Increased minimum widths for better visibility
 
 		// Percentage of available width for Search filter box in Training Packs tab (40%)
 		constexpr float FILTER_SEARCH_WIDTH_PERCENT = 0.40f;
@@ -130,26 +134,26 @@ namespace UI {
 		constexpr float FILTER_SHOTS_WIDTH_PERCENT = 0.35f;
 
 		// Minimum pixel width for Search filter box (used when window is too narrow)
-		constexpr float FILTER_SEARCH_MIN_WIDTH = 150.0f;
+		constexpr float FILTER_SEARCH_MIN_WIDTH = 220.0f;  // Was 150.0f
 
 		// Minimum pixel width for Difficulty filter dropdown (used when window is too narrow)
-		constexpr float FILTER_DIFFICULTY_MIN_WIDTH = 120.0f;
+		constexpr float FILTER_DIFFICULTY_MIN_WIDTH = 180.0f;  // Was 120.0f
 
 		// Minimum pixel width for Shots filter (used when window is too narrow)
-		constexpr float FILTER_SHOTS_MIN_WIDTH = 150.0f;
+		constexpr float FILTER_SHOTS_MIN_WIDTH = 200.0f;  // Was 150.0f
 
 		// === Dropdowns ===
 
 		// Width of the tag filter dropdown in Training Packs tab
-		constexpr float TAG_FILTER_DROPDOWN_WIDTH = 200.0f;
+		constexpr float TAG_FILTER_DROPDOWN_WIDTH = 250.0f;  // Was 200.0f
 
 		// === Positions and Spacing ===
 
 		// Button group width offset from right edge of window
-		constexpr float BUTTON_GROUP_OFFSET_FROM_RIGHT = 280.0f;
+		constexpr float BUTTON_GROUP_OFFSET_FROM_RIGHT = 320.0f;  // Was 280.0f
 
 		// Indentation amount for custom pack form section
-		constexpr float CUSTOM_PACK_FORM_INDENT = 10.0f;
+		constexpr float CUSTOM_PACK_FORM_INDENT = 16.0f;  // Was 10.0f
 
 		// === Table Configuration ===
 
@@ -157,55 +161,57 @@ namespace UI {
 		constexpr int TABLE_COLUMN_COUNT = 5;
 
 		// Minimum width for any column in Training Packs table (before dynamic sizing)
-		constexpr float TABLE_MIN_COLUMN_WIDTH = 40.0f;
+		constexpr float TABLE_MIN_COLUMN_WIDTH = 50.0f;  // Was 40.0f
 
 		// Extra padding added to calculated column widths in Training Packs table
-		constexpr float TABLE_COLUMN_PADDING = 20.0f;
+		constexpr float TABLE_COLUMN_PADDING = 28.0f;  // Was 20.0f
 
 		// Default width for Actions column in Training Packs table
-		constexpr float TABLE_ACTIONS_COLUMN_WIDTH = 200.0f;
+		constexpr float TABLE_ACTIONS_COLUMN_WIDTH = 220.0f;  // Was 200.0f
 
 		// Maximum width cap for Name column in Training Packs table
-		constexpr float TABLE_NAME_COLUMN_MAX_WIDTH = 400.0f;
+		constexpr float TABLE_NAME_COLUMN_MAX_WIDTH = 450.0f;  // Was 400.0f
 
 		// === Custom Pack Form - Input Widths ===
+		// MODERNIZATION: Increased all input widths by ~30-40%
 
 		// Width of "Training Map Code" input field in custom pack form
-		constexpr float CUSTOM_PACK_CODE_INPUT_WIDTH = 220.0f;
+		constexpr float CUSTOM_PACK_CODE_INPUT_WIDTH = 280.0f;  // Was 220.0f
 
 		// Width of "Training Map Name" input field in custom pack form
-		constexpr float CUSTOM_PACK_NAME_INPUT_WIDTH = 300.0f;
+		constexpr float CUSTOM_PACK_NAME_INPUT_WIDTH = 400.0f;  // Was 300.0f
 
 		// Width of "Creator" input field in custom pack form
-		constexpr float CUSTOM_PACK_CREATOR_INPUT_WIDTH = 200.0f;
+		constexpr float CUSTOM_PACK_CREATOR_INPUT_WIDTH = 260.0f;  // Was 200.0f
 
 		// Width of "Tags" input field in custom pack form
-		constexpr float CUSTOM_PACK_TAGS_INPUT_WIDTH = 300.0f;
+		constexpr float CUSTOM_PACK_TAGS_INPUT_WIDTH = 400.0f;  // Was 300.0f
 
 		// Width of "Video URL" input field in custom pack form
-		constexpr float CUSTOM_PACK_VIDEO_URL_INPUT_WIDTH = 350.0f;
+		constexpr float CUSTOM_PACK_VIDEO_URL_INPUT_WIDTH = 480.0f;  // Was 350.0f
 
 		// Width of "Notes" multiline text area in custom pack form
-		constexpr float CUSTOM_PACK_NOTES_INPUT_WIDTH = 400.0f;
+		constexpr float CUSTOM_PACK_NOTES_INPUT_WIDTH = 520.0f;  // Was 400.0f
 
 		// Height of "Notes" multiline text area in custom pack form
-		constexpr float CUSTOM_PACK_NOTES_INPUT_HEIGHT = 60.0f;
+		constexpr float CUSTOM_PACK_NOTES_INPUT_HEIGHT = 80.0f;  // Was 60.0f
 
 		// === Custom Pack Form - Dropdown Widths ===
 
 		// Width of the difficulty dropdown in custom pack form
-		constexpr float CUSTOM_PACK_DIFFICULTY_DROPDOWN_WIDTH = 150.0f;
+		constexpr float CUSTOM_PACK_DIFFICULTY_DROPDOWN_WIDTH = 200.0f;  // Was 150.0f
 
 		// === Custom Pack Form - Button Sizes ===
+		// MODERNIZATION: Increased button widths for better touch targets
 
 		// Width of "Add Pack" button in custom pack form
-		constexpr float CUSTOM_PACK_ADD_BUTTON_WIDTH = 100.0f;
+		constexpr float CUSTOM_PACK_ADD_BUTTON_WIDTH = 120.0f;  // Was 100.0f
 
 		// Height of "Add Pack" button in custom pack form (0 = auto)
 		constexpr float CUSTOM_PACK_ADD_BUTTON_HEIGHT = 0.0f;
 
 		// Width of "Clear" button in custom pack form
-		constexpr float CUSTOM_PACK_CLEAR_BUTTON_WIDTH = 80.0f;
+		constexpr float CUSTOM_PACK_CLEAR_BUTTON_WIDTH = 100.0f;  // Was 80.0f
 
 		// Height of "Clear" button in custom pack form (0 = auto)
 		constexpr float CUSTOM_PACK_CLEAR_BUTTON_HEIGHT = 0.0f;

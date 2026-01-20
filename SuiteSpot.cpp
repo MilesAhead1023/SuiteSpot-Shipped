@@ -8,6 +8,7 @@
 #include "SettingsUI.h"
 #include "TrainingPackUI.h"
 #include "LoadoutUI.h"
+#include "ThemeManager.h"  // Modern UI theme
 #include <fstream>
 #include <string>
 #include <algorithm>
@@ -416,13 +417,19 @@ void SuiteSpot::GameEndedEvent(std::string name) {
 void SuiteSpot::onLoad() {
     _globalCvarManager = cvarManager;
     LOG("SuiteSpot loaded");
-    mapManager = new MapManager();
-    settingsSync = new SettingsSync();
-    autoLoadFeature = new AutoLoadFeature();
-    trainingPackMgr = new TrainingPackManager();
-    settingsUI = new SettingsUI(this);
+    
+    // Apply modern UI theme FIRST before any windows are created
+    UI::Theme::ApplyModernTheme();
+    LOG("SuiteSpot: Modern theme applied");
+    
+    // BUG-001 FIX: Use std::make_unique for all manager ownership
+    mapManager = std::make_unique<MapManager>();
+    settingsSync = std::make_unique<SettingsSync>();
+    autoLoadFeature = std::make_unique<AutoLoadFeature>();
+    trainingPackMgr = std::make_unique<TrainingPackManager>();
+    settingsUI = std::make_unique<SettingsUI>(this);
     trainingPackUI = std::make_shared<TrainingPackUI>(this);
-    loadoutUI = new LoadoutUI(this);
+    loadoutUI = std::make_unique<LoadoutUI>(this);
 
     EnsureDataDirectories();
     LoadWorkshopMaps();
@@ -469,24 +476,20 @@ void SuiteSpot::onLoad() {
     cvarManager->registerNotifier("suitespot_previous_bag_pack", [this](std::vector<std::string> args) {
         RetreatToPreviousBagPack();
     }, "Load previous pack in current bag (wraps to previous bag)", PERMISSION_ALL);
+    
+    // Style editor toggle (F12 for developers) - NOT for end users
+    cvarManager->registerNotifier("suitespot_toggle_style_editor", [this](std::vector<std::string> args) {
+        bool visible = UI::Theme::ToggleStyleEditor();
+        LOG("SuiteSpot: Style editor {}", visible ? "opened" : "closed");
+    }, "Toggle the ImGui style editor for theme development", PERMISSION_ALL);
 
     LOG("SuiteSpot: Plugin initialization complete");
 }
 
 void SuiteSpot::onUnload() {
-    delete settingsUI;
-    settingsUI = nullptr;
+    // BUG-001 FIX: std::unique_ptr handles cleanup automatically - no manual deletes needed
+    // Just reset the shared_ptr
     trainingPackUI = nullptr;
-    delete loadoutUI;
-    loadoutUI = nullptr;
-    delete trainingPackMgr;
-    trainingPackMgr = nullptr;
-    delete autoLoadFeature;
-    autoLoadFeature = nullptr;
-    delete settingsSync;
-    settingsSync = nullptr;
-    delete mapManager;
-    mapManager = nullptr;
     LOG("SuiteSpot unloaded");
 }
 
@@ -494,6 +497,9 @@ void SuiteSpot::Render() {
     if (!imgui_ctx) return;
     ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(imgui_ctx));
 
+    // Render the style editor if enabled (toggle with: suitespot_toggle_style_editor)
+    UI::Theme::RenderStyleEditor();
+    
     // Note: TrainingPackUI is a PluginWindow registered with BakkesMod,
     // so it's rendered automatically by the framework. No need to call it here.
 }
@@ -517,24 +523,36 @@ std::string SuiteSpot::GetMenuTitle() {
 
 
 void SuiteSpot::SetImGuiContext(uintptr_t ctx) {
-
-
-
     if (ctx) {
-
-
-
         imgui_ctx = ctx;
-
-
-
         ImGui::SetCurrentContext(reinterpret_cast<ImGuiContext*>(ctx));
-
-
-
+        
+        // Load custom font on first context setup
+        if (!fontLoadAttempted) {
+            fontLoadAttempted = true;
+            
+            ImGuiIO& io = ImGui::GetIO();
+            
+            // Try to load Roboto font from data directory
+            std::filesystem::path fontPath = GetDataRoot() / "SuiteSpot" / "Resources" / "Fonts" / "Roboto-Regular.ttf";
+            
+            if (std::filesystem::exists(fontPath)) {
+                // Load with 16px size (will be scaled by FONT_SCALE in UI)
+                mainFont = io.Fonts->AddFontFromFileTTF(fontPath.string().c_str(), 16.0f);
+                
+                if (mainFont) {
+                    LOG("SuiteSpot: Loaded Roboto font from {}", fontPath.string());
+                    // Rebuild font atlas
+                    io.Fonts->Build();
+                } else {
+                    LOG("SuiteSpot: Failed to load Roboto font, using default");
+                }
+            } else {
+                LOG("SuiteSpot: Roboto font not found at {}, using default", fontPath.string());
+            }
+        }
     }
-
-
+}
 
 }
 

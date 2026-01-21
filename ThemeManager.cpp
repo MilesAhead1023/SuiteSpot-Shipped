@@ -89,22 +89,11 @@ void ApplyModernTheme() {
     colors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
     colors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.00f, 0.00f, 0.00f, 0.60f);
     
-    // Docking (if used in future)
-    colors[ImGuiCol_DockingPreview]  = ImVec4(0.26f, 0.59f, 0.98f, 0.40f);
-    colors[ImGuiCol_DockingEmptyBg]  = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);
-    
     // Plot colors (for potential future graphs)
     colors[ImGuiCol_PlotLines]       = Colors::ACCENT_PRIMARY;
     colors[ImGuiCol_PlotLinesHovered]= ImVec4(0.36f, 0.66f, 1.00f, 1.00f);
     colors[ImGuiCol_PlotHistogram]   = Colors::ACCENT_SUCCESS;
     colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.50f, 0.83f, 0.52f, 1.00f);
-    
-    // Table colors
-    colors[ImGuiCol_TableHeaderBg]   = ImVec4(0.16f, 0.16f, 0.18f, 1.00f);
-    colors[ImGuiCol_TableBorderStrong] = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);
-    colors[ImGuiCol_TableBorderLight]  = ImVec4(0.25f, 0.25f, 0.28f, 1.00f);
-    colors[ImGuiCol_TableRowBg]      = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_TableRowBgAlt]   = ImVec4(1.00f, 1.00f, 1.00f, 0.04f);
     
     // ===================================================================
     // SPACING: Generous padding and margins
@@ -167,9 +156,6 @@ void ApplyModernTheme() {
     
     // Alpha (global transparency - keep at 1.0 for full opacity)
     style.Alpha              = 1.0f;
-    
-    // Disabled alpha (how transparent disabled elements appear)
-    style.DisabledAlpha      = 0.50f;
 }
 
 void ResetToDefaultTheme() {

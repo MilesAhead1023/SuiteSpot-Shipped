@@ -83,7 +83,7 @@ void TrainingPackUI::Render() {
     // Apply font scale to this window
     ImGui::SetWindowFontScale(UI::FONT_SCALE);
 
-    const auto* manager = plugin_->trainingPackMgr;
+    const auto* manager = plugin_->trainingPackMgr.get();
     static const std::vector<TrainingEntry> emptyPacks;
     static const std::string emptyString;
     const auto& packs = manager ? manager->GetPacks() : emptyPacks;
@@ -708,7 +708,7 @@ void TrainingPackUI::RenderBagManagerModal() {
         ImGui::Separator();
         ImGui::Spacing();
 
-        const auto* manager = plugin_->trainingPackMgr;
+        const auto* manager = plugin_->trainingPackMgr.get();
         const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
 
         // Calculate child window dimensions
@@ -766,7 +766,7 @@ void TrainingPackUI::RenderBagManagerModal() {
 }
 
 void TrainingPackUI::RenderBagChildWindow(const TrainingBag& bag, float width, float height) {
-    const auto* manager = plugin_->trainingPackMgr;
+    const auto* manager = plugin_->trainingPackMgr.get();
 
     // Get packs in this bag
     auto packsInBag = manager ? manager->GetPacksInBag(bag.name) : std::vector<TrainingEntry>();
@@ -999,7 +999,7 @@ void TrainingPackUI::MoveSelectedPackUp(const std::string& bagName) {
     if (it == selectedPackInBag.end()) return;  // No selection
 
     std::string packCode = it->second;
-    const auto* manager = plugin_->trainingPackMgr;
+    const auto* manager = plugin_->trainingPackMgr.get();
     if (!manager) return;
 
     auto packsInBag = manager->GetPacksInBag(bagName);
@@ -1026,7 +1026,7 @@ void TrainingPackUI::MoveSelectedPackDown(const std::string& bagName) {
     if (it == selectedPackInBag.end()) return;  // No selection
 
     std::string packCode = it->second;
-    const auto* manager = plugin_->trainingPackMgr;
+    const auto* manager = plugin_->trainingPackMgr.get();
     if (!manager) return;
 
     auto packsInBag = manager->GetPacksInBag(bagName);

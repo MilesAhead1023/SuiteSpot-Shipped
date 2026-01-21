@@ -40,38 +40,38 @@ namespace Theme {
 
 namespace Colors {
     // Background Hierarchy (darkest → lightest)
-    constexpr ImVec4 BG_WINDOW        = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);  // Main window background
-    constexpr ImVec4 BG_CHILD         = ImVec4(0.13f, 0.13f, 0.14f, 1.00f);  // Child windows, panels
-    constexpr ImVec4 BG_POPUP         = ImVec4(0.15f, 0.15f, 0.16f, 1.00f);  // Popups, modals
+    static const ImVec4 BG_WINDOW        = ImVec4(0.10f, 0.10f, 0.11f, 1.00f);  // Main window background
+    static const ImVec4 BG_CHILD         = ImVec4(0.13f, 0.13f, 0.14f, 1.00f);  // Child windows, panels
+    static const ImVec4 BG_POPUP         = ImVec4(0.15f, 0.15f, 0.16f, 1.00f);  // Popups, modals
     
     // Surface Colors (interactive elements)
-    constexpr ImVec4 SURFACE_DEFAULT  = ImVec4(0.18f, 0.18f, 0.20f, 1.00f);  // Buttons, inputs (normal)
-    constexpr ImVec4 SURFACE_HOVER    = ImVec4(0.24f, 0.24f, 0.27f, 1.00f);  // Hover state
-    constexpr ImVec4 SURFACE_ACTIVE   = ImVec4(0.28f, 0.28f, 0.32f, 1.00f);  // Active/pressed state
+    static const ImVec4 SURFACE_DEFAULT  = ImVec4(0.18f, 0.18f, 0.20f, 1.00f);  // Buttons, inputs (normal)
+    static const ImVec4 SURFACE_HOVER    = ImVec4(0.24f, 0.24f, 0.27f, 1.00f);  // Hover state
+    static const ImVec4 SURFACE_ACTIVE   = ImVec4(0.28f, 0.28f, 0.32f, 1.00f);  // Active/pressed state
     
     // Accent Colors (semantic meaning)
-    constexpr ImVec4 ACCENT_PRIMARY   = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);  // Blue (active, selected, links)
-    constexpr ImVec4 ACCENT_SUCCESS   = ImVec4(0.40f, 0.73f, 0.42f, 1.00f);  // Green (success, confirm)
-    constexpr ImVec4 ACCENT_WARNING   = ImVec4(0.98f, 0.77f, 0.26f, 1.00f);  // Yellow (warning, caution)
-    constexpr ImVec4 ACCENT_ERROR     = ImVec4(0.90f, 0.27f, 0.27f, 1.00f);  // Red (error, destructive)
+    static const ImVec4 ACCENT_PRIMARY   = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);  // Blue (active, selected, links)
+    static const ImVec4 ACCENT_SUCCESS   = ImVec4(0.40f, 0.73f, 0.42f, 1.00f);  // Green (success, confirm)
+    static const ImVec4 ACCENT_WARNING   = ImVec4(0.98f, 0.77f, 0.26f, 1.00f);  // Yellow (warning, caution)
+    static const ImVec4 ACCENT_ERROR     = ImVec4(0.90f, 0.27f, 0.27f, 1.00f);  // Red (error, destructive)
     
     // Text Hierarchy (brightest → dimmest)
-    constexpr ImVec4 TEXT_PRIMARY     = ImVec4(0.95f, 0.95f, 0.96f, 1.00f);  // Main body text
-    constexpr ImVec4 TEXT_SECONDARY   = ImVec4(0.70f, 0.70f, 0.72f, 1.00f);  // Subtext, labels
-    constexpr ImVec4 TEXT_DISABLED    = ImVec4(0.50f, 0.50f, 0.52f, 1.00f);  // Disabled state
-    constexpr ImVec4 TEXT_HEADER      = ImVec4(0.82f, 0.88f, 0.95f, 1.00f);  // Section headers (blue tint)
+    static const ImVec4 TEXT_PRIMARY     = ImVec4(0.95f, 0.95f, 0.96f, 1.00f);  // Main body text
+    static const ImVec4 TEXT_SECONDARY   = ImVec4(0.70f, 0.70f, 0.72f, 1.00f);  // Subtext, labels
+    static const ImVec4 TEXT_DISABLED    = ImVec4(0.50f, 0.50f, 0.52f, 1.00f);  // Disabled state
+    static const ImVec4 TEXT_HEADER      = ImVec4(0.82f, 0.88f, 0.95f, 1.00f);  // Section headers (blue tint)
     
     // Borders & Separators
-    constexpr ImVec4 BORDER_DEFAULT   = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);  // Subtle outlines
-    constexpr ImVec4 BORDER_ACTIVE    = ImVec4(0.42f, 0.42f, 0.47f, 1.00f);  // Active element border
-    constexpr ImVec4 SEPARATOR        = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);  // Section dividers
+    static const ImVec4 BORDER_DEFAULT   = ImVec4(0.30f, 0.30f, 0.33f, 1.00f);  // Subtle outlines
+    static const ImVec4 BORDER_ACTIVE    = ImVec4(0.42f, 0.42f, 0.47f, 1.00f);  // Active element border
+    static const ImVec4 SEPARATOR        = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);  // Section dividers
     
     // Special States
-    constexpr ImVec4 SELECTED_BG      = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);  // Selected item background (translucent)
-    constexpr ImVec4 TAB_ACTIVE       = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);  // Active tab
-    constexpr ImVec4 TAB_INACTIVE     = ImVec4(0.14f, 0.14f, 0.16f, 1.00f);  // Inactive tab
-    constexpr ImVec4 SCROLLBAR        = ImVec4(0.28f, 0.28f, 0.30f, 1.00f);  // Scrollbar grab
-    constexpr ImVec4 SCROLLBAR_HOVER  = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);  // Scrollbar hover
+    static const ImVec4 SELECTED_BG      = ImVec4(0.26f, 0.59f, 0.98f, 0.31f);  // Selected item background (translucent)
+    static const ImVec4 TAB_ACTIVE       = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);  // Active tab
+    static const ImVec4 TAB_INACTIVE     = ImVec4(0.14f, 0.14f, 0.16f, 1.00f);  // Inactive tab
+    static const ImVec4 SCROLLBAR        = ImVec4(0.28f, 0.28f, 0.30f, 1.00f);  // Scrollbar grab
+    static const ImVec4 SCROLLBAR_HOVER  = ImVec4(0.35f, 0.35f, 0.38f, 1.00f);  // Scrollbar hover
 }
 
 // ===================================================================

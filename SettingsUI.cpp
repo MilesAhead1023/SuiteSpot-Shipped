@@ -25,11 +25,17 @@ void SettingsUI::RenderMainSettingsWindow() {
 
     ImGui::SetWindowFontScale(UI::FONT_SCALE);
 
-    // Header with metadata - Left Aligned
+    // Header with metadata and Load Now button
+    ImGui::BeginGroup();
     ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "By: Flicks Creations");
-
     std::string ver = "Version: " + std::string(plugin_version);
     ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "%s", ver.c_str());
+    ImGui::EndGroup();
+
+    ImGui::SameLine(ImGui::GetWindowWidth() - 150.0f);
+    if (ImGui::Button("LOAD NOW", ImVec2(130, 26))) {
+        RenderLoadNowButton();
+    }
 
     ImGui::Spacing();
     statusMessage.Render(ImGui::GetIO().DeltaTime);
@@ -134,17 +140,8 @@ void SettingsUI::RenderMainSettingsWindow() {
         }
     }
     
-    // ...
-    
+    ImGui::Spacing();
     ImGui::Separator();
-
-    // RenderLoadNowButton inline replacement for full width
-    if (ImGui::Button("LOAD NOW", ImVec2(-1, 35))) { 
-        // Call logic from RenderLoadNowButton (I'll need to move the logic here or update the function)
-        // Actually, I'll update RenderLoadNowButton definition later.
-        // Let's just call the function, and I'll update the function to use -1 width.
-        RenderLoadNowButton(); 
-    }
     ImGui::Spacing();
 
     // 1) Global Controls

@@ -60,18 +60,87 @@ void SettingsUI::RenderMainSettingsWindow() {
 
     // Only show status if enabled
     if (enabledValue) {
-        // ... (Keep existing status logic but maybe center it or put in a box?)
-        // For now, keep as is but remove the specific X positioning if we want flow
-        // The original code used ImGui::SameLine(UI::SettingsUI::STATUS_TEXT_POSITION_X);
-        // Let's make it flow naturally below the header
-        
         ImGui::Separator();
-        
+
         const char* modeNames[] = {"Freeplay", "Training", "Workshop"};
-        // ... (Logic to build strings) ...
+        std::string currentMap = "<none>";
+        std::string queueDelayStr = std::to_string(delayQueueSecValue) + "s";
+        std::string mapDelayStr = "0s";
+        const ImVec4 white = UI::SettingsUI::STATUS_SEPARATOR_COLOR;
+
+        // Get current selection and appropriate delay
+        if (mapTypeValue == 0) {
+            // Find freeplay map by code
+            auto it = std::find_if(RLMaps.begin(), RLMaps.end(),
+                [&](const MapEntry& e) { return e.code == currentFreeplayCode; });
+            if (it != RLMaps.end()) {
+                currentMap = it->name;
+            }
+            mapDelayStr = std::to_string(delayFreeplaySecValue) + "s";
+        } else if (mapTypeValue == 1) {
+            mapDelayStr = std::to_string(delayTrainingSecValue) + "s";
+
+            // Get packs from manager for consistent lookup
+            const auto& trainingPacks = plugin_->trainingPackMgr ?
+                plugin_->trainingPackMgr->GetPacks() : RLTraining;
+
+            if (trainingModeValue == 1 && plugin_->trainingPackMgr) {
+                // Show current bag in rotation
+                auto [pack, bagName] = plugin_->PeekNextBagPack();
+                if (!pack.code.empty()) {
+                    currentMap = "Next: " + pack.name + " (from " + bagName + ")";
+                } else {
+                    currentMap = "Bag Rotation: <empty>";
+                }
+            } else {
+                // Single Pack Mode
+                std::string targetCode = quickPicksSelectedCode;
+                if (targetCode.empty()) targetCode = currentTrainingCode;
+
+                if (!targetCode.empty()) {
+                    auto it = std::find_if(trainingPacks.begin(), trainingPacks.end(),
+                        [&](const TrainingEntry& e) { return e.code == targetCode; });
+                    if (it != trainingPacks.end()) {
+                        currentMap = it->name + " (Shots:" + std::to_string(it->shotCount) + ")";
+                    } else {
+                        currentMap = targetCode;
+                    }
+                }
+            }
+        } else if (mapTypeValue == 2) {
+            // Find workshop map by path
+            auto it = std::find_if(RLWorkshop.begin(), RLWorkshop.end(),
+                [&](const WorkshopEntry& e) { return e.filePath == currentWorkshopPath; });
+            if (it != RLWorkshop.end()) {
+                currentMap = it->name;
+            }
+            mapDelayStr = std::to_string(delayWorkshopSecValue) + "s";
+        }
+
+        // Map mode status
+        const ImVec4 green = UI::SettingsUI::STATUS_ENABLED_TEXT_COLOR;
+        const ImVec4 red   = UI::SettingsUI::STATUS_DISABLED_TEXT_COLOR;
+        std::string modeText = "Mode: " + std::string(modeNames[mapTypeValue]);
         
-        // Let's assume I can't easily rewrite the whole status logic block in one go without reading it all again carefully.
-        // I will just modify the Header and Load Now button first.
+        int currentDelay = (mapTypeValue == 0) ? delayFreeplaySecValue : (mapTypeValue == 1 ? delayTrainingSecValue : delayWorkshopSecValue);
+        if (currentDelay > 0) {
+            modeText += " Delayed: " + mapDelayStr;
+        }
+
+        ImGui::TextColored(green, "%s", modeText.c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(white, "|");
+        ImGui::SameLine();
+        ImGui::TextColored(green, "Map: %s", currentMap.c_str());
+        ImGui::SameLine();
+        ImGui::TextColored(white, "|");
+        ImGui::SameLine();
+        const ImVec4 queueColor = autoQueueValue ? green : red;
+        if (delayQueueSecValue > 0) {
+            ImGui::TextColored(queueColor, "Next Match Queue Delayed: %s", queueDelayStr.c_str());
+        } else {
+            ImGui::TextColored(queueColor, "Next Match Queue");
+        }
     }
     
     // ...

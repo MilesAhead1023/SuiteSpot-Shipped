@@ -146,6 +146,7 @@ exit /b 0</Command>
     <ClCompile Include="SettingsSync.cpp" />
     <ClCompile Include="StatusMessageUI.cpp" />
     <ClCompile Include="HelpersUI.cpp" />
+    <ClCompile Include="PackUsageTracker.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -174,6 +175,8 @@ exit /b 0</Command>
     <ClInclude Include="logging.h" />
     <ClInclude Include="MapManager.h" />
     <ClInclude Include="MapList.h" />
+    <ClInclude Include="PackUsageTracker.h" />
+    <ClInclude Include="DefaultPacks.h" />
     <ClInclude Include="TrainingPackManager.h" />
     <ClInclude Include="TrainingPackUI.h" />
     <ClInclude Include="LoadoutUI.h" />

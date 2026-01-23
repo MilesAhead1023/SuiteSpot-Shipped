@@ -90,6 +90,17 @@ void TrainingPackUI::Render() {
     const auto& lastUpdated = manager ? manager->GetLastUpdated() : emptyString;
     const bool scraping = manager && manager->IsScrapingInProgress();
 
+    // Sync selection from Quick Picks (Single Source of Truth)
+    if (plugin_->settingsSync) {
+        std::string currentQuickPick = plugin_->settingsSync->GetQuickPicksSelectedCode();
+        if (currentQuickPick != lastQuickPicksSelected) {
+            if (!currentQuickPick.empty()) {
+                selectedPackCode = currentQuickPick;
+            }
+            lastQuickPicksSelected = currentQuickPick;
+        }
+    }
+
     // ===== HEADER SECTION =====
     ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Training Pack Browser");
     ImGui::Spacing();
@@ -124,31 +135,20 @@ void TrainingPackUI::Render() {
         ImGui::SetTooltip("Reload packs from cached json file");
     }
 
-    // Set Auto-Load button (enabled only when a pack is selected)
+    // Load Now button (Immediate load)
     ImGui::SameLine();
     bool hasSelection = !selectedPackCode.empty();
     if (!hasSelection) {
         ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
     }
-    if (ImGui::Button("Set Auto-Load") && hasSelection) {
-        // Find the pack in filteredPacks to get its name for the status message
-        auto it = std::find_if(filteredPacks.begin(), filteredPacks.end(),
-            [&](const TrainingEntry& e) { return e.code == selectedPackCode; });
-        if (it != filteredPacks.end()) {
-            // Update SettingsSync directly for immediate UI update
-            plugin_->settingsSync->SetCurrentTrainingCode(selectedPackCode);
-            // Also set CVar for persistence
-            plugin_->cvarManager->getCvar("suitespot_current_training_code").setValue(selectedPackCode);
-            browserStatus.ShowSuccess("Auto-Load set: " + it->name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-        } else {
-            browserStatus.ShowError("Pack not found in current filter", 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-        }
+    if (ImGui::Button("LOAD NOW") && hasSelection) {
+        LoadPackImmediately(selectedPackCode);
     }
     if (!hasSelection) {
         ImGui::PopStyleVar();
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(hasSelection ? "Set selected pack as auto-load for match end" : "Select a pack first");
+        ImGui::SetTooltip(hasSelection ? "Immediately load the selected pack" : "Select a pack first");
     }
 
     ImGui::Separator();
@@ -387,65 +387,6 @@ void TrainingPackUI::Render() {
             }
         }
 
-        // Load Pack
-        if (hasSelection) {
-            if (ImGui::Button("Load Pack")) {
-                 SuiteSpot* plugin = plugin_;
-                 std::string code = selectedPack->code;
-                 std::string name = selectedPack->name;
-                 plugin_->gameWrapper->SetTimeout([plugin, code, name](GameWrapper* gw) {
-                    std::string cmd = "load_training " + code;
-                    plugin->cvarManager->executeCommand(cmd);
-                    LOG("SuiteSpot: Loading training pack: " + name);
-                }, 0.0f);
-            }
-        } else {
-            ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-            ImGui::Button("Load Pack");
-            ImGui::PopStyleVar();
-        }
-
-        ImGui::SameLine();
-
-        // Add to Bag (opens popup to select bag)
-        if (hasSelection) {
-            if (ImGui::Button("Add to Bag...")) {
-                ImGui::OpenPopup("BagPickerPopup");
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Add selected pack to a training bag");
-            }
-        } else {
-             ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-             ImGui::Button("Add to Bag...");
-             ImGui::PopStyleVar();
-        }
-
-        // Bag Picker Popup
-        if (ImGui::BeginPopup("BagPickerPopup")) {
-            ImGui::TextUnformatted("Select Bag:");
-            ImGui::Separator();
-
-            const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
-            for (const auto& bag : bags) {
-                ImVec4 badgeColor(bag.color[0], bag.color[1], bag.color[2], bag.color[3]);
-                ImGui::PushStyleColor(ImGuiCol_Text, badgeColor);
-                std::string label = bag.name;
-                if (ImGui::Selectable(label.c_str())) {
-                    if (plugin_->trainingPackMgr) {
-                        std::vector<std::string> codes;
-                        codes.push_back(selectedPackCode);
-                        plugin_->trainingPackMgr->AddPacksToBag(codes, bag.name);
-                        browserStatus.ShowSuccess("Added pack to " + bag.name, 3.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
-                    }
-                }
-                ImGui::PopStyleColor();
-            }
-            ImGui::EndPopup();
-        }
-
-        ImGui::SameLine();
-
         // Delete (Custom only)
         if (hasSelection) {
              if (ImGui::Button("Delete Custom Pack")) {
@@ -576,14 +517,53 @@ void TrainingPackUI::Render() {
             }
 
             // SpanAllColumns allows clicking anywhere in the row
-            // Simple toggle-on-click behavior (selection only, does not set auto-load)
             if (ImGui::Selectable(pack.name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns)) {
-                if (isSelected) {
-                    selectedPackCode = "";
-                } else {
-                    selectedPackCode = pack.code;
-                }
+                selectedPackCode = pack.code;
                 lastSelectedRowIndex = row;
+                ImGui::OpenPopup("PackActionPopup");
+            }
+
+            if (ImGui::BeginPopup("PackActionPopup")) {
+                const auto& trainingPacks = manager ? manager->GetPacks() : emptyPacks;
+                auto it = std::find_if(trainingPacks.begin(), trainingPacks.end(), 
+                    [&](const TrainingEntry& e) { return e.code == selectedPackCode; });
+
+                if (it != trainingPacks.end()) {
+                    ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "%s", it->name.c_str());
+                    ImGui::Separator();
+
+                    if (ImGui::Selectable("Set Post-Match")) {
+                        plugin_->settingsSync->SetQuickPicksSelected(selectedPackCode);
+                        plugin_->cvarManager->getCvar("suitespot_quickpicks_selected").setValue(selectedPackCode);
+                        // Also sync with current training code for consistency
+                        plugin_->settingsSync->SetCurrentTrainingCode(selectedPackCode);
+                        plugin_->cvarManager->getCvar("suitespot_current_training_code").setValue(selectedPackCode);
+                        browserStatus.ShowSuccess("Post-Match set: " + it->name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                    }
+
+                    if (ImGui::BeginMenu("Add to Bag...")) {
+                        const auto& bags = manager ? manager->GetAvailableBags() : std::vector<TrainingBag>();
+                        for (const auto& bag : bags) {
+                            if (ImGui::Selectable(bag.name.c_str())) {
+                                plugin_->trainingPackMgr->AddPackToBag(selectedPackCode, bag.name);
+                                browserStatus.ShowSuccess("Added to " + bag.name, 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+
+                    if (ImGui::Selectable("Load Now")) {
+                        if (plugin_->usageTracker) plugin_->usageTracker->IncrementLoadCount(selectedPackCode);
+                        std::string code = selectedPackCode;
+                        std::string name = it->name;
+                        SuiteSpot* p = plugin_;
+                        p->gameWrapper->SetTimeout([p, code, name](GameWrapper* gw) {
+                            p->cvarManager->executeCommand("load_training " + code);
+                            LOG("SuiteSpot: Loading training pack from browser: " + name);
+                        }, 0.0f);
+                    }
+                }
+                ImGui::EndPopup();
             }
 
             // === DRAG SOURCE for drag-and-drop to bag manager ===
@@ -1274,4 +1254,36 @@ bool TrainingPackUI::IsOpen() {
 
 void TrainingPackUI::SetOpen(bool open) {
     isWindowOpen_ = open;
+}
+
+void TrainingPackUI::LoadPackImmediately(const std::string& packCode) {
+    if (packCode.empty() || !plugin_) return;
+
+    // Increment usage stats
+    if (plugin_->usageTracker) {
+        plugin_->usageTracker->IncrementLoadCount(packCode);
+    }
+
+    // Find pack name for logging
+    std::string packName = packCode;
+    const auto* manager = plugin_->trainingPackMgr;
+    if (manager) {
+        for (const auto& pack : manager->GetPacks()) {
+            if (pack.code == packCode) {
+                packName = pack.name;
+                break;
+            }
+        }
+    }
+
+    // Execute load immediately (0 delay)
+    SuiteSpot* p = plugin_;
+    std::string code = packCode;
+    p->gameWrapper->SetTimeout([p, code, packName](GameWrapper* gw) {
+        p->cvarManager->executeCommand("load_training " + code);
+        LOG("SuiteSpot: Loading training pack immediately: {}", packName);
+    }, 0.0f);
+
+    browserStatus.ShowSuccess("Loading: " + packName, 2.0f,
+        UI::StatusMessage::DisplayMode::TimerWithFade);
 }

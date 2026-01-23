@@ -27,6 +27,21 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
             bagRotationEnabled = cvar.getBoolValue();
         });
 
+    cvarManager->registerCvar("suitespot_training_mode", "0", "Training mode: 0=Single Pack, 1=Bag Rotation", true, true, 0, true, 1)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
+            trainingMode = cvar.getIntValue();
+        });
+
+    cvarManager->registerCvar("suitespot_quickpicks_count", "10", "Number of quick picks to show", true, true, 5, true, 15)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
+            quickPicksCount = cvar.getIntValue();
+        });
+
+    cvarManager->registerCvar("suitespot_quickpicks_selected", "", "Selected quick pick pack code", true)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
+            quickPicksSelected = cvar.getStringValue();
+        });
+
     cvarManager->registerCvar("suitespot_delay_queue_sec", "0", "Delay before queuing (seconds)", true, true, 0, true, 300)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
             delayQueueSec = std::max(0, cvar.getIntValue());
@@ -79,6 +94,9 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->getCvar("suitespot_map_type").setValue(mapType);
     cvarManager->getCvar("suitespot_auto_queue").setValue(autoQueue ? 1 : 0);
     cvarManager->getCvar("suitespot_bag_rotation").setValue(bagRotationEnabled ? 1 : 0);
+    cvarManager->getCvar("suitespot_training_mode").setValue(trainingMode);
+    cvarManager->getCvar("suitespot_quickpicks_count").setValue(quickPicksCount);
+    cvarManager->getCvar("suitespot_quickpicks_selected").setValue(quickPicksSelected);
     cvarManager->getCvar("suitespot_delay_queue_sec").setValue(delayQueueSec);
     cvarManager->getCvar("suitespot_delay_freeplay_sec").setValue(delayFreeplaySec);
     cvarManager->getCvar("suitespot_delay_training_sec").setValue(delayTrainingSec);
@@ -100,6 +118,11 @@ void SettingsSync::SetCurrentTrainingCode(const std::string& code)
     currentTrainingCode = code;
 }
 
+void SettingsSync::SetQuickPicksSelected(const std::string& code)
+{
+    quickPicksSelected = code;
+}
+
 void SettingsSync::SetCurrentWorkshopPath(const std::string& path)
 {
     currentWorkshopPath = path;
@@ -113,4 +136,9 @@ void SettingsSync::SetCurrentBag(const std::string& bagName)
 void SettingsSync::SetCurrentBagPackIndex(int value)
 {
     currentBagPackIndex = std::max(0, value);
+}
+
+void SettingsSync::SetTrainingMode(int mode)
+{
+    trainingMode = mode;
 }

@@ -195,6 +195,71 @@ std::pair<TrainingEntry, std::string> SuiteSpot::AdvanceAndGetNextBagPack() {
     return { {}, "" };
 }
 
+std::pair<TrainingEntry, std::string> SuiteSpot::PeekNextBagPack() const {
+    if (!trainingPackMgr || !settingsSync) return { {}, "" };
+
+    // Get current bag and index from CVars
+    std::string currentBag = settingsSync->GetCurrentBag();
+    int currentIdx = settingsSync->GetCurrentBagPackIndex();
+
+    // Get available bags
+    const auto& bags = trainingPackMgr->GetAvailableBags();
+
+    // Get packs in current bag (if any)
+    std::vector<TrainingEntry> packsInBag;
+    if (!currentBag.empty()) {
+        packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
+    }
+
+    // Advance index (conceptually)
+    currentIdx++;
+
+    // If past end of current bag (or no current bag), move to next enabled bag
+    if (currentIdx >= (int)packsInBag.size() || currentBag.empty()) {
+        // Find current bag position and get next enabled bag
+        bool foundCurrent = currentBag.empty();
+        bool foundNext = false;
+
+        for (const auto& bag : bags) {
+            if (!bag.enabled) continue;
+            int bagPackCount = trainingPackMgr->GetBagPackCount(bag.name);
+            if (bagPackCount == 0) continue;
+
+            if (foundCurrent) {
+                // This is the next valid bag
+                currentBag = bag.name;
+                currentIdx = 0;
+                packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
+                foundNext = true;
+                break;
+            }
+
+            if (bag.name == currentBag) {
+                foundCurrent = true;
+            }
+        }
+
+        // If we didn't find a next bag, wrap around to first enabled bag with packs
+        if (!foundNext) {
+            for (const auto& bag : bags) {
+                if (bag.enabled && trainingPackMgr->GetBagPackCount(bag.name) > 0) {
+                    currentBag = bag.name;
+                    currentIdx = 0;
+                    packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
+                    break;
+                }
+            }
+        }
+    }
+
+    // Return the pack
+    if (!packsInBag.empty() && currentIdx < (int)packsInBag.size()) {
+        return { packsInBag[currentIdx], currentBag };
+    }
+
+    return { {}, "" };
+}
+
 void SuiteSpot::AdvanceToNextBagPack() {
     auto [pack, bagName] = AdvanceAndGetNextBagPack();
     
@@ -398,18 +463,34 @@ void SuiteSpot::GameEndedEvent(std::string name) {
         LOG("SuiteSpot: Triggering AutoLoadFeature::OnMatchEnded");
 
         // Determine if bag rotation should be used
-        bool useBagRotation = settingsSync->IsBagRotationEnabled() && trainingPackMgr != nullptr;
-        TrainingEntry selectedPack;
+        int trainingMode = settingsSync->GetTrainingMode();
+        bool useBagRotation = (trainingMode == 1) && trainingPackMgr != nullptr;
+        TrainingEntry selectedBagPack;
 
         if (useBagRotation) {
             // Get next pack from bag rotation system (advances sequentially)
             auto [pack, bagName] = AdvanceAndGetNextBagPack();
-            selectedPack = pack;
-            useBagRotation = !selectedPack.code.empty();  // Only use if we got a valid pack
+            selectedBagPack = pack;
+            useBagRotation = !selectedBagPack.code.empty();  // Only use if we got a valid pack
         }
 
         autoLoadFeature->OnMatchEnded(gameWrapper, cvarManager, RLMaps, RLTraining, RLWorkshop,
-            useBagRotation, selectedPack, *settingsSync);
+            useBagRotation, selectedBagPack, *settingsSync, usageTracker.get());
+
+        // Increment usage count for training packs
+        if (settingsSync->GetMapType() == 1) {
+            std::string codeToLoad;
+            if (useBagRotation) {
+                codeToLoad = selectedBagPack.code;
+            } else {
+                codeToLoad = settingsSync->GetQuickPicksSelectedCode();
+                if (codeToLoad.empty()) codeToLoad = settingsSync->GetCurrentTrainingCode();
+            }
+
+            if (!codeToLoad.empty() && usageTracker) {
+                usageTracker->IncrementLoadCount(codeToLoad);
+            }
+        }
     }
 }
 
@@ -430,6 +511,10 @@ void SuiteSpot::onLoad() {
     // Initialize LoadoutManager
     loadoutManager = std::make_unique<LoadoutManager>(gameWrapper);
     LOG("SuiteSpot: LoadoutManager initialized");
+
+    // Initialize PackUsageTracker
+    usageTracker = std::make_unique<PackUsageTracker>(GetSuiteTrainingDir() / "pack_usage_stats.json");
+    LOG("SuiteSpot: PackUsageTracker initialized");
 
     // Check Pack cache and load if available
 
@@ -474,6 +559,9 @@ void SuiteSpot::onLoad() {
 }
 
 void SuiteSpot::onUnload() {
+    if (usageTracker) {
+        usageTracker->SaveStats();
+    }
     delete settingsUI;
     settingsUI = nullptr;
     trainingPackUI = nullptr;

@@ -35,6 +35,7 @@
 #include "bakkesmod/plugin/PluginSettingsWindow.h"
 #include "MapList.h"
 #include "LoadoutManager.h"
+#include "PackUsageTracker.h"
 #include "version.h"
 #include <filesystem>
 #include <set>
@@ -130,10 +131,12 @@ public:
     void AdvanceToNextBagPack();
     void RetreatToPreviousBagPack();
     std::pair<TrainingEntry, std::string> AdvanceAndGetNextBagPack();
+    std::pair<TrainingEntry, std::string> PeekNextBagPack() const;
 
 private:
     // Loadout management
     std::unique_ptr<LoadoutManager> loadoutManager;
+    std::unique_ptr<PackUsageTracker> usageTracker;
 
     MapManager* mapManager = nullptr;
     SettingsSync* settingsSync = nullptr;

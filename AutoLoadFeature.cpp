@@ -2,6 +2,8 @@
 #include "AutoLoadFeature.h"
 #include "MapList.h"
 #include "SettingsSync.h"
+#include "DefaultPacks.h"
+#include "PackUsageTracker.h"
 
 #include <algorithm>
 #include <random>
@@ -13,7 +15,8 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
                                    const std::vector<WorkshopEntry>& workshop,
                                    bool useBagRotation,
                                    const TrainingEntry& selectedBagPack,
-                                   SettingsSync& settings)
+                                   SettingsSync& settings,
+                                   PackUsageTracker* usageTracker)
 {
     if (!gameWrapper || !cvarManager) return;
     if (!settings.IsEnabled()) return;
@@ -59,23 +62,58 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
         std::string codeToLoad;
         std::string nameToLoad;
 
-        // Use bag rotation if enabled and a pack was selected
-        if (useBagRotation && !selectedBagPack.code.empty()) {
+        int trainingMode = settings.GetTrainingMode();
+
+        // Use bag rotation if in Bag Rotation mode and a pack was selected
+        if (trainingMode == 1 && useBagRotation && !selectedBagPack.code.empty()) {
             codeToLoad = selectedBagPack.code;
             nameToLoad = selectedBagPack.name;
-        } else if (!currentTrainingCode.empty()) {
-            // Fall back to specific training code (only if explicitly selected)
-            auto it = std::find_if(training.begin(), training.end(),
-                [&](const TrainingEntry& e) { return e.code == currentTrainingCode; });
-            if (it != training.end()) {
-                codeToLoad = currentTrainingCode;
-                nameToLoad = it->name;
-            } else {
-                LOG("SuiteSpot: Training pack code not found: " + currentTrainingCode);
+        } else {
+            // Single Pack Mode: use quick picks selection
+            std::string targetCode = settings.GetQuickPicksSelectedCode();
+            
+            // If empty, try fallback to current training code (legacy)
+            if (targetCode.empty()) targetCode = settings.GetCurrentTrainingCode();
+
+            // Resolve target code
+            if (!targetCode.empty()) {
+                auto it = std::find_if(training.begin(), training.end(),
+                    [&](const TrainingEntry& e) { return e.code == targetCode; });
+                if (it != training.end()) {
+                    codeToLoad = targetCode;
+                    nameToLoad = it->name;
+                }
+            }
+
+            // Fallback to first Quick Pick if nothing selected or valid found
+            if (codeToLoad.empty()) {
+                std::vector<std::string> quickPicks;
+                if (usageTracker && !usageTracker->IsFirstRun()) {
+                    quickPicks = usageTracker->GetTopUsedCodes(settings.GetQuickPicksCount());
+                }
+                
+                if (quickPicks.empty()) {
+                    for(const auto& p : DefaultPacks::FLICKS_PICKS) quickPicks.push_back(p.code);
+                }
+
+                if (!quickPicks.empty()) {
+                    std::string fallbackCode = quickPicks[0];
+                    auto it = std::find_if(training.begin(), training.end(),
+                        [&](const TrainingEntry& e) { return e.code == fallbackCode; });
+                    
+                    codeToLoad = fallbackCode;
+                    nameToLoad = (it != training.end()) ? it->name : "Quick Pick Fallback";
+                    LOG("SuiteSpot: Selected pack missing, falling back to first Quick Pick: {}", nameToLoad);
+                }
             }
         }
 
         if (!codeToLoad.empty()) {
+            // Increment usage stats for auto-loaded packs
+            if (usageTracker) {
+                usageTracker->IncrementLoadCount(codeToLoad);
+            }
+
             safeExecute(delayTrainingSec, "load_training " + codeToLoad);
             mapLoadDelay = delayTrainingSec;
             LOG("SuiteSpot: Loading training pack: " + nameToLoad);
@@ -83,6 +121,7 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             LOG("SuiteSpot: No training pack to load.");
         }
     } else if (mapType == 2) { // Workshop
+
         if (currentWorkshopPath.empty()) {
             LOG("SuiteSpot: No workshop map selected; skipping load.");
         } else {

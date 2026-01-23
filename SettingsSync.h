@@ -34,6 +34,9 @@ public:
     int GetMapType() const { return mapType; }
     bool IsAutoQueue() const { return autoQueue; }
     bool IsBagRotationEnabled() const { return bagRotationEnabled; }
+    int GetTrainingMode() const { return trainingMode; }
+    int GetQuickPicksCount() const { return quickPicksCount; }
+    std::string GetQuickPicksSelected() const { return quickPicksSelected; }
 
     // Delay getters (How long to wait?)
     int GetDelayQueueSec() const { return delayQueueSec; }
@@ -44,6 +47,7 @@ public:
     // Selection getters (Which map/pack is selected?)
     std::string GetCurrentFreeplayCode() const { return currentFreeplayCode; }
     std::string GetCurrentTrainingCode() const { return currentTrainingCode; }
+    std::string GetQuickPicksSelectedCode() const { return quickPicksSelected; }
     std::string GetCurrentWorkshopPath() const { return currentWorkshopPath; }
 
     // Bag navigation getters (Which bag and pack index are we on?)
@@ -53,9 +57,11 @@ public:
     // Setters: Update the local value (used when loading data)
     void SetCurrentFreeplayCode(const std::string& code);
     void SetCurrentTrainingCode(const std::string& code);
+    void SetQuickPicksSelected(const std::string& code);
     void SetCurrentWorkshopPath(const std::string& path);
     void SetCurrentBag(const std::string& bagName);
     void SetCurrentBagPackIndex(int value);
+    void SetTrainingMode(int mode);
 
 private:
     // Local copies of settings for fast access
@@ -63,6 +69,10 @@ private:
     int mapType = 0; // 0=Freeplay, 1=Training, 2=Workshop
     bool autoQueue = false;
     bool bagRotationEnabled = true;  // Use categorized bag rotation for training
+
+    int trainingMode = 0; // 0=Single Pack, 1=Bag Rotation
+    int quickPicksCount = 10;
+    std::string quickPicksSelected = "";
 
     int delayQueueSec = 0;
     int delayFreeplaySec = 0;

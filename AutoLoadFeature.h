@@ -28,6 +28,8 @@
  *    - Example: "In 5 seconds, execute command 'load_workshop my_map.upk'"
  */
 
+class PackUsageTracker;
+
 class AutoLoadFeature
 {
 public:
@@ -41,5 +43,6 @@ public:
         const std::vector<WorkshopEntry>& workshopMaps,
         bool useBagRotation,
         const TrainingEntry& selectedBagPack,
-        SettingsSync& settings);
+        SettingsSync& settings,
+        PackUsageTracker* usageTracker);
 };

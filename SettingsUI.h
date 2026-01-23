@@ -43,8 +43,13 @@ private:
     void RenderGeneralTab(bool& enabledValue, int& mapTypeValue);
     void RenderMapSelectionTab(int mapTypeValue, bool bagRotationEnabledValue, std::string& currentFreeplayCode, std::string& currentTrainingCode, std::string& currentWorkshopPath, int& delayFreeplaySecValue, int& delayTrainingSecValue, int& delayWorkshopSecValue, int& delayQueueSecValue);
     void RenderFreeplayMode(std::string& currentFreeplayCode);
-    void RenderTrainingMode(bool bagRotationEnabledValue, std::string& currentTrainingCode);
+    void RenderTrainingMode(int trainingModeValue, std::string& currentTrainingCode);
     void RenderWorkshopMode(std::string& currentWorkshopPath);
+
+    void RenderSinglePackMode(std::string& currentTrainingCode);
+    void RenderBagRotationMode();
+    void RenderLoadNowButton();
+    std::vector<std::string> GetQuickPicksList();
 
     // Workshop path configuration state
     char workshopPathBuf[512] = {0};

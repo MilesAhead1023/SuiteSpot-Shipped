@@ -346,4 +346,21 @@ namespace UI {
 
 	}  // namespace LoadoutUI
 
+	// ===================================================================
+	// QUICK PICKS UI CONSTANTS
+	// ===================================================================
+	namespace QuickPicksUI {
+		// Width of the Quick Picks table in Training Mode
+		constexpr float TABLE_WIDTH = 550.0f;
+
+		// Maximum height of the scrollable Quick Picks table
+		constexpr float TABLE_HEIGHT = 220.0f;
+
+		// Width of the "Name" column in Quick Picks table
+		constexpr float COLUMN_NAME_WIDTH = 350.0f;
+
+		// Width of the "Shots" column in Quick Picks table
+		constexpr float COLUMN_SHOTS_WIDTH = 80.0f;
+	}
+
 }  // namespace UI

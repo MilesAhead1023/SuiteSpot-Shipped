@@ -119,6 +119,7 @@ private:
     std::unordered_map<std::string, std::string> selectedPackInBag;  // bagName → packCode
 
     // Helper methods
+    void LoadPackImmediately(const std::string& packCode);
     void RenderCustomPackForm();
     void RenderBagManagerModal();
     void RenderBagChildWindow(const TrainingBag& bag, float width, float height);
@@ -136,4 +137,7 @@ private:
 
     // Icons
     std::shared_ptr<ImageWrapper> youtubeIcon;
+
+    // State sync
+    std::string lastQuickPicksSelected;
 };

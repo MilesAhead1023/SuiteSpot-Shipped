@@ -104,24 +104,26 @@ void SettingsUI::RenderMainSettingsWindow() {
             ImGui::Spacing();
 
             // 1) Unified Header: Auto-Queue Toggle | Queue Delay | Map Delay
-            ImGui::Columns(3, "MapSelectHeaderCols", false);
+            ImGui::Columns(2, "MapSelectHeaderCols", false);
+            ImGui::SetColumnWidth(0, 150.0f);
             
-            // Col 1: Auto-Queue
+            // Auto-Queue
             UI::Helpers::CheckboxWithCVar("Auto-Queue", autoQueueValue, "suitespot_auto_queue",
                 plugin_->cvarManager, plugin_->gameWrapper, "Automatically queue into the next match after the current match ends.");
-            
             ImGui::NextColumn();
+            ImGui::NextColumn(); // Skip right column
 
-            // Col 2: Queue Delay
+            // Queue Delay
+            ImGui::Text("Queue Delay");
+            ImGui::NextColumn();
             ImGui::SetNextItemWidth(-1);
-            UI::Helpers::InputIntWithRange("Queue Delay", delayQueueSecValue,
+            UI::Helpers::InputIntWithRange("##QueueDelay", delayQueueSecValue,
                 UI::SettingsUI::DELAY_QUEUE_MIN_SECONDS, UI::SettingsUI::DELAY_QUEUE_MAX_SECONDS,
                 0.0f, "suitespot_delay_queue_sec", plugin_->cvarManager,
                 plugin_->gameWrapper, "Wait before auto-queuing.", nullptr);
-
             ImGui::NextColumn();
 
-            // Col 3: Map Delay (Context-sensitive)
+            // Map Delay (Context-sensitive)
             int* currentMapDelayValue = &delayFreeplaySecValue;
             const char* currentMapDelayCVar = "suitespot_delay_freeplay_sec";
             const char* mapDelayTooltip = "Wait before loading Freeplay.";
@@ -136,10 +138,13 @@ void SettingsUI::RenderMainSettingsWindow() {
                 mapDelayTooltip = "Wait before loading Workshop.";
             }
 
+            ImGui::Text("Map Delay");
+            ImGui::NextColumn();
             ImGui::SetNextItemWidth(-1);
-            UI::Helpers::InputIntWithRange("Map Delay", *currentMapDelayValue,
+            UI::Helpers::InputIntWithRange("##MapDelay", *currentMapDelayValue,
                 0, 300, 0.0f, currentMapDelayCVar, plugin_->cvarManager,
                 plugin_->gameWrapper, mapDelayTooltip, nullptr);
+            ImGui::NextColumn();
 
             ImGui::Columns(1); // Reset
             
@@ -230,7 +235,15 @@ void SettingsUI::RenderFreeplayMode(std::string& currentFreeplayCode) {
     }
 
     const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndex].name.c_str();
-    if (UI::Helpers::ComboWithTooltip("Freeplay Maps", freeplayLabel,
+    
+    ImGui::Columns(2, "FreeplayCols", false);
+    ImGui::SetColumnWidth(0, 150.0f);
+    
+    ImGui::Text("Freeplay Map");
+    ImGui::NextColumn();
+    
+    ImGui::SetNextItemWidth(-1);
+    if (UI::Helpers::ComboWithTooltip("##FreeplayMap", freeplayLabel,
         "Select which stadium to load after matches", -1.0f)) {
         ImGuiListClipper clipper;
         clipper.Begin((int)RLMaps.size());
@@ -246,6 +259,7 @@ void SettingsUI::RenderFreeplayMode(std::string& currentFreeplayCode) {
         }
         ImGui::EndCombo();
     }
+    ImGui::Columns(1);
 }
 
 void SettingsUI::RenderTrainingMode(int trainingModeValue, std::string& currentTrainingCode) {
@@ -299,10 +313,13 @@ void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
     const char* workshopLabel = RLWorkshop.empty() ? "<none>" : RLWorkshop[currentIndex].name.c_str();
     
     ImGui::Columns(2, "WorkshopCols", false);
-    float width = ImGui::GetWindowContentRegionWidth();
-    ImGui::SetColumnWidth(0, width - 160.0f);
+    ImGui::SetColumnWidth(0, 150.0f);
 
-    if (UI::Helpers::ComboWithTooltip("Workshop Maps", workshopLabel,
+    ImGui::Text("Workshop Map");
+    ImGui::NextColumn();
+
+    ImGui::SetNextItemWidth(-1);
+    if (UI::Helpers::ComboWithTooltip("##WorkshopMap", workshopLabel,
         "Select which workshop map to load after matches", -1.0f)) {
         ImGuiListClipper clipper;
         clipper.Begin((int)RLWorkshop.size());
@@ -320,8 +337,7 @@ void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
         ImGui::EndCombo();
     }
 
-    ImGui::NextColumn();
-    if (ImGui::Button("Refresh##maps", ImVec2(-1, 0))) {
+    if (ImGui::Button("Refresh List", ImVec2(-1, 0))) {
         // After refresh, selection persists automatically since we use path-based lookup
         plugin_->LoadWorkshopMaps();
     }
@@ -345,11 +361,16 @@ void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
             workshopPathInit = true;
         }
 
-        ImGui::TextWrapped("Workshop maps root folder:");
+        ImGui::Columns(2, "WorkshopSourceCols", false);
+        ImGui::SetColumnWidth(0, 150.0f);
+
+        ImGui::Text("Maps Root Folder");
+        ImGui::NextColumn();
+
         ImGui::SetNextItemWidth(-1.0f);
         ImGui::InputText("##workshop_root", workshopPathBuf, IM_ARRAYSIZE(workshopPathBuf));
 
-        if (ImGui::Button("Save Workshop Source", ImVec2(-1, 0))) {
+        if (ImGui::Button("Save Path", ImVec2(-1, 0))) {
             std::filesystem::path workshopPath(workshopPathBuf);
             if (!workshopPath.empty() && std::filesystem::exists(workshopPath) && std::filesystem::is_directory(workshopPath)) {
                 std::filesystem::path cfgPath = plugin_->GetWorkshopLoaderConfigPath();
@@ -364,6 +385,7 @@ void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
                 }
             }
         }
+        ImGui::Columns(1);
         ImGui::TreePop();
     }
 }

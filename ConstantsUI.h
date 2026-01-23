@@ -83,17 +83,17 @@ namespace UI {
 
 		// === Status Colors ===
 
-		// Text color for section headers in settings (disabled gray)
-		inline const ImVec4 HEADER_TEXT_COLOR = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+		// Text color for section headers in settings (brightened from 0.6)
+		inline const ImVec4 HEADER_TEXT_COLOR = ImVec4(0.9f, 0.9f, 0.9f, 1.0f);
 
 		// Color for separator line in status section (white)
 		inline const ImVec4 STATUS_SEPARATOR_COLOR = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
 
-		// Text color for "Enabled" status in Auto-Load settings (green)
-		inline const ImVec4 STATUS_ENABLED_TEXT_COLOR = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
+		// Text color for "Enabled" status in Auto-Load settings (bright green)
+		inline const ImVec4 STATUS_ENABLED_TEXT_COLOR = ImVec4(0.2f, 1.0f, 0.2f, 1.0f);
 
-		// Text color for "Disabled" status in Auto-Load settings (red)
-		inline const ImVec4 STATUS_DISABLED_TEXT_COLOR = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+		// Text color for "Disabled" status in Auto-Load settings (bright red)
+		inline const ImVec4 STATUS_DISABLED_TEXT_COLOR = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
 
 		// === Timer Durations ===
 
@@ -272,26 +272,26 @@ namespace UI {
 
 		// === UI State Colors ===
 
-		// Text color for section headers in Training Packs tab (blue)
-		inline const ImVec4 SECTION_HEADER_TEXT_COLOR = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
+		// Text color for section headers in Training Packs tab (bright cyan)
+		inline const ImVec4 SECTION_HEADER_TEXT_COLOR = ImVec4(0.4f, 0.9f, 1.0f, 1.0f);
 
-		// Text color for "Last updated" timestamp (gray)
-		inline const ImVec4 LAST_UPDATED_TEXT_COLOR = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+		// Text color for "Last updated" timestamp (brightened gray)
+		inline const ImVec4 LAST_UPDATED_TEXT_COLOR = ImVec4(0.85f, 0.85f, 0.85f, 1.0f);
 
-		// Text color for scraping status message (yellow warning)
-		inline const ImVec4 SCRAPING_STATUS_TEXT_COLOR = ImVec4(1.0f, 0.8f, 0.0f, 1.0f);
+		// Text color for scraping status message (bright yellow)
+		inline const ImVec4 SCRAPING_STATUS_TEXT_COLOR = ImVec4(1.0f, 0.9f, 0.2f, 1.0f);
 
-		// Text color for bag rotation active status message (green)
+		// Text color for bag rotation active status message (bright green)
 		inline const ImVec4 BAG_ROTATION_STATUS_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
 
-		// Text color for success message "Pack added!" in custom pack form (green)
+		// Text color for success message "Pack added!" in custom pack form (bright green)
 		inline const ImVec4 SUCCESS_MESSAGE_TEXT_COLOR = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
 
-		// Text color for error message in pack code validation (red)
+		// Text color for error message in pack code validation (bright red)
 		inline const ImVec4 ERROR_MESSAGE_TEXT_COLOR = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
 
-		// Text color for disabled/info text in custom pack form (gray)
-		inline const ImVec4 DISABLED_INFO_TEXT_COLOR = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+		// Text color for disabled/info text in custom pack form (brightened gray)
+		inline const ImVec4 DISABLED_INFO_TEXT_COLOR = ImVec4(0.8f, 0.8f, 0.8f, 1.0f);
 
 		// === Button Colors ===
 
@@ -329,11 +329,11 @@ namespace UI {
 
 		// === Status Message Colors ===
 
-		// Text color for section header in Loadout Manager tab (blue)
-		inline const ImVec4 SECTION_HEADER_COLOR = ImVec4(0.5f, 0.8f, 1.0f, 1.0f);
+		// Text color for section header in Loadout Manager tab (bright cyan)
+		inline const ImVec4 SECTION_HEADER_COLOR = ImVec4(0.4f, 0.9f, 1.0f, 1.0f);
 
-		// Text color for error/warning messages (red)
-		inline const ImVec4 ERROR_WARNING_TEXT_COLOR = ImVec4(1.0f, 0.5f, 0.5f, 1.0f);
+		// Text color for error/warning messages (bright red)
+		inline const ImVec4 ERROR_WARNING_TEXT_COLOR = ImVec4(1.0f, 0.6f, 0.6f, 1.0f);
 
 		// Text color for "Applying loadout..." status (yellow)
 		inline const ImVec4 APPLYING_STATUS_COLOR = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);

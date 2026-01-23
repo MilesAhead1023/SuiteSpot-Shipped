@@ -25,19 +25,10 @@ void SettingsUI::RenderMainSettingsWindow() {
 
     ImGui::SetWindowFontScale(UI::FONT_SCALE);
 
-    // Header with metadata - Centered
-    float windowWidth = ImGui::GetWindowSize().x;
-    float textWidth = ImGui::CalcTextSize("SuiteSpot").x;
-    ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
-    ImGui::TextUnformatted("SuiteSpot");
-
-    textWidth = ImGui::CalcTextSize("By: Flicks Creations").x;
-    ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
+    // Header with metadata - Left Aligned
     ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "By: Flicks Creations");
 
     std::string ver = "Version: " + std::string(plugin_version);
-    textWidth = ImGui::CalcTextSize(ver.c_str()).x;
-    ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
     ImGui::TextColored(UI::SettingsUI::HEADER_TEXT_COLOR, "%s", ver.c_str());
 
     ImGui::Spacing();

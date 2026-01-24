@@ -1,0 +1,98 @@
+Dear ImGui Test Engine
+CHANGELOG
+
+** For a while this is going to include only breaking changes.
+** As we slowly transition toward releasing the test engine, this will become a more full fledged changelog.
+
+2022/10/03
+- TestEngine: Added missing ImGuiTestOpFlags_NoError support in ItemAction()/ItemClick() family of
+  functions + in ItemInfoOpenFullPath() function.
+- TestEngine: Fixed MenuCheckAll()/MenuUncheckAll() from trying to access non-checkable items.
+
+2022/10/12
+- TestEngine: WindowInfo() support when child is not in root of parent window.
+- TestEngine: Removed legacy GetChildWindowID() in favor of easier to use and more featured WindowInfo().
+   e.g. ctx->GetChildWindowID(ImGuiTestRef("Parent"), "Child") --> ctx->WindowInfo("Parent/Child")->ID.
+   Note that 'WindowInfo("Parent/Child")->Window' is also frequently useful.
+
+2022/10/11
+- TestEngine: literals can now easily be encoded in decorated path strings using "$$xxxx",
+  making it easier to access items for which the ID stack used PushID(int) or PushID(void*).
+     ItemClick("list/$$1/button") : match id for PushID("list"), PushID(1), Item("button");
+- TestEngine: removed 'ImGuiTestContext::GetIDByInt(int n)'' in favor of using "$$123" syntax.
+- TestEngine: removed 'ImGuiTestContext::GetIDByPtr(void* ptr)'' in favor of using "$$(ptr)0xFFFFFFFF" syntax.
+
+2022/09/26
+- TestEngine: simplified merged Key functions following simplification in core lib.
+     ctx->KeyDown(ImGuiKey key, ImGuiKeyChord mods = 0);                 -> KeyDown(ImGuiKeyChord key_chord);
+     ctx->KeyPress(ImGuiKey key, ImGuiKeyChord mods = 0, int count = 1); -> KeyPress(ImGuiKeyChord key_chord, int count = 1);
+     ctx->KeyModPress(ImGuiModFlags mods);                               -> KeyPress(ImGuiKeyChord key_chord, int count = 1);
+  ImGuiKeyChord = ImGuiKey_XXX or ImGuiMod_XXX or ImGuiKey_XXX | ImGuiMod_XXX.
+  Same for all ctx->KeyXXX functions.
+- TestEngine: following on core lib, renamed/merged mod enums and flags into same value:
+     ImGuiKey_ModXXX   -> ImGuiMod_XXX
+     ImGuiModFlags_XXX -> ImGuiMod_XXX
+  See main library changelog for details.
+
+2022/09/05
+- TestEngine: renamed ImGuiTestEngine_UseSimulatedInputs() to ImGuiTestEngine_IsUsingSimulatedInputs().
+
+2022/09/02
+- TestEngine: removed ImGuiTestContext::NavCancel(): same as ->KeyPress(ImGuiKey_Escape);
+  Follow on core lib which is moving away from the NavInput_ semantic, in favor of using ImGuiKey enum
+  for both keys and gamepads actions.
+- TestEngine: removed ImGuiTestContext::NavEnableForWindow() which was a workaround/kludge.
+
+2022/08/25:
+- TestEngine: Changed ItemInfo() functions to never return a NULL pointer anymore.
+  If you were testing for NULL pointer, the right test to do now is 'info->ID != 0'.
+  This change reduce the likehood of failing test code crashing the application.
+- TestEngine: Changed signatured of ItemAction() from:
+    void ItemAction(ImGuiTestAction action, ImGuiTestRef ref, void* action_arg = NULL, ImGuiTestOpFlags flags = 0)
+  to
+    void ItemAction(ImGuiTestAction action, ImGuiTestRef ref, ImGuiTestOpFlags flags = 0, void* action_arg = NULL)
+  As action_arg is rarely used and may be removed.
+
+
+2022/07/19
+- TestEngine: The syntax "/someidentifier" to ignore the current SetRef() value has been changed
+  to "//someidentifier".
+    - "//" ref prefix now resets ID seed to 0 (old behavior)
+    - "/" ref prefix now refers to "current window" id.s
+      - In GuiFunc, "/" refers to current window we are Begin()-ing into.
+      - In TestFunc, "/" refers to the window set by SetRef().
+    - This change is to be consistent with core Dear ImGui adding ways to compute ID given a path,
+      and both "/" and "//" are desirable features.
+
+2022/05/10
+- TestEngine: Installation of a crash handler is now explicit and optional. Do one of the following:
+  - Call ImGuiTestEngine_InstallDefaultCrashHandler() to install default crash handler.
+  - Call ImGuiTestEngine_CrashHandler() from your own custom crash handler if such exists.
+
+2022/04/08
+- TestEngine: fix ItemAction() or ItemInfo() with leading **/ wildcard from not reporting any error on failure.
+
+2022/04/07
+- TestEngine: added more filtering options to ImGuiTestEngine_QueueTests() and command-line suppot.
+  - "all"   : all tests, no matter what group they are in.
+  - "tests" : all tests in the ImGuiTestGroup_Tests group.
+  - "perfs" : all tests in the ImGuiTestGroup_Perfs group.
+  - "^nav_" : all tests with name starting with "nav_".
+  - "-xxxx" : no tests will be matched because query does not include any.
+  - "tests,-scroll,-^nav_" : all tests that do not contain "scroll" in their name and does not start with "nav_".
+
+2022/03/28
+- TestEngine: Capture: Removed requirement to store/pass a ImGuiCaptureArgs in ctx->CaptureXXX functions.
+  General tidying up of the capture API.
+
+2022/03/23
+- TestEngine: Renamed ImGuiTestEngineIO::VideoCaptureFFMPEGPath to ::VideoCaptureEncoderPath.
+
+2022/03/15
+- TestEngine: Moved the ImGuiContext* parameter from ImGuiTestEngine_CreateContext() to ImGuiTestEngine_Start().
+- TestEngine: Renamed bool ImGuiTestEngineIO::RunningTest to bool ::IsRunningTests.
+- TestEngine: Renamed bool ImGuiTestEngineIO::RenderWantMaxSpeed to ::IsRequestingMaxAppSpeed.
+
+2022/02/15
+- TestEngine: Capture: rename ImGuiCaptureArgs::InOutputFileTemplate to InOutputFile (it was only
+  used as template by the capture tool UI, which now manages its own data correctly).

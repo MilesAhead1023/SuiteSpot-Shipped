@@ -104,11 +104,18 @@ set "BM=%25AppData%25\bakkesmod\bakkesmod"
 set "PATCH=%25BM%25\bakkesmodsdk\bakkesmod-patch.exe"
 set "DLL=$(TargetPath)"
 set "PROJECT_DIR=$(ProjectDir)"
+set "LUA_DLL=C:\vcpkg\installed\x64-windows\bin\lua.dll"
 mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
 mkdir "%25BM%25\data\SuiteSpot\TrainingSuite" 2&gt;nul
 mkdir "%25BM%25\plugins\settings" 2&gt;nul
 echo [PostBuild] Copying resources...
 xcopy "%25PROJECT_DIR%25Resources" "%25BM%25\data\SuiteSpot\Resources" /E /I /Y /Q
+if exist "%25LUA_DLL%25" (
+  echo [PostBuild] Copying Lua runtime...
+  copy /Y "%25LUA_DLL%25" "%25BM%25\plugins\lua.dll" >nul
+) else (
+  echo [PostBuild] WARN: Lua runtime not found at "%25LUA_DLL%25"
+)
 if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
   exit /b 1

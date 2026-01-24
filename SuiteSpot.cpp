@@ -533,6 +533,15 @@ void SuiteSpot::onLoad() {
 
     if (settingsSync) {
         settingsSync->RegisterAllCVars(cvarManager);
+        cvarManager->registerCvar("suitespot_ui_editor", "0", "Show SuiteSpot UI editor tools (dev)", true, true, 0, true, 1);
+        cvarManager->registerCvar("suitespot_ui_show_demo", "0", "Show Dear ImGui demo window (dev)", true, true, 0, true, 1);
+        cvarManager->registerCvar("suitespot_ui_show_metrics", "0", "Show Dear ImGui metrics window (dev)", true, true, 0, true, 1);
+        cvarManager->registerCvar("suitespot_ui_show_style", "0", "Show Dear ImGui style editor window (dev)", true, true, 0, true, 1);
+        cvarManager->registerCvar("suitespot_ui_json_enable", "0", "Render JSON-defined UI windows (dev)", true, true, 0, true, 1);
+        cvarManager->registerCvar("suitespot_ui_json_path", "SuiteSpot/Dev/ui_layout.json", "Path to JSON UI file (relative to data root)", true);
+        cvarManager->registerCvar("suitespot_ui_lua_enable", "0", "Render Lua-defined UI windows (dev)", true, true, 0, true, 1);
+        cvarManager->registerCvar("suitespot_ui_lua_path", "SuiteSpot/Dev/ui_layout.lua", "Path to Lua UI file (relative to data root)", true);
+        cvarManager->registerCvar("suitespot_ui_lua_autoreload", "1", "Auto-reload Lua UI when file changes (dev)", true, true, 0, true, 1);
     }
     
         cvarManager->registerNotifier("healer_test_fetch", [this](std::vector<std::string> args) {

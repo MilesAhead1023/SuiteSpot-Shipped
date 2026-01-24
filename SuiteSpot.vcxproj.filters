@@ -93,6 +93,12 @@
     <ClCompile Include="HelpersUI.cpp">
       <Filter>Plugin\src</Filter>
     </ClCompile>
+    <ClCompile Include="UiJsonRenderer.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
+    <ClCompile Include="LuaUiEngine.cpp">
+      <Filter>Plugin\src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imgui_rangeslider.h">
@@ -153,6 +159,12 @@
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="HelpersUI.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="UiJsonRenderer.h">
+      <Filter>Plugin\header</Filter>
+    </ClInclude>
+    <ClInclude Include="LuaUiEngine.h">
       <Filter>Plugin\header</Filter>
     </ClInclude>
     <ClInclude Include="MapList.h">

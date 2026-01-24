@@ -6,6 +6,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cstring>
+#include <windows.h>
 
 LuaUiEngine::LuaUiEngine(SuiteSpot* plugin)
     : plugin_(plugin) {}
@@ -27,6 +28,11 @@ bool LuaUiEngine::LoadFromFile(const std::filesystem::path& path, std::string* e
     last_path_.clear();
     has_script_ = false;
     text_state_.clear();
+
+    if (!EnsureLuaRuntimeLoaded(error_out)) {
+        last_error_ = error_out ? *error_out : "Lua runtime not loaded.";
+        return false;
+    }
 
     if (!std::filesystem::exists(path)) {
         last_error_ = "Lua file not found.";
@@ -51,6 +57,30 @@ bool LuaUiEngine::LoadFromFile(const std::filesystem::path& path, std::string* e
     last_write_time_ = std::filesystem::last_write_time(path);
     has_script_ = true;
     if (error_out) *error_out = "";
+    return true;
+}
+
+bool LuaUiEngine::EnsureLuaRuntimeLoaded(std::string* error_out) {
+    if (GetModuleHandleW(L"lua.dll")) {
+        return true;
+    }
+
+    wchar_t exe_path[MAX_PATH] = {};
+    if (!GetModuleFileNameW(nullptr, exe_path, MAX_PATH)) {
+        if (error_out) *error_out = "Failed to resolve executable path.";
+        return false;
+    }
+
+    std::filesystem::path exe_dir = std::filesystem::path(exe_path).parent_path();
+    std::filesystem::path lua_path = exe_dir / "plugins" / "lua.dll";
+
+    if (LoadLibraryW(lua_path.c_str()) == nullptr) {
+        if (error_out) {
+            *error_out = "Failed to load lua.dll from plugins folder. Ensure it exists at: " + lua_path.string();
+        }
+        return false;
+    }
+
     return true;
 }
 

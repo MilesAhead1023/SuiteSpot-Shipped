@@ -23,6 +23,7 @@ public:
     const std::filesystem::path& GetLastPath() const;
 
 private:
+    bool EnsureLuaRuntimeLoaded(std::string* error_out);
     void ResetState();
     void RegisterApi();
     bool CallRender();

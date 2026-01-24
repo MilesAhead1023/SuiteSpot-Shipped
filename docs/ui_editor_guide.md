@@ -33,6 +33,7 @@ The window also includes:
 - Copy+Preview: clicking a snippet copies it and opens its live preview.
 - JSON UI (Experimental): render a UI from `ui_layout.json` without recompiling.
 - Lua UI (Experimental): render UI + advanced logic from `ui_layout.lua` without recompiling.
+- Lua Snippet Builder: generate Lua code blocks with buttons, copy/save them.
 
 ## JSON UI (Experimental)
 
@@ -97,6 +98,9 @@ Lua API (initial set):
 - ui.begin_tab_bar / ui.end_tab_bar
 - ui.begin_tab_item / ui.end_tab_item
 - ui.tooltip
+- ui.image (ImTextureID as integer), ui.draw_line, ui.draw_rect, ui.draw_rect_filled
+- ui.begin_drag_drop_source / ui.set_drag_drop_payload / ui.end_drag_drop_source
+- ui.begin_drag_drop_target / ui.accept_drag_drop_payload / ui.end_drag_drop_target
 
 Commands and CVars:
 - cmd.exec("togglemenu suitespot_browser")

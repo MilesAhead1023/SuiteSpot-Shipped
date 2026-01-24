@@ -5,6 +5,7 @@
 #include <lua.hpp>
 #include <fstream>
 #include <algorithm>
+#include <cstring>
 
 LuaUiEngine::LuaUiEngine(SuiteSpot* plugin)
     : plugin_(plugin) {}
@@ -157,6 +158,16 @@ void LuaUiEngine::RegisterApi() {
     PushUiFunc(state_, "begin_tab_item", L_BeginTabItem, this);
     PushUiFunc(state_, "end_tab_item", L_EndTabItem, this);
     PushUiFunc(state_, "tooltip", L_SetTooltip, this);
+    PushUiFunc(state_, "image", L_Image, this);
+    PushUiFunc(state_, "draw_line", L_DrawLine, this);
+    PushUiFunc(state_, "draw_rect", L_DrawRect, this);
+    PushUiFunc(state_, "draw_rect_filled", L_DrawRectFilled, this);
+    PushUiFunc(state_, "begin_drag_drop_source", L_BeginDragDropSource, this);
+    PushUiFunc(state_, "set_drag_drop_payload", L_SetDragDropPayload, this);
+    PushUiFunc(state_, "end_drag_drop_source", L_EndDragDropSource, this);
+    PushUiFunc(state_, "begin_drag_drop_target", L_BeginDragDropTarget, this);
+    PushUiFunc(state_, "accept_drag_drop_payload", L_AcceptDragDropPayload, this);
+    PushUiFunc(state_, "end_drag_drop_target", L_EndDragDropTarget, this);
     lua_setglobal(state_, "ui");
 
     lua_newtable(state_); // cvar
@@ -428,6 +439,108 @@ int LuaUiEngine::L_EndTabItem(lua_State* L) {
 int LuaUiEngine::L_SetTooltip(lua_State* L) {
     const char* text = luaL_checkstring(L, 1);
     ImGui::SetTooltip("%s", text);
+    return 0;
+}
+
+static ImU32 LuaColorToU32(lua_State* L, int idx, ImU32 fallback) {
+    if (!lua_istable(L, idx)) {
+        return fallback;
+    }
+    lua_rawgeti(L, idx, 1);
+    lua_rawgeti(L, idx, 2);
+    lua_rawgeti(L, idx, 3);
+    lua_rawgeti(L, idx, 4);
+    ImVec4 color(
+        (float)luaL_optnumber(L, -4, 1.0),
+        (float)luaL_optnumber(L, -3, 1.0),
+        (float)luaL_optnumber(L, -2, 1.0),
+        (float)luaL_optnumber(L, -1, 1.0));
+    lua_pop(L, 4);
+    return ImGui::GetColorU32(color);
+}
+
+int LuaUiEngine::L_Image(lua_State* L) {
+    ImTextureID tex = (ImTextureID)(intptr_t)luaL_checkinteger(L, 1);
+    float w = (float)luaL_checknumber(L, 2);
+    float h = (float)luaL_checknumber(L, 3);
+    ImGui::Image(tex, ImVec2(w, h));
+    return 0;
+}
+
+int LuaUiEngine::L_DrawLine(lua_State* L) {
+    float x1 = (float)luaL_checknumber(L, 1);
+    float y1 = (float)luaL_checknumber(L, 2);
+    float x2 = (float)luaL_checknumber(L, 3);
+    float y2 = (float)luaL_checknumber(L, 4);
+    ImU32 col = LuaColorToU32(L, 5, ImGui::GetColorU32(ImGuiCol_Text));
+    float thickness = (float)luaL_optnumber(L, 6, 1.0f);
+    ImGui::GetWindowDrawList()->AddLine(ImVec2(x1, y1), ImVec2(x2, y2), col, thickness);
+    return 0;
+}
+
+int LuaUiEngine::L_DrawRect(lua_State* L) {
+    float x1 = (float)luaL_checknumber(L, 1);
+    float y1 = (float)luaL_checknumber(L, 2);
+    float x2 = (float)luaL_checknumber(L, 3);
+    float y2 = (float)luaL_checknumber(L, 4);
+    ImU32 col = LuaColorToU32(L, 5, ImGui::GetColorU32(ImGuiCol_Text));
+    float rounding = (float)luaL_optnumber(L, 6, 0.0f);
+    float thickness = (float)luaL_optnumber(L, 7, 1.0f);
+    ImGui::GetWindowDrawList()->AddRect(ImVec2(x1, y1), ImVec2(x2, y2), col, rounding, 0, thickness);
+    return 0;
+}
+
+int LuaUiEngine::L_DrawRectFilled(lua_State* L) {
+    float x1 = (float)luaL_checknumber(L, 1);
+    float y1 = (float)luaL_checknumber(L, 2);
+    float x2 = (float)luaL_checknumber(L, 3);
+    float y2 = (float)luaL_checknumber(L, 4);
+    ImU32 col = LuaColorToU32(L, 5, ImGui::GetColorU32(ImGuiCol_Button));
+    float rounding = (float)luaL_optnumber(L, 6, 0.0f);
+    ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(x1, y1), ImVec2(x2, y2), col, rounding);
+    return 0;
+}
+
+int LuaUiEngine::L_BeginDragDropSource(lua_State* L) {
+    bool ok = ImGui::BeginDragDropSource();
+    lua_pushboolean(L, ok);
+    return 1;
+}
+
+int LuaUiEngine::L_SetDragDropPayload(lua_State* L) {
+    const char* type = luaL_checkstring(L, 1);
+    const char* data = luaL_checkstring(L, 2);
+    ImGui::SetDragDropPayload(type, data, strlen(data) + 1);
+    return 0;
+}
+
+int LuaUiEngine::L_EndDragDropSource(lua_State* L) {
+    IM_UNUSED(L);
+    ImGui::EndDragDropSource();
+    return 0;
+}
+
+int LuaUiEngine::L_BeginDragDropTarget(lua_State* L) {
+    bool ok = ImGui::BeginDragDropTarget();
+    lua_pushboolean(L, ok);
+    return 1;
+}
+
+int LuaUiEngine::L_AcceptDragDropPayload(lua_State* L) {
+    const char* type = luaL_checkstring(L, 1);
+    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(type)) {
+        if (payload->Data && payload->DataSize > 0) {
+            lua_pushlstring(L, (const char*)payload->Data, payload->DataSize - 1);
+            return 1;
+        }
+    }
+    lua_pushnil(L);
+    return 1;
+}
+
+int LuaUiEngine::L_EndDragDropTarget(lua_State* L) {
+    IM_UNUSED(L);
+    ImGui::EndDragDropTarget();
     return 0;
 }
 

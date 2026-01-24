@@ -56,6 +56,16 @@ private:
     static int L_BeginTabItem(lua_State* L);
     static int L_EndTabItem(lua_State* L);
     static int L_SetTooltip(lua_State* L);
+    static int L_Image(lua_State* L);
+    static int L_DrawLine(lua_State* L);
+    static int L_DrawRect(lua_State* L);
+    static int L_DrawRectFilled(lua_State* L);
+    static int L_BeginDragDropSource(lua_State* L);
+    static int L_SetDragDropPayload(lua_State* L);
+    static int L_EndDragDropSource(lua_State* L);
+    static int L_BeginDragDropTarget(lua_State* L);
+    static int L_AcceptDragDropPayload(lua_State* L);
+    static int L_EndDragDropTarget(lua_State* L);
 
     static int L_CvarGet(lua_State* L);
     static int L_CvarGetInt(lua_State* L);

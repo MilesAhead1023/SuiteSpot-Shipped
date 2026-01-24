@@ -24,6 +24,19 @@ struct UiValidatorRule {
     const char* note;
 };
 
+static void AppendToBuffer(char* buf, size_t buf_size, const char* text) {
+    if (!buf || !text || buf_size == 0) return;
+    size_t len = strnlen(buf, buf_size);
+    size_t add = strlen(text);
+    if (len + add + 1 >= buf_size) {
+        add = (buf_size > len + 1) ? (buf_size - len - 1) : 0;
+    }
+    if (add > 0) {
+        memcpy(buf + len, text, add);
+        buf[len + add] = '\0';
+    }
+}
+
 static std::string ValidateImGui175(const char* text) {
     if (!text || text[0] == '\0') {
         return "Paste generated ImGui code above and click Validate.";
@@ -489,6 +502,61 @@ end
 
                     if (lua_enabled && lua_engine->HasScript()) {
                         lua_engine->Render();
+                    }
+                }
+
+                if (ImGui::CollapsingHeader("Lua Snippet Builder", ImGuiTreeNodeFlags_DefaultOpen)) {
+                    struct LuaSnippet { const char* label; const char* code; };
+                    static const LuaSnippet lua_snippets[] = {
+                        {"Window", "function render()\n  local open, visible = ui.begin_window(\"My Window\", true)\n  if visible then\n    ui.text(\"Hello\")\n  end\n  ui.end_window()\nend\n\n"},
+                        {"Button", "if ui.button(\"Click Me\") then\n  cmd.exec(\"togglemenu suitespot_browser\")\nend\n\n"},
+                        {"Checkbox", "state = state or false\nstate = ui.checkbox(\"Enable\", state)\n\n"},
+                        {"Slider (int)", "value = value or 50\nvalue, _ = ui.slider_int(\"Value\", value, 0, 100)\n\n"},
+                        {"Input Text", "name = name or \"\"\nname, _ = ui.input_text(\"Name\", name, 128)\n\n"},
+                        {"Combo", "items = items or {\"A\", \"B\", \"C\"}\nidx = idx or 1\nidx, _ = ui.combo(\"Mode\", items, idx)\n\n"},
+                        {"DragDrop", "if ui.begin_drag_drop_source() then\n  ui.set_drag_drop_payload(\"TEXT\", \"payload\")\n  ui.text(\"Dragging...\")\n  ui.end_drag_drop_source()\nend\n\nif ui.begin_drag_drop_target() then\n  local data = ui.accept_drag_drop_payload(\"TEXT\")\n  if data then\n    ui.text(\"Got: \" .. data)\n  end\n  ui.end_drag_drop_target()\nend\n\n"},
+                        {"Draw Line", "ui.draw_line(20, 20, 200, 20, {1, 0, 0, 1}, 2.0)\n\n"}
+                    };
+                    static char lua_snippet_buf[8192] = "";
+                    static std::string lua_snippet_status;
+                    for (const auto& s : lua_snippets) {
+                        if (ImGui::Button(s.label)) {
+                            AppendToBuffer(lua_snippet_buf, IM_ARRAYSIZE(lua_snippet_buf), s.code);
+                        }
+                        ImGui::SameLine();
+                        ImGui::TextDisabled("Insert");
+                    }
+                    if (ImGui::Button("Copy to Clipboard")) {
+                        ImGui::SetClipboardText(lua_snippet_buf);
+                        lua_snippet_status = "Copied to clipboard.";
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Clear")) {
+                        lua_snippet_buf[0] = '\0';
+                        lua_snippet_status = "Cleared.";
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Save to File")) {
+                        EnsureDataDirectories();
+                        auto root = GetDataRoot();
+                        if (!root.empty()) {
+                            std::filesystem::path out_path = root / "SuiteSpot" / "Dev" / "ui_snippets.lua";
+                            std::error_code ec;
+                            std::filesystem::create_directories(out_path.parent_path(), ec);
+                            std::ofstream out(out_path, std::ios::binary | std::ios::trunc);
+                            if (out) {
+                                out << lua_snippet_buf;
+                                lua_snippet_status = std::string("Saved to: ") + out_path.string();
+                            } else {
+                                lua_snippet_status = "Failed to write file.";
+                            }
+                        } else {
+                            lua_snippet_status = "Data root not available.";
+                        }
+                    }
+                    ImGui::InputTextMultiline("##lua_snippets", lua_snippet_buf, IM_ARRAYSIZE(lua_snippet_buf), ImVec2(500, 180));
+                    if (!lua_snippet_status.empty()) {
+                        ImGui::TextWrapped("%s", lua_snippet_status.c_str());
                     }
                 }
             }

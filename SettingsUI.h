@@ -48,7 +48,6 @@ private:
 
     void RenderSinglePackMode(std::string& currentTrainingCode);
     void RenderBagRotationMode();
-    void RenderLoadNowButton();
     std::vector<std::string> GetQuickPicksList();
 
     // Workshop path configuration state

@@ -107,6 +107,7 @@ public:
     // hooks
     void LoadHooks();
     void GameEndedEvent(std::string name);
+    void TryHealCurrentPack(GameWrapper* gw);  // Pack healer helper
 
     // Training Pack update integration
     std::filesystem::path GetTrainingPacksPath() const;
@@ -117,7 +118,6 @@ public:
     
     bool IsEnabled() const;
     bool IsAutoQueueEnabled() const;
-    bool IsBagRotationEnabled() const;
     int GetMapType() const;
     int GetDelayQueueSec() const;
     int GetDelayFreeplaySec() const;
@@ -126,12 +126,6 @@ public:
     std::string GetCurrentFreeplayCode() const;
     std::string GetCurrentTrainingCode() const;
     std::string GetCurrentWorkshopPath() const;
-
-    // Bag pack navigation (for Next/Previous Pack commands)
-    void AdvanceToNextBagPack();
-    void RetreatToPreviousBagPack();
-    std::pair<TrainingEntry, std::string> AdvanceAndGetNextBagPack();
-    std::pair<TrainingEntry, std::string> PeekNextBagPack() const;
 
 private:
     // Loadout management

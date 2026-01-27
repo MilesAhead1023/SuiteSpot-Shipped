@@ -8,6 +8,7 @@
 #include "SettingsUI.h"
 #include "TrainingPackUI.h"
 #include "LoadoutUI.h"
+#include "bakkesmod/wrappers/GameEvent/TrainingEditorWrapper.h"
 #include <fstream>
 #include <string>
 #include <algorithm>
@@ -87,10 +88,6 @@ bool SuiteSpot::IsAutoQueueEnabled() const {
     return settingsSync ? settingsSync->IsAutoQueue() : false;
 }
 
-bool SuiteSpot::IsBagRotationEnabled() const {
-    return settingsSync ? settingsSync->IsBagRotationEnabled() : true;
-}
-
 int SuiteSpot::GetMapType() const {
     return settingsSync ? settingsSync->GetMapType() : 0;
 }
@@ -121,266 +118,6 @@ std::string SuiteSpot::GetCurrentTrainingCode() const {
 
 std::string SuiteSpot::GetCurrentWorkshopPath() const {
     return settingsSync ? settingsSync->GetCurrentWorkshopPath() : "";
-}
-
-std::pair<TrainingEntry, std::string> SuiteSpot::AdvanceAndGetNextBagPack() {
-    if (!trainingPackMgr || !settingsSync) return {{}, ""};
-
-    // Get current bag and index from CVars
-    auto currentBagCvar = cvarManager->getCvar("suitespot_current_bag");
-    auto currentIdxCvar = cvarManager->getCvar("suitespot_current_bag_pack_index");
-
-    std::string currentBag = currentBagCvar ? currentBagCvar.getStringValue() : "";
-    int currentIdx = currentIdxCvar ? currentIdxCvar.getIntValue() : 0;
-
-    // Get available bags
-    const auto& bags = trainingPackMgr->GetAvailableBags();
-
-    // Get packs in current bag (if any)
-    std::vector<TrainingEntry> packsInBag;
-    if (!currentBag.empty()) {
-        packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-    }
-
-    // Advance index
-    currentIdx++;
-
-    // If past end of current bag (or no current bag), move to next enabled bag
-    if (currentIdx >= (int)packsInBag.size() || currentBag.empty()) {
-        // Find current bag position and get next enabled bag
-        bool foundCurrent = currentBag.empty();
-        bool foundNext = false;
-
-        for (const auto& bag : bags) {
-            if (!bag.enabled) continue;
-            int bagPackCount = trainingPackMgr->GetBagPackCount(bag.name);
-            if (bagPackCount == 0) continue;
-
-            if (foundCurrent) {
-                // This is the next valid bag
-                currentBag = bag.name;
-                currentIdx = 0;
-                packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-                foundNext = true;
-                break;
-            }
-
-            if (bag.name == currentBag) {
-                foundCurrent = true;
-            }
-        }
-
-        // If we didn't find a next bag, wrap around to first enabled bag with packs
-        if (!foundNext) {
-            for (const auto& bag : bags) {
-                if (bag.enabled && trainingPackMgr->GetBagPackCount(bag.name) > 0) {
-                    currentBag = bag.name;
-                    currentIdx = 0;
-                    packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-                    break;
-                }
-            }
-        }
-    }
-
-    // Update CVars
-    if (currentBagCvar) currentBagCvar.setValue(currentBag);
-    if (currentIdxCvar) currentIdxCvar.setValue(currentIdx);
-
-    // Return the pack
-    if (!packsInBag.empty() && currentIdx < (int)packsInBag.size()) {
-        return { packsInBag[currentIdx], currentBag };
-    }
-    
-    return { {}, "" };
-}
-
-std::pair<TrainingEntry, std::string> SuiteSpot::PeekNextBagPack() const {
-    if (!trainingPackMgr || !settingsSync) return { {}, "" };
-
-    // Get current bag and index from CVars
-    std::string currentBag = settingsSync->GetCurrentBag();
-    int currentIdx = settingsSync->GetCurrentBagPackIndex();
-
-    // Get available bags
-    const auto& bags = trainingPackMgr->GetAvailableBags();
-
-    // Get packs in current bag (if any)
-    std::vector<TrainingEntry> packsInBag;
-    if (!currentBag.empty()) {
-        packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-    }
-
-    // Advance index (conceptually)
-    currentIdx++;
-
-    // If past end of current bag (or no current bag), move to next enabled bag
-    if (currentIdx >= (int)packsInBag.size() || currentBag.empty()) {
-        // Find current bag position and get next enabled bag
-        bool foundCurrent = currentBag.empty();
-        bool foundNext = false;
-
-        for (const auto& bag : bags) {
-            if (!bag.enabled) continue;
-            int bagPackCount = trainingPackMgr->GetBagPackCount(bag.name);
-            if (bagPackCount == 0) continue;
-
-            if (foundCurrent) {
-                // This is the next valid bag
-                currentBag = bag.name;
-                currentIdx = 0;
-                packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-                foundNext = true;
-                break;
-            }
-
-            if (bag.name == currentBag) {
-                foundCurrent = true;
-            }
-        }
-
-        // If we didn't find a next bag, wrap around to first enabled bag with packs
-        if (!foundNext) {
-            for (const auto& bag : bags) {
-                if (bag.enabled && trainingPackMgr->GetBagPackCount(bag.name) > 0) {
-                    currentBag = bag.name;
-                    currentIdx = 0;
-                    packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-                    break;
-                }
-            }
-        }
-    }
-
-    // Return the pack
-    if (!packsInBag.empty() && currentIdx < (int)packsInBag.size()) {
-        return { packsInBag[currentIdx], currentBag };
-    }
-
-    return { {}, "" };
-}
-
-void SuiteSpot::AdvanceToNextBagPack() {
-    auto [pack, bagName] = AdvanceAndGetNextBagPack();
-    
-    if (!pack.code.empty()) {
-        std::string code = pack.code;
-        std::string name = pack.name;
-
-        gameWrapper->SetTimeout([this, code, name, bagName](GameWrapper* gw) {
-            std::string cmd = "load_training " + code;
-            cvarManager->executeCommand(cmd);
-            LOG("SuiteSpot: Next bag pack: {} from {} ({})", name, bagName, code);
-        }, 0.0f);
-    } else {
-        LOG("SuiteSpot: No packs available in any enabled bag");
-    }
-}
-
-void SuiteSpot::RetreatToPreviousBagPack() {
-    if (!trainingPackMgr || !settingsSync) return;
-
-    // Get current bag and index from CVars
-    auto currentBagCvar = cvarManager->getCvar("suitespot_current_bag");
-    auto currentIdxCvar = cvarManager->getCvar("suitespot_current_bag_pack_index");
-
-    std::string currentBag = currentBagCvar ? currentBagCvar.getStringValue() : "";
-    int currentIdx = currentIdxCvar ? currentIdxCvar.getIntValue() : 0;
-
-    // Get available bags
-    const auto& bags = trainingPackMgr->GetAvailableBags();
-
-    // Get packs in current bag (if any)
-    std::vector<TrainingEntry> packsInBag;
-    if (!currentBag.empty()) {
-        packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-    }
-
-    // Retreat index
-    currentIdx--;
-
-    // If before start of current bag (or no current bag), move to previous enabled bag
-    if (currentIdx < 0 || currentBag.empty()) {
-        // Find current bag position and get previous enabled bag
-        std::string prevBag;
-        int prevBagLastIdx = -1;
-
-        for (const auto& bag : bags) {
-            if (!bag.enabled) continue;
-            int bagPackCount = trainingPackMgr->GetBagPackCount(bag.name);
-            if (bagPackCount == 0) continue;
-
-            if (bag.name == currentBag) {
-                // Found current bag - use the previous valid bag we found
-                if (!prevBag.empty()) {
-                    currentBag = prevBag;
-                    currentIdx = prevBagLastIdx;
-                    packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-                    break;
-                }
-            }
-
-            // Track this as a potential previous bag
-            prevBag = bag.name;
-            prevBagLastIdx = bagPackCount - 1;
-        }
-
-        // If we didn't find a previous bag (current was first or empty), wrap to last enabled bag
-        if (currentIdx < 0 || currentBag.empty()) {
-            for (const auto& bag : bags) {
-                if (!bag.enabled) continue;
-                int bagPackCount = trainingPackMgr->GetBagPackCount(bag.name);
-                if (bagPackCount == 0) continue;
-
-                // Keep updating to get the last enabled bag with packs
-                prevBag = bag.name;
-                prevBagLastIdx = bagPackCount - 1;
-            }
-
-            if (!prevBag.empty()) {
-                currentBag = prevBag;
-                currentIdx = prevBagLastIdx;
-                packsInBag = trainingPackMgr->GetPacksInBag(currentBag);
-            }
-        }
-    }
-
-    // Update CVars
-    if (currentBagCvar) currentBagCvar.setValue(currentBag);
-    if (currentIdxCvar) currentIdxCvar.setValue(currentIdx);
-
-    // Load the pack
-    if (!packsInBag.empty() && currentIdx >= 0 && currentIdx < (int)packsInBag.size()) {
-        std::string code = packsInBag[currentIdx].code;
-        std::string name = packsInBag[currentIdx].name;
-        std::string bagName = currentBag;
-
-        gameWrapper->SetTimeout([this, code, name, bagName](GameWrapper* gw) {
-            std::string cmd = "load_training " + code;
-            cvarManager->executeCommand(cmd);
-            LOG("SuiteSpot: Previous bag pack: {} from {} ({})", name, bagName, code);
-        }, 0.0f);
-    } else {
-        LOG("SuiteSpot: No packs available in any enabled bag");
-    }
-}
-
-std::filesystem::path SuiteSpot::GetTrainingPacksPath() const {
-    return GetSuiteTrainingDir() / "training_packs.json";
-}
-
-bool SuiteSpot::IsTrainingPackCacheStale() const {
-    return trainingPackMgr ? trainingPackMgr->IsCacheStale(GetTrainingPacksPath()) : true;
-}
-
-std::string SuiteSpot::FormatLastUpdatedTime() const {
-    return trainingPackMgr ? trainingPackMgr->GetLastUpdatedTime(GetTrainingPacksPath()) : "Unknown";
-}
-
-void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath) {
-    if (trainingPackMgr) {
-        trainingPackMgr->LoadPacksFromFile(filePath);
-    }
 }
 
 // #detailed comments: UpdateTrainingPackList
@@ -425,21 +162,40 @@ void SuiteSpot::LoadHooks() {
             GameEndedEvent(eventName); 
         });
 
-    // Metadata Healing Hook
-    gameWrapper->HookEvent("Function TAGame.GameInfo_TrainingEditor_TA.PostBeginPlay", [this](std::string eventName) {
-        if (!trainingPackMgr) return;
-        if (gameWrapper->IsInCustomTraining()) {
-            auto server = gameWrapper->GetGameEventAsServer();
-            if (!server) return;
-            TrainingEditorWrapper editor(server.memory_address);
-            if (!editor) return;
-            auto saveData = editor.GetTrainingData().GetTrainingData();
-            if (!saveData) return;
-            std::string code = saveData.GetCode().ToString();
-            int realShots = saveData.GetNumRounds();
-            trainingPackMgr->HealPack(code, realShots);
+
+
+
+
+    // ===== PACK HEALER - Training Events =====
+    // Based on BakkesMod SDK reference documentation
+    
+    // Hook: Training pack loaded or restarted
+    // Note: IsInCustomTraining() will not yet return true at this point
+    gameWrapper->HookEventPost(
+        "Function TAGame.GameEvent_TrainingEditor_TA.OnInit",
+        [this](std::string eventName) {
+            LOG("Hook triggered: GameEvent_TrainingEditor_TA.OnInit");
+            gameWrapper->SetTimeout([this](GameWrapper* gw) {
+                TryHealCurrentPack(gw);
+            }, 1.5f);
         }
-    });}
+    );
+
+    // Hook: Shot attempt started (player moves)
+    // This fires when switching shots and player starts moving
+    gameWrapper->HookEventPost(
+        "Function TAGame.TrainingEditorMetrics_TA.TrainingShotAttempt",
+        [this](std::string eventName) {
+            LOG("Hook triggered: TrainingEditorMetrics_TA.TrainingShotAttempt");
+            // Note: This hook exists but is not currently used for auto-heal
+        }
+    );
+    
+    // Manual heal command
+    cvarManager->registerNotifier("ss_heal_current_pack", [this](std::vector<std::string> args) {
+        TryHealCurrentPack(gameWrapper.get());
+    }, "Manually heal the currently loaded training pack", PERMISSION_ALL);
+}
 
 // #detailed comments: GameEndedEvent
 // Purpose: Called by hooked game events when a match ends. The function
@@ -464,15 +220,9 @@ void SuiteSpot::GameEndedEvent(std::string name) {
 
         // Determine if bag rotation should be used
         int trainingMode = settingsSync->GetTrainingMode();
-        bool useBagRotation = (trainingMode == 1) && trainingPackMgr != nullptr;
-        TrainingEntry selectedBagPack;
-
-        if (useBagRotation) {
-            // Get next pack from bag rotation system (advances sequentially)
-            auto [pack, bagName] = AdvanceAndGetNextBagPack();
-            selectedBagPack = pack;
-            useBagRotation = !selectedBagPack.code.empty();  // Only use if we got a valid pack
-        }
+        // Bag rotation removed - always use single pack mode
+        TrainingEntry selectedBagPack;  // Empty
+        const bool useBagRotation = false;
 
         autoLoadFeature->OnMatchEnded(gameWrapper, cvarManager, RLMaps, RLTraining, RLWorkshop,
             useBagRotation, selectedBagPack, *settingsSync, usageTracker.get());
@@ -492,6 +242,79 @@ void SuiteSpot::GameEndedEvent(std::string name) {
             }
         }
     }
+}
+
+// Helper method to extract and heal pack data from current training session
+void SuiteSpot::TryHealCurrentPack(GameWrapper* gw) {
+    if (!trainingPackMgr) {
+        LOG("SuiteSpot: TryHealCurrentPack - trainingPackMgr is null");
+        return;
+    }
+    
+    if (!gw) {
+        LOG("SuiteSpot: TryHealCurrentPack - GameWrapper is null");
+        return;
+    }
+    
+    if (!gw->IsInCustomTraining()) {
+        LOG("SuiteSpot: TryHealCurrentPack - Not in custom training (IsInCustomTraining=false)");
+        return;
+    }
+    
+    LOG("SuiteSpot: TryHealCurrentPack - In custom training, attempting to get data...");
+    
+    auto server = gw->GetGameEventAsServer();
+    if (!server) {
+        LOG("SuiteSpot: TryHealCurrentPack - Failed to get GameEventAsServer");
+        return;
+    }
+    
+    TrainingEditorWrapper editor(server.memory_address);
+    if (!editor) {
+        LOG("SuiteSpot: TryHealCurrentPack - Failed to create TrainingEditorWrapper");
+        return;
+    }
+    
+    auto trainingData = editor.GetTrainingData();
+    if (!trainingData) {
+        LOG("SuiteSpot: TryHealCurrentPack - Failed to get TrainingData");
+        return;
+    }
+    
+    auto saveData = trainingData.GetTrainingData();
+    if (!saveData) {
+        LOG("SuiteSpot: TryHealCurrentPack - Failed to get TrainingEditorSaveData");
+        return;
+    }
+    
+    std::string code = saveData.GetCode().ToString();
+    
+    if (code.empty()) {
+        LOG("SuiteSpot: TryHealCurrentPack - Pack code is empty");
+        return;
+    }
+    
+    // Try multiple methods to get shot count
+    int realShots = 0;
+    
+    // Method 1: From TrainingEditorWrapper directly
+    realShots = editor.GetTotalRounds();
+    LOG("SuiteSpot: Method 1 (editor.GetTotalRounds): {}", realShots);
+    
+    // Method 2: From save data (backup)
+    if (realShots <= 0) {
+        realShots = saveData.GetNumRounds();
+        LOG("SuiteSpot: Method 2 (saveData.GetNumRounds): {}", realShots);
+    }
+    
+    if (realShots <= 0) {
+        LOG("SuiteSpot: ❌ All methods failed to extract shot count (got {})", realShots);
+        return;
+    }
+    
+    LOG("SuiteSpot: ✅ Successfully extracted pack data - Code: {}, Shots: {}", code, realShots);
+    LOG("SuiteSpot: Calling HealPack...");
+    trainingPackMgr->HealPack(code, realShots);
 }
 
 void SuiteSpot::onLoad() {
@@ -534,26 +357,6 @@ void SuiteSpot::onLoad() {
     if (settingsSync) {
         settingsSync->RegisterAllCVars(cvarManager);
     }
-    
-        cvarManager->registerNotifier("healer_test_fetch", [this](std::vector<std::string> args) {
-        if (args.size() < 2) {
-            LOG("Usage: healer_test_fetch <Code>");
-            return;
-        }
-        if (trainingPackMgr) {
-            trainingPackMgr->TestHealerFetch(gameWrapper, args[1]);
-        }
-    }, "Test the training pack metadata healer", PERMISSION_ALL);
-
-    // Next pack command - advances to next pack in current bag (wraps to next bag)
-    cvarManager->registerNotifier("suitespot_next_bag_pack", [this](std::vector<std::string> args) {
-        AdvanceToNextBagPack();
-    }, "Load next pack in current bag (wraps to next bag)", PERMISSION_ALL);
-
-    // Previous pack command - retreats to previous pack in current bag (wraps to previous bag)
-    cvarManager->registerNotifier("suitespot_previous_bag_pack", [this](std::vector<std::string> args) {
-        RetreatToPreviousBagPack();
-    }, "Load previous pack in current bag (wraps to previous bag)", PERMISSION_ALL);
 
     LOG("SuiteSpot: Plugin initialization complete");
 }
@@ -699,6 +502,18 @@ void SuiteSpot::OnClose() {
 
 
 
+}
+
+std::filesystem::path SuiteSpot::GetTrainingPacksPath() const
+{
+    return gameWrapper->GetDataFolder() / L"SuiteSpot" / L"TrainingSuite" / L"training_packs.json";
+}
+
+void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath)
+{
+    if (trainingPackMgr) {
+        trainingPackMgr->LoadPacksFromFile(filePath);
+    }
 }
 
 

@@ -33,8 +33,9 @@ public:
     bool IsEnabled() const { return enabled; }
     int GetMapType() const { return mapType; }
     bool IsAutoQueue() const { return autoQueue; }
-    bool IsBagRotationEnabled() const { return bagRotationEnabled; }
+    bool IsBagRotationEnabled() const { return false; }  // Removed feature, always return false
     int GetTrainingMode() const { return trainingMode; }
+    int GetQuickPicksListType() const { return quickPicksListType; }
     int GetQuickPicksCount() const { return quickPicksCount; }
     std::string GetQuickPicksSelected() const { return quickPicksSelected; }
 
@@ -50,17 +51,11 @@ public:
     std::string GetQuickPicksSelectedCode() const { return quickPicksSelected; }
     std::string GetCurrentWorkshopPath() const { return currentWorkshopPath; }
 
-    // Bag navigation getters (Which bag and pack index are we on?)
-    std::string GetCurrentBag() const { return currentBag; }
-    int GetCurrentBagPackIndex() const { return currentBagPackIndex; }
-
     // Setters: Update the local value (used when loading data)
     void SetCurrentFreeplayCode(const std::string& code);
     void SetCurrentTrainingCode(const std::string& code);
     void SetQuickPicksSelected(const std::string& code);
     void SetCurrentWorkshopPath(const std::string& path);
-    void SetCurrentBag(const std::string& bagName);
-    void SetCurrentBagPackIndex(int value);
     void SetTrainingMode(int mode);
 
 private:
@@ -68,9 +63,9 @@ private:
     bool enabled = false;
     int mapType = 0; // 0=Freeplay, 1=Training, 2=Workshop
     bool autoQueue = false;
-    bool bagRotationEnabled = true;  // Use categorized bag rotation for training
 
     int trainingMode = 0; // 0=Single Pack, 1=Bag Rotation
+    int quickPicksListType = 0; // 0=Flicks Picks, 1=Your Favorites
     int quickPicksCount = 10;
     std::string quickPicksSelected = "";
 
@@ -82,8 +77,4 @@ private:
     std::string currentFreeplayCode;   // Freeplay map code (e.g., "beckwith_park_p")
     std::string currentTrainingCode;   // Training pack code (e.g., "XXXX-XXXX-XXXX-XXXX")
     std::string currentWorkshopPath;   // Workshop map path (e.g., "C:/path/to/map.udk")
-
-    // Bag navigation state (for Next Pack feature)
-    std::string currentBag = "";   // Current bag being played through
-    int currentBagPackIndex = 0;   // Current pack index within the bag
 };

@@ -60,43 +60,17 @@ public:
     void HealPack(const std::string& code, int shots);
     bool DeletePack(const std::string& code);
     
-    // Categorized Bag Logic
-    const std::vector<TrainingBag>& GetAvailableBags() const { return availableBags; }
-    const TrainingBag* GetBag(const std::string& bagName) const;
-    std::vector<TrainingEntry> GetPacksInBag(const std::string& bagName) const;
-    int GetBagPackCount(const std::string& bagName) const;
-
-    // Pack-to-bag assignment
-    void AddPackToBag(const std::string& code, const std::string& bagName);
-    void AddPacksToBag(const std::vector<std::string>& codes, const std::string& bagName);
-    void RemovePackFromBag(const std::string& code, const std::string& bagName);
-    void RemovePackFromAllBags(const std::string& code);
-    void ClearBag(const std::string& bagName);  // Remove all packs from a bag
-    bool IsPackInBag(const std::string& code, const std::string& bagName) const;
-
-    // Pack reordering within a bag
-    void SwapPacksInBag(const std::string& bagName, int idx1, int idx2);
-
-    // Bag management
-    void SetBagEnabled(const std::string& bagName, bool enabled);
-    bool CreateCustomBag(const std::string& name, const std::string& icon, const float color[4]);
-    bool DeleteCustomBag(const std::string& bagName);
-
     // Accessors
     const std::vector<TrainingEntry>& GetPacks() const { return RLTraining; }
     int GetPackCount() const { return packCount; }
     std::string GetLastUpdated() const { return lastUpdated; }
     bool IsScrapingInProgress() const { return scrapingInProgress; }
     TrainingEntry* GetPackByCode(const std::string& code);
-    void TestHealerFetch(std::shared_ptr<GameWrapper> gw, std::string code);
 
 private:
     void SavePacksToFile(const std::filesystem::path& filePath);
-    void InitializeDefaultBags();
-    void MigrateShuffleBagToBagCategories();  // Migration from old inShuffleBag to new system
 
     std::vector<TrainingEntry> RLTraining;
-    std::vector<TrainingBag> availableBags;
     mutable std::mutex packMutex;  // Protects RLTraining from concurrent access
     int packCount = 0;
     std::string lastUpdated = "Never";

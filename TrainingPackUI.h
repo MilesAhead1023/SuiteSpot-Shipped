@@ -114,17 +114,9 @@ private:
     UI::StatusMessage customPackStatus;
     UI::StatusMessage browserStatus;
 
-    // Bag manager modal state
-    bool showBagManagerModal = false;
-    std::unordered_map<std::string, std::string> selectedPackInBag;  // bagName → packCode
-
     // Helper methods
     void LoadPackImmediately(const std::string& packCode);
     void RenderCustomPackForm();
-    void RenderBagManagerModal();
-    void RenderBagChildWindow(const TrainingBag& bag, float width, float height);
-    void MoveSelectedPackUp(const std::string& bagName);
-    void MoveSelectedPackDown(const std::string& bagName);
     bool ValidatePackCode(const char* code) const;
     void ClearCustomPackForm();
     void CalculateOptimalColumnWidths();

@@ -424,3 +424,6 @@ FodyWeavers.xsd
 
 # AI context files (SDK reference for Claude Code)
 ContextForAI/
+
+# BakkesMod SDK (reference only - actual SDK comes from AppData via registry)
+bakkesmodsdk/

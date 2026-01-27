@@ -22,11 +22,6 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
             autoQueue = cvar.getBoolValue();
         });
 
-    cvarManager->registerCvar("suitespot_training_mode", "0", "Training mode: 0=Single Pack, 1=Bag Rotation", true, true, 0, true, 1)
-        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
-            trainingMode = cvar.getIntValue();
-        });
-
     cvarManager->registerCvar("suitespot_quickpicks_list_type", "0", "List type: 0=Flicks Picks, 1=Your Favorites", true, true, 0, true, 1)
         .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
             quickPicksListType = cvar.getIntValue();
@@ -82,7 +77,7 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
     cvarManager->getCvar("suitespot_enabled").setValue(enabled ? 1 : 0);
     cvarManager->getCvar("suitespot_map_type").setValue(mapType);
     cvarManager->getCvar("suitespot_auto_queue").setValue(autoQueue ? 1 : 0);
-    cvarManager->getCvar("suitespot_training_mode").setValue(trainingMode);
+    // Bag rotation removed - suitespot_training_mode removed
     cvarManager->getCvar("suitespot_quickpicks_count").setValue(quickPicksCount);
     cvarManager->getCvar("suitespot_quickpicks_selected").setValue(quickPicksSelected);
     cvarManager->getCvar("suitespot_delay_queue_sec").setValue(delayQueueSec);
@@ -112,9 +107,4 @@ void SettingsSync::SetQuickPicksSelected(const std::string& code)
 void SettingsSync::SetCurrentWorkshopPath(const std::string& path)
 {
     currentWorkshopPath = path;
-}
-
-void SettingsSync::SetTrainingMode(int mode)
-{
-    trainingMode = mode;
 }

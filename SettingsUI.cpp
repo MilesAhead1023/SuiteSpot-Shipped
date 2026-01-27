@@ -46,11 +46,8 @@ void SettingsUI::RenderMainSettingsWindow() {
                 statusMessage.ShowSuccess("Loading Freeplay", 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
             }
         } else if (mapType == 1) { // Training
-            int trainingMode = p->settingsSync->GetTrainingMode();
-            std::string code;
-            
             // Bag rotation removed - always use single pack mode
-            code = p->settingsSync->GetQuickPicksSelectedCode();
+            std::string code = p->settingsSync->GetQuickPicksSelectedCode();
             if (code.empty()) code = p->GetCurrentTrainingCode();
 
             if (!code.empty()) {
@@ -81,8 +78,7 @@ void SettingsUI::RenderMainSettingsWindow() {
     bool enabledValue = plugin_->IsEnabled();
     int mapTypeValue = plugin_->GetMapType();
     bool autoQueueValue = plugin_->IsAutoQueueEnabled();
-    // Bag rotation removed
-    int trainingModeValue = plugin_->settingsSync->GetTrainingMode();
+    // Bag rotation removed - trainingModeValue removed
     int delayQueueSecValue = plugin_->GetDelayQueueSec();
     int delayFreeplaySecValue = plugin_->GetDelayFreeplaySec();
     int delayTrainingSecValue = plugin_->GetDelayTrainingSec();
@@ -238,7 +234,7 @@ void SettingsUI::RenderMainSettingsWindow() {
             ImGui::Spacing();
 
             // 2) Map Selection Logic
-            RenderMapSelectionTab(mapTypeValue, (trainingModeValue == 1), currentFreeplayCode,
+            RenderMapSelectionTab(mapTypeValue, false, currentFreeplayCode,
                 currentTrainingCode, currentWorkshopPath, delayFreeplaySecValue,
                 delayTrainingSecValue, delayWorkshopSecValue, delayQueueSecValue);
 
@@ -300,8 +296,8 @@ void SettingsUI::RenderMapSelectionTab(int mapTypeValue,
     if (mapTypeValue == 0) {
         RenderFreeplayMode(currentFreeplayCode);
     } else if (mapTypeValue == 1) {
-        int trainingModeValue = plugin_->settingsSync->GetTrainingMode();
-        RenderTrainingMode(trainingModeValue, currentTrainingCode);
+        // Bag rotation removed - always single pack mode
+        RenderTrainingMode(0, currentTrainingCode);
     } else if (mapTypeValue == 2) {
         RenderWorkshopMode(currentWorkshopPath);
     }
@@ -355,28 +351,9 @@ const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndex].nam
 }
 
 void SettingsUI::RenderTrainingMode(int trainingModeValue, std::string& currentTrainingCode) {
-    ImGui::TextUnformatted("Training Mode:");
-    ImGui::SameLine();
-    
-    if (ImGui::RadioButton("Single Pack", trainingModeValue == 0)) {
-        UI::Helpers::SetCVarSafely("suitespot_training_mode", 0, plugin_->cvarManager, plugin_->gameWrapper);
-    }
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Bag Rotation", trainingModeValue == 1)) {
-        UI::Helpers::SetCVarSafely("suitespot_training_mode", 1, plugin_->cvarManager, plugin_->gameWrapper);
-    }
+    // Bag rotation removed - always use single pack mode
+    RenderSinglePackMode(currentTrainingCode);
 
-    ImGui::Separator();
-    ImGui::Spacing();
-
-    if (trainingModeValue == 0) {
-        RenderSinglePackMode(currentTrainingCode);
-    } else {
-        RenderBagRotationMode();
-    }
-
-    ImGui::Spacing();
-    ImGui::Separator();
     ImGui::Spacing();
 
     if (ImGui::Button("Open Training Pack Browser", ImVec2(250, 30))) {
@@ -533,7 +510,7 @@ std::string selectedCode = plugin_->settingsSync->GetQuickPicksSelectedCode();
         plugin_->cvarManager->getCvar("suitespot_quickpicks_selected").setValue(selectedCode);
     }
 
-    if (ImGui::BeginChild("QuickPicksList", ImVec2(0, UI::QuickPicksUI::TABLE_HEIGHT), true)) {
+    if (ImGui::BeginChild("QuickPicksList", ImVec2(UI::QuickPicksUI::TABLE_WIDTH, UI::QuickPicksUI::TABLE_HEIGHT), true)) {
         for (const auto& code : quickPicks) {
             std::string name = "Unknown Pack";
             int shots = 0;
@@ -564,6 +541,10 @@ std::string selectedCode = plugin_->settingsSync->GetQuickPicksSelectedCode();
 
             if (found) {
                 bool isSelected = (code == selectedCode);
+                
+                // Add top padding
+                ImGui::Dummy(ImVec2(0, 4.0f));
+                
                 ImGui::PushID(code.c_str());
                 if (ImGui::RadioButton("##select", isSelected)) {
                     selectedCode = code;
@@ -574,20 +555,25 @@ std::string selectedCode = plugin_->settingsSync->GetQuickPicksSelectedCode();
                 
                 // Name and Shot Count
                 float availWidth = ImGui::GetContentRegionAvail().x;
+                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f)); // White for name
                 ImGui::Text("%s", name.c_str());
+                ImGui::PopStyleColor();
                 ImGui::SameLine(availWidth - 80.0f); 
                 ImGui::TextDisabled("| %d shots", shots);
 
                 // Description (Indented and Wrapped)
                 if (!description.empty()) {
                     ImGui::Indent(28.0f); 
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.6f, 0.6f, 0.6f, 1.0f)); // Darker gray for description
                     ImGui::PushTextWrapPos(ImGui::GetWindowContentRegionWidth() - 10.0f);
                     ImGui::TextUnformatted(description.c_str());
                     ImGui::PopTextWrapPos();
                     ImGui::PopStyleColor();
                     ImGui::Unindent(28.0f);
                 }
+                
+                // Add bottom padding
+                ImGui::Dummy(ImVec2(0, 4.0f));
                 
                 ImGui::Separator();
                 ImGui::PopID();

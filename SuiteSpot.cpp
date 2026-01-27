@@ -218,8 +218,6 @@ void SuiteSpot::GameEndedEvent(std::string name) {
     if (autoLoadFeature && settingsSync) {
         LOG("SuiteSpot: Triggering AutoLoadFeature::OnMatchEnded");
 
-        // Determine if bag rotation should be used
-        int trainingMode = settingsSync->GetTrainingMode();
         // Bag rotation removed - always use single pack mode
         TrainingEntry selectedBagPack;  // Empty
         const bool useBagRotation = false;

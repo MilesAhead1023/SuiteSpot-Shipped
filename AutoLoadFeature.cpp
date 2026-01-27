@@ -62,49 +62,42 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
         std::string codeToLoad;
         std::string nameToLoad;
 
-        int trainingMode = settings.GetTrainingMode();
+        // Bag rotation removed - always use single pack mode
+        // Single Pack Mode: use quick picks selection
+        std::string targetCode = settings.GetQuickPicksSelectedCode();
+        
+        // If empty, try fallback to current training code (legacy)
+        if (targetCode.empty()) targetCode = settings.GetCurrentTrainingCode();
 
-        // Use bag rotation if in Bag Rotation mode and a pack was selected
-        if (trainingMode == 1 && useBagRotation && !selectedBagPack.code.empty()) {
-            codeToLoad = selectedBagPack.code;
-            nameToLoad = selectedBagPack.name;
-        } else {
-            // Single Pack Mode: use quick picks selection
-            std::string targetCode = settings.GetQuickPicksSelectedCode();
+        // Resolve target code
+        if (!targetCode.empty()) {
+            auto it = std::find_if(training.begin(), training.end(),
+                [&](const TrainingEntry& e) { return e.code == targetCode; });
+            if (it != training.end()) {
+                codeToLoad = targetCode;
+                nameToLoad = it->name;
+            }
+        }
+
+        // Fallback to first Quick Pick if nothing selected or valid found
+        if (codeToLoad.empty()) {
+            std::vector<std::string> quickPicks;
+            if (usageTracker && !usageTracker->IsFirstRun()) {
+                quickPicks = usageTracker->GetTopUsedCodes(settings.GetQuickPicksCount());
+            }
             
-            // If empty, try fallback to current training code (legacy)
-            if (targetCode.empty()) targetCode = settings.GetCurrentTrainingCode();
-
-            // Resolve target code
-            if (!targetCode.empty()) {
-                auto it = std::find_if(training.begin(), training.end(),
-                    [&](const TrainingEntry& e) { return e.code == targetCode; });
-                if (it != training.end()) {
-                    codeToLoad = targetCode;
-                    nameToLoad = it->name;
-                }
+            if (quickPicks.empty()) {
+                for(const auto& p : DefaultPacks::FLICKS_PICKS) quickPicks.push_back(p.code);
             }
 
-            // Fallback to first Quick Pick if nothing selected or valid found
-            if (codeToLoad.empty()) {
-                std::vector<std::string> quickPicks;
-                if (usageTracker && !usageTracker->IsFirstRun()) {
-                    quickPicks = usageTracker->GetTopUsedCodes(settings.GetQuickPicksCount());
-                }
+            if (!quickPicks.empty()) {
+                std::string fallbackCode = quickPicks[0];
+                auto it = std::find_if(training.begin(), training.end(),
+                    [&](const TrainingEntry& e) { return e.code == fallbackCode; });
                 
-                if (quickPicks.empty()) {
-                    for(const auto& p : DefaultPacks::FLICKS_PICKS) quickPicks.push_back(p.code);
-                }
-
-                if (!quickPicks.empty()) {
-                    std::string fallbackCode = quickPicks[0];
-                    auto it = std::find_if(training.begin(), training.end(),
-                        [&](const TrainingEntry& e) { return e.code == fallbackCode; });
-                    
-                    codeToLoad = fallbackCode;
-                    nameToLoad = (it != training.end()) ? it->name : "Quick Pick Fallback";
-                    LOG("SuiteSpot: Selected pack missing, falling back to first Quick Pick: {}", nameToLoad);
-                }
+                codeToLoad = fallbackCode;
+                nameToLoad = (it != training.end()) ? it->name : "Quick Pick Fallback";
+                LOG("SuiteSpot: Selected pack missing, falling back to first Quick Pick: {}", nameToLoad);
             }
         }
 

@@ -34,7 +34,7 @@ public:
     int GetMapType() const { return mapType; }
     bool IsAutoQueue() const { return autoQueue; }
     bool IsBagRotationEnabled() const { return false; }  // Removed feature, always return false
-    int GetTrainingMode() const { return trainingMode; }
+    // Bag rotation removed - GetTrainingMode() removed
     int GetQuickPicksListType() const { return quickPicksListType; }
     int GetQuickPicksCount() const { return quickPicksCount; }
     std::string GetQuickPicksSelected() const { return quickPicksSelected; }
@@ -64,7 +64,7 @@ private:
     int mapType = 0; // 0=Freeplay, 1=Training, 2=Workshop
     bool autoQueue = false;
 
-    int trainingMode = 0; // 0=Single Pack, 1=Bag Rotation
+    // Bag rotation removed - trainingMode variable removed
     int quickPicksListType = 0; // 0=Flicks Picks, 1=Your Favorites
     int quickPicksCount = 10;
     std::string quickPicksSelected = "";

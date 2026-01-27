@@ -1,5 +1,6 @@
 #pragma once
 #include "bakkesmod/plugin/bakkesmodplugin.h"
+#include "bakkesmod/wrappers/http/HttpWrapper.h"
 #include "MapList.h"
 #include "logging.h"
 #include "IMGUI/json.hpp"
@@ -8,6 +9,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <thread>
 
 /*
  * ======================================================================================
@@ -25,8 +27,8 @@
  *
  * HOW DOES IT WORK?
  * 1. Search: Query rocketleaguemaps.us API for maps matching keywords
- * 2. Download: Fetch map files (zip archives) from URLs
- * 3. Extract: Unzip downloaded maps into the workshop folder
+ * 2. Download: Fetch map files (zip archives) from URLs using BakkesMod's HttpWrapper
+ * 3. Extract: Unzip downloaded maps using PowerShell Expand-Archive
  * 4. Metadata: Create JSON files with map info (name, author, description, preview)
  * 5. Integration: Discovered maps appear in the workshop dropdown automatically
  */
@@ -41,6 +43,7 @@ struct WorkshopSearchResult
     std::string downloadUrl;     // Direct download link
     std::string previewUrl;      // Preview image URL
     std::string sizeBytes;       // File size in bytes
+    std::string zipFileName;     // Zip file name
     std::filesystem::path previewImagePath;  // Local cached preview image
     std::shared_ptr<ImageWrapper> previewImage;  // Loaded ImGui texture
     bool isPreviewLoaded = false;
@@ -50,8 +53,8 @@ struct WorkshopSearchResult
 struct DownloadProgress
 {
     std::string mapName;
-    size_t bytesDownloaded = 0;
-    size_t totalBytes = 0;
+    double bytesDownloaded = 0;
+    double totalBytes = 0;
     int percentComplete = 0;
     bool isComplete = false;
     bool hasFailed = false;
@@ -61,10 +64,10 @@ struct DownloadProgress
 class WorkshopDownloader
 {
 public:
-    WorkshopDownloader() = default;
+    WorkshopDownloader(std::shared_ptr<GameWrapper> gw) : gameWrapper(gw) {}
     
     // Search workshop maps
-    void SearchMaps(const std::string& keywords, int page = 0);
+    void SearchMaps(const std::string& keywords, int page = 1);
     bool IsSearching() const { return isSearching; }
     const std::vector<WorkshopSearchResult>& GetSearchResults() const { return searchResults; }
     int GetTotalPages() const { return totalPages; }
@@ -85,15 +88,18 @@ public:
     
 private:
     // Internal download helpers
-    bool DownloadFile(const std::string& url, const std::filesystem::path& outputPath,
-                      std::function<void(size_t, size_t)> progressCallback = nullptr);
-    bool ExtractZipFile(const std::filesystem::path& zipPath, const std::filesystem::path& extractTo);
+    void ExtractZipFile(const std::filesystem::path& zipPath, const std::filesystem::path& extractTo);
     void CreateMapMetadata(const std::filesystem::path& mapFolder, const WorkshopSearchResult& result);
+    void RenameUdkToUpk(const std::filesystem::path& mapFolder);
+    std::string FindUdkInDirectory(const std::filesystem::path& dir);
+    std::string SanitizeMapName(const std::string& name);
     
     // API helpers
     std::string CleanHTML(const std::string& html);
+    void EraseAll(std::string& str, const std::string& from);
     
     // State
+    std::shared_ptr<GameWrapper> gameWrapper;
     std::filesystem::path workshopFolder;
     std::vector<WorkshopSearchResult> searchResults;
     bool isSearching = false;

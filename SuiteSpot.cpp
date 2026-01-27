@@ -5,6 +5,7 @@
 #include "SettingsSync.h"
 #include "AutoLoadFeature.h"
 #include "TrainingPackManager.h"
+#include "WorkshopDownloader.h"
 #include "SettingsUI.h"
 #include "TrainingPackUI.h"
 #include "LoadoutUI.h"
@@ -336,6 +337,11 @@ void SuiteSpot::onLoad() {
     // Initialize PackUsageTracker
     usageTracker = std::make_unique<PackUsageTracker>(GetSuiteTrainingDir() / "pack_usage_stats.json");
     LOG("SuiteSpot: PackUsageTracker initialized");
+
+    // Initialize WorkshopDownloader
+    workshopDownloader = std::make_unique<WorkshopDownloader>(gameWrapper);
+    workshopDownloader->SetWorkshopFolder(gameWrapper->GetDataFolder() / "SuiteSpot" / "Workshop");
+    LOG("SuiteSpot: WorkshopDownloader initialized");
 
     // Check Pack cache and load if available
 

@@ -58,6 +58,7 @@ class MapManager;
 class SettingsSync;
 class AutoLoadFeature;
 class TrainingPackManager;
+class WorkshopDownloader;
 class SettingsUI;
 class TrainingPackUI;
 class LoadoutUI;
@@ -131,6 +132,7 @@ private:
     // Loadout management
     std::unique_ptr<LoadoutManager> loadoutManager;
     std::unique_ptr<PackUsageTracker> usageTracker;
+    std::unique_ptr<WorkshopDownloader> workshopDownloader;
 
     MapManager* mapManager = nullptr;
     SettingsSync* settingsSync = nullptr;

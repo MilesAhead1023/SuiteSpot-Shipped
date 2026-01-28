@@ -375,135 +375,199 @@ void SettingsUI::RenderTrainingMode(int trainingModeValue, std::string& currentT
 }
 
 void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
-    // Workshop Map Search & Download
-    ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Workshop Maps");
-    ImGui::Spacing();
-    
-    // Search section
-    static char searchKeywords[128] = "";
-    ImGui::Text("Search Maps:");
-    ImGui::SetNextItemWidth(300.0f);
-    if (ImGui::InputText("##workshop_search", searchKeywords, IM_ARRAYSIZE(searchKeywords), ImGuiInputTextFlags_EnterReturnsTrue)) {
-        if (strlen(searchKeywords) > 0 && plugin_->workshopDownloader) {
-            plugin_->workshopDownloader->SearchMaps(searchKeywords, 1);
-        }
+    // Header with Refresh button
+    ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Local Workshop Maps");
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x - 70.0f);
+    if (ImGui::Button("Refresh", ImVec2(70, 0))) {
+        plugin_->LoadWorkshopMaps();
+        selectedWorkshopIndex = -1;  // Reset selection
     }
-    ImGui::SameLine();
-    if (ImGui::Button("Search") && plugin_->workshopDownloader) {
-        if (strlen(searchKeywords) > 0) {
-            plugin_->workshopDownloader->SearchMaps(searchKeywords, 1);
-        }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Rescan workshop folders for maps");
     }
-    
-    // Show searching status
-    if (plugin_->workshopDownloader && plugin_->workshopDownloader->IsSearching()) {
-        ImGui::TextDisabled("Searching...");
+    ImGui::Spacing();
+
+    // Check if we have any maps
+    if (RLWorkshop.empty()) {
+        ImGui::TextColored(UI::WorkshopBrowserUI::NO_MAPS_COLOR,
+            "No workshop maps found.");
+        ImGui::TextDisabled("Maps are discovered from:");
+        ImGui::BulletText("WorkshopMapLoader configured path");
+        ImGui::BulletText("Epic Games install mods folder");
+        ImGui::BulletText("Steam install mods folder");
+        ImGui::Spacing();
+        ImGui::TextDisabled("Download maps from the Workshop Browser tab above.");
+        return;
     }
-    
-    ImGui::Spacing();
-    ImGui::Separator();
-    ImGui::Spacing();
-    
-    // Search results
-    if (plugin_->workshopDownloader && !plugin_->workshopDownloader->GetSearchResults().empty()) {
-        ImGui::TextColored(UI::TrainingPackUI::SECTION_HEADER_TEXT_COLOR, "Search Results");
-        
-        const auto& results = plugin_->workshopDownloader->GetSearchResults();
-        
-        if (ImGui::BeginChild("SearchResults", ImVec2(0, 400), true)) {
-            for (size_t i = 0; i < results.size(); i++) {
-                const auto& result = results[i];
-                
-                ImGui::PushID((int)i);
-                
-                // Map name
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-                ImGui::Text("%s", result.name.c_str());
-                ImGui::PopStyleColor();
-                
-                // Author
-                ImGui::SameLine();
-                ImGui::TextDisabled("by %s", result.author.c_str());
-                
-                // Description
-                if (!result.description.empty()) {
-                    ImGui::Indent(20.0f);
-                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.7f, 1.0f));
-                    ImGui::TextWrapped("%s", result.description.c_str());
-                    ImGui::PopStyleColor();
-                    ImGui::Unindent(20.0f);
-                }
-                
-                // Action buttons
-                ImGui::Spacing();
-                
-                // Download button
-                if (ImGui::Button("Download")) {
-                    auto workshopFolder = plugin_->workshopDownloader->GetWorkshopFolder();
-                    plugin_->workshopDownloader->DownloadMap(result, workshopFolder, nullptr);
-                }
-                
-                // Load Now button - check if map is already downloaded
-                ImGui::SameLine();
-                bool mapExists = false;
-                std::string mapPath;
-                for (const auto& workshop : RLWorkshop) {
-                    if (workshop.name == result.name) {
-                        mapExists = true;
-                        mapPath = workshop.filePath;
-                        break;
-                    }
-                }
-                
-                if (mapExists) {
-                    if (ImGui::Button("Load Now")) {
-                        plugin_->gameWrapper->Execute([mapPath](GameWrapper* gw) {
-                            gw->ExecuteUnrealCommand("load_workshop \"" + mapPath + "\"");
-                        });
-                    }
-                } else {
-                    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-                    ImGui::Button("Load Now");
-                    ImGui::PopStyleVar();
-                    ImGui::PopItemFlag();
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                        ImGui::SetTooltip("Download the map first");
-                    }
-                }
-                
-                ImGui::Separator();
-                ImGui::PopID();
+
+    // Initialize selection from current CVar if needed
+    if (selectedWorkshopIndex < 0 && !currentWorkshopPath.empty()) {
+        for (int i = 0; i < (int)RLWorkshop.size(); i++) {
+            if (RLWorkshop[i].filePath == currentWorkshopPath) {
+                selectedWorkshopIndex = i;
+                break;
             }
         }
-        ImGui::EndChild();
     }
-    
-    // Download progress
-    if (plugin_->workshopDownloader && plugin_->workshopDownloader->IsDownloading()) {
-        ImGui::Spacing();
+
+    // Clamp selection to valid range
+    if (selectedWorkshopIndex >= (int)RLWorkshop.size()) {
+        selectedWorkshopIndex = (int)RLWorkshop.size() - 1;
+    }
+
+    // Calculate panel widths
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    float leftWidth = std::max(UI::WorkshopBrowserUI::LEFT_PANEL_MIN_WIDTH,
+                               availWidth * UI::WorkshopBrowserUI::LEFT_PANEL_WIDTH_PERCENT);
+    float rightWidth = availWidth - leftWidth - ImGui::GetStyle().ItemSpacing.x;
+
+    // Two-panel layout
+    ImGui::BeginGroup();
+
+    // === LEFT PANEL: Map List ===
+    if (ImGui::BeginChild("WorkshopMapList", ImVec2(leftWidth, UI::WorkshopBrowserUI::BROWSER_HEIGHT), true)) {
+        ImGui::TextDisabled("%d maps", (int)RLWorkshop.size());
         ImGui::Separator();
-        ImGui::Spacing();
-        
-        const auto& progress = plugin_->workshopDownloader->GetDownloadProgress();
-        
-        ImGui::Text("Downloading: %s", progress.mapName.c_str());
-        
-        float progressFraction = progress.totalBytes > 0 ? 
-            (float)progress.bytesDownloaded / (float)progress.totalBytes : 0.0f;
-        
-        char progressLabel[64];
-        snprintf(progressLabel, sizeof(progressLabel), "%d%%", progress.percentComplete);
-        ImGui::ProgressBar(progressFraction, ImVec2(-1, 0), progressLabel);
-        
-        if (progress.hasFailed) {
-            ImGui::TextColored(ImVec4(1.0f, 0.3f, 0.3f, 1.0f), "Download failed: %s", progress.errorMessage.c_str());
-        } else if (progress.isComplete) {
-            ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "Download complete!");
-            // Refresh workshop maps after successful download
-            plugin_->LoadWorkshopMaps();
+
+        for (int i = 0; i < (int)RLWorkshop.size(); i++) {
+            const auto& entry = RLWorkshop[i];
+            bool isSelected = (i == selectedWorkshopIndex);
+            bool isCurrentAutoLoad = (entry.filePath == currentWorkshopPath);
+
+            ImGui::PushID(i);
+
+            // Show marker if this is the current auto-load selection
+            if (isCurrentAutoLoad) {
+                ImGui::PushStyleColor(ImGuiCol_Text, UI::WorkshopBrowserUI::SELECTED_BADGE_COLOR);
+                ImGui::Text(">");
+                ImGui::PopStyleColor();
+                ImGui::SameLine();
+            }
+
+            if (ImGui::Selectable(entry.name.c_str(), isSelected, ImGuiSelectableFlags_None)) {
+                selectedWorkshopIndex = i;
+            }
+
+            // Double-click to load immediately
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
+                SuiteSpot* p = plugin_;
+                std::string path = entry.filePath;
+                p->gameWrapper->SetTimeout([p, path](GameWrapper* gw) {
+                    p->cvarManager->executeCommand("load_workshop \"" + path + "\"");
+                }, 0.0f);
+                statusMessage.ShowSuccess("Loading Workshop Map", 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+            }
+
+            ImGui::PopID();
         }
     }
+    ImGui::EndChild();
+
+    ImGui::SameLine();
+
+    // === RIGHT PANEL: Details Pane ===
+    if (ImGui::BeginChild("WorkshopMapDetails", ImVec2(rightWidth, UI::WorkshopBrowserUI::BROWSER_HEIGHT), true)) {
+        if (selectedWorkshopIndex >= 0 && selectedWorkshopIndex < (int)RLWorkshop.size()) {
+            auto& selectedMap = RLWorkshop[selectedWorkshopIndex];
+
+            // Load preview image if needed (lazy loading)
+            if (!selectedMap.previewPath.empty() && !selectedMap.isImageLoaded && !selectedMap.previewImage) {
+                selectedMap.previewImage = std::make_shared<ImageWrapper>(selectedMap.previewPath.string(), false, true);
+                selectedMap.isImageLoaded = true;
+            }
+
+            // Preview image
+            if (selectedMap.previewImage && selectedMap.previewImage->GetImGuiTex()) {
+                ImGui::Image(selectedMap.previewImage->GetImGuiTex(),
+                             ImVec2(UI::WorkshopBrowserUI::PREVIEW_IMAGE_WIDTH,
+                                    UI::WorkshopBrowserUI::PREVIEW_IMAGE_HEIGHT));
+            } else {
+                // Placeholder box
+                ImVec2 p = ImGui::GetCursorScreenPos();
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                drawList->AddRectFilled(p,
+                    ImVec2(p.x + UI::WorkshopBrowserUI::PREVIEW_IMAGE_WIDTH,
+                           p.y + UI::WorkshopBrowserUI::PREVIEW_IMAGE_HEIGHT),
+                    ImColor(40, 40, 45, 255), 4.0f);
+                drawList->AddText(
+                    ImVec2(p.x + UI::WorkshopBrowserUI::PREVIEW_IMAGE_WIDTH / 2 - 40,
+                           p.y + UI::WorkshopBrowserUI::PREVIEW_IMAGE_HEIGHT / 2 - 8),
+                    ImColor(100, 100, 100, 255), "No Preview");
+                ImGui::Dummy(ImVec2(UI::WorkshopBrowserUI::PREVIEW_IMAGE_WIDTH,
+                                    UI::WorkshopBrowserUI::PREVIEW_IMAGE_HEIGHT));
+            }
+
+            ImGui::Spacing();
+
+            // Map name (large)
+            ImGui::PushStyleColor(ImGuiCol_Text, UI::WorkshopBrowserUI::MAP_NAME_COLOR);
+            ImGui::TextWrapped("%s", selectedMap.name.c_str());
+            ImGui::PopStyleColor();
+
+            // Author
+            if (!selectedMap.author.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, UI::WorkshopBrowserUI::AUTHOR_COLOR);
+                ImGui::Text("By: %s", selectedMap.author.c_str());
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::Spacing();
+
+            // Description
+            if (!selectedMap.description.empty()) {
+                ImGui::PushStyleColor(ImGuiCol_Text, UI::WorkshopBrowserUI::DESCRIPTION_COLOR);
+                ImGui::PushTextWrapPos(ImGui::GetContentRegionAvail().x);
+                ImGui::TextWrapped("%s", selectedMap.description.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::PopStyleColor();
+            }
+
+            ImGui::Spacing();
+            ImGui::Separator();
+            ImGui::Spacing();
+
+            // Current selection indicator
+            bool isCurrentAutoLoad = (selectedMap.filePath == currentWorkshopPath);
+            if (isCurrentAutoLoad) {
+                ImGui::TextColored(UI::WorkshopBrowserUI::SELECTED_BADGE_COLOR, "Selected for Post-Match Auto-Load");
+                ImGui::Spacing();
+            }
+
+            // Action buttons
+            if (!isCurrentAutoLoad) {
+                if (ImGui::Button("Select for Post-Match", ImVec2(180, 26))) {
+                    plugin_->settingsSync->SetCurrentWorkshopPath(selectedMap.filePath);
+                    plugin_->cvarManager->getCvar("suitespot_current_workshop_path").setValue(selectedMap.filePath);
+                    currentWorkshopPath = selectedMap.filePath;
+                    statusMessage.ShowSuccess("Workshop map selected", 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("Set this map to load after matches end");
+                }
+            }
+
+            ImGui::SameLine();
+
+            if (ImGui::Button("Load Now", ImVec2(100, 26))) {
+                SuiteSpot* p = plugin_;
+                std::string path = selectedMap.filePath;
+                p->gameWrapper->SetTimeout([p, path](GameWrapper* gw) {
+                    p->cvarManager->executeCommand("load_workshop \"" + path + "\"");
+                }, 0.0f);
+                statusMessage.ShowSuccess("Loading Workshop Map", 2.0f, UI::StatusMessage::DisplayMode::TimerWithFade);
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Load this workshop map immediately");
+            }
+
+        } else {
+            // No selection
+            ImGui::TextDisabled("Select a map from the list");
+        }
+    }
+    ImGui::EndChild();
+
+    ImGui::EndGroup();
 }
 
 void SettingsUI::RenderSinglePackMode(std::string& currentTrainingCode) {

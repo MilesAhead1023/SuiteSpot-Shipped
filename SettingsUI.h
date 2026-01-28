@@ -1,6 +1,7 @@
 #pragma once
 #include "IMGUI/imgui.h"
 #include "StatusMessageUI.h"
+#include "WorkshopDownloader.h"
 #include <string>
 #include <vector>
 
@@ -65,8 +66,12 @@ private:
     char workshopPathBuf[512] = {0};
     bool workshopPathInit = false;
     std::string workshopPathCache = "";
-    
+
     // Workshop browser state
     char workshopSearchBuf[256] = {0};
     char workshopDownloadPathBuf[512] = {0};
+
+    // Workshop local browser state (two-panel layout)
+    int selectedWorkshopIndex = -1;  // Currently selected in list
+    std::string lastSelectedWorkshopPath;  // Track path to detect changes
 };

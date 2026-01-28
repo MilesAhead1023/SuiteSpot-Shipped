@@ -10,6 +10,8 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "IMGUI/json.hpp"
+
 namespace
 {
     std::string Trim(const std::string& value)
@@ -168,33 +170,120 @@ void MapManager::EnsureDataDirectories() const
     std::filesystem::create_directories(GetSuiteTrainingDir(), ec);
 }
 
+bool MapManager::LoadWorkshopMetadata(const std::filesystem::path& jsonPath,
+                                      std::string& outTitle,
+                                      std::string& outAuthor,
+                                      std::string& outDescription) const
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(jsonPath, ec)) return false;
+
+    try {
+        std::ifstream file(jsonPath);
+        if (!file.is_open()) return false;
+
+        nlohmann::json j;
+        file >> j;
+
+        if (j.contains("Title") && j["Title"].is_string()) {
+            outTitle = j["Title"].get<std::string>();
+        }
+        if (j.contains("Author") && j["Author"].is_string()) {
+            outAuthor = j["Author"].get<std::string>();
+        }
+        if (j.contains("Description") && j["Description"].is_string()) {
+            outDescription = j["Description"].get<std::string>();
+        }
+        return true;
+    }
+    catch (const std::exception& e) {
+        LOG("SuiteSpot: Failed to parse workshop JSON {}: {}", jsonPath.string(), e.what());
+        return false;
+    }
+}
+
+std::filesystem::path MapManager::FindPreviewImage(const std::filesystem::path& folder) const
+{
+    std::error_code ec;
+    if (!std::filesystem::exists(folder, ec)) return {};
+
+    // Check common preview image extensions
+    static const std::vector<std::string> extensions = { ".jfif", ".jpg", ".jpeg", ".png", ".gif", ".webp" };
+
+    for (const auto& file : std::filesystem::directory_iterator(folder, ec))
+    {
+        if (ec) { ec.clear(); continue; }
+        if (!file.is_regular_file()) continue;
+
+        std::string ext = file.path().extension().string();
+        // Convert to lowercase for comparison
+        std::transform(ext.begin(), ext.end(), ext.begin(),
+                       [](unsigned char c) { return std::tolower(c); });
+
+        for (const auto& validExt : extensions) {
+            if (ext == validExt) {
+                return file.path();
+            }
+        }
+    }
+    return {};
+}
+
 void MapManager::DiscoverWorkshopInDir(const std::filesystem::path& dir,
                                        std::vector<WorkshopEntry>& workshop) const
 {
     std::error_code ec;
     if (!std::filesystem::exists(dir, ec) || !std::filesystem::is_directory(dir, ec)) return;
+
     for (const auto& entry : std::filesystem::directory_iterator(dir, ec))
     {
         if (ec) { ec.clear(); continue; }
         if (!entry.is_directory()) continue;
 
         std::string foundMapFile;
+        std::filesystem::path foundJsonFile;
+
+        // Scan for UPK and JSON files
         for (const auto& file : std::filesystem::directory_iterator(entry.path(), ec))
         {
             if (ec) { ec.clear(); continue; }
             if (!file.is_regular_file()) continue;
 
             const auto& path = file.path();
-            if (path.extension().string() == ".upk")
+            std::string ext = path.extension().string();
+            std::transform(ext.begin(), ext.end(), ext.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
+
+            if (ext == ".upk" && foundMapFile.empty())
             {
                 foundMapFile = path.string();
-                break;
+            }
+            else if (ext == ".json" && foundJsonFile.empty())
+            {
+                foundJsonFile = path;
             }
         }
 
         if (!foundMapFile.empty())
         {
-            workshop.push_back({ foundMapFile, entry.path().filename().string() });
+            WorkshopEntry workshopEntry;
+            workshopEntry.filePath = foundMapFile;
+            workshopEntry.folder = entry.path();
+            workshopEntry.name = entry.path().filename().string();
+
+            // Try to load metadata from JSON
+            std::string title, author, description;
+            if (!foundJsonFile.empty() && LoadWorkshopMetadata(foundJsonFile, title, author, description))
+            {
+                if (!title.empty()) workshopEntry.name = title;
+                workshopEntry.author = author;
+                workshopEntry.description = description;
+            }
+
+            // Find preview image
+            workshopEntry.previewPath = FindPreviewImage(entry.path());
+
+            workshop.push_back(workshopEntry);
         }
     }
 }

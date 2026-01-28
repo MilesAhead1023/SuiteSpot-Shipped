@@ -2,22 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Documentation Suite
-
-**Before writing code, read the relevant documentation:**
+## Reference Documentation
 
 | Document | Purpose |
 |----------|---------|
-| [BAKKESMOD_API_REFERENCE.md](docs/standards/BAKKESMOD_API_REFERENCE.md) | Complete SDK API reference - wrappers, methods, data structures |
-| [CODING_STANDARDS.md](docs/standards/CODING_STANDARDS.md) | Code patterns, naming conventions, ImGui patterns, anti-patterns |
-| [THREAD_SAFETY.md](docs/standards/THREAD_SAFETY.md) | Threading model, Execute pattern, synchronization |
+| [bakkesmod-sdk-reference.md](docs/bakkesmod-sdk-reference.md) | BakkesMod SDK API reference |
+| [bakkesmod_imgui_signatures_annotated.md](docs/bakkesmod_imgui_signatures_annotated.md) | ImGui function signatures for BakkesMod |
 
-**Quick rules:**
-- Always null-check wrappers before use: `if (!car) return;`
-- Use `gameWrapper->Execute()` for game operations from render thread
-- Use `gameWrapper->SetTimeout()` for delayed operations (never `sleep()`)
-- Prefix CVars with `suitespot_`
-- Override `ShouldBlockInput()` to only block for text input, not mouse interactions
+## Critical Rules
+
+- **Null-check wrappers**: Always check before use: `if (!car) return;`
+- **Thread safety**: Use `gameWrapper->Execute()` for game operations from render thread
+- **Delayed operations**: Use `gameWrapper->SetTimeout()` (never `sleep()` or `std::this_thread::sleep_for`)
+- **CVar naming**: Prefix all CVars with `suitespot_`
+- **Input blocking**: Override `ShouldBlockInput()` to only block for text input, not mouse interactions
 
 ## Project Overview
 

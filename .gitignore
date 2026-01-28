@@ -427,3 +427,12 @@ ContextForAI/
 
 # BakkesMod SDK (reference only - actual SDK comes from AppData via registry)
 bakkesmodsdk/
+# Claude-flow generated
+.swarm/
+agents/
+vectors.db
+
+# Build outputs
+plugins/*.dll
+plugins/*.exp
+plugins/*.lib

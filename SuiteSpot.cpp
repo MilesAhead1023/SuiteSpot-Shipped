@@ -340,7 +340,6 @@ void SuiteSpot::onLoad() {
 
     // Initialize WorkshopDownloader
     workshopDownloader = std::make_unique<WorkshopDownloader>(gameWrapper);
-    workshopDownloader->SetWorkshopFolder(gameWrapper->GetDataFolder() / "SuiteSpot" / "Workshop");
     LOG("SuiteSpot: WorkshopDownloader initialized");
 
     // Check Pack cache and load if available

@@ -49,9 +49,24 @@ private:
     void RenderSinglePackMode(std::string& currentTrainingCode);
     void RenderBagRotationMode();
     std::vector<std::string> GetQuickPicksList();
+    
+    // Workshop browser tab
+    void RenderWorkshopBrowserTab();
+    void RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* mapspath);
+    void RLMAPS_RenderSearchWorkshopResults(const char* mapspath);
+    void RenderReleases(RLMAPS_MapResult mapResult, const char* mapspath);
+    void RenderAcceptDownload();
+    void RenderYesNoPopup(const char* popupName, const char* label, std::function<void()> yesFunc, std::function<void()> noFunc);
+    void RenderInfoPopup(const char* popupName, const char* label);
+    void CenterNextItem(float itemWidth);
+    std::string LimitTextSize(std::string str, float maxTextSize);
 
     // Workshop path configuration state
     char workshopPathBuf[512] = {0};
     bool workshopPathInit = false;
     std::string workshopPathCache = "";
+    
+    // Workshop browser state
+    char workshopSearchBuf[256] = {0};
+    char workshopDownloadPathBuf[512] = {0};
 };

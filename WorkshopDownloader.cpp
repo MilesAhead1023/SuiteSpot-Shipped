@@ -2,312 +2,352 @@
 #include "WorkshopDownloader.h"
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 
-void WorkshopDownloader::SearchMaps(const std::string& keywords, int page)
+WorkshopDownloader::WorkshopDownloader(std::shared_ptr<GameWrapper> gw) 
+    : gameWrapper(gw)
 {
-    if (isSearching) {
-        LOG("WorkshopDownloader: Search already in progress");
-        return;
-    }
-    
-    isSearching = true;
-    currentPage = page;
-    searchResults.clear();
-    
-    LOG("WorkshopDownloader: Searching for '{}' (page {})", keywords, page);
-    
-    // Search in a separate thread to avoid blocking UI
-    std::thread searchThread([this, keywords, page]() {
-        try {
-            std::string searchUrl = RLMAPS_SEARCH_URL + keywords + "&page=" + std::to_string(page);
-            
-            CurlRequest req;
-            req.url = searchUrl;
-            
-            HttpWrapper::SendCurlJsonRequest(req, [this](int code, nlohmann::json response) {
-                if (code == 200 && response.is_array()) {
-                    LOG("WorkshopDownloader: Found {} results", response.size());
-                    
-                    for (const auto& item : response) {
-                        WorkshopSearchResult result;
-                        result.id = item.value("id", "");
-                        result.name = item.value("name", "Unknown");
-                        result.author = item.value("creator", "Unknown");
-                        result.description = CleanHTML(item.value("description", ""));
-                        
-                        // Extract download info from releases
-                        if (item.contains("releases") && item["releases"].is_array() && !item["releases"].empty()) {
-                            auto& release = item["releases"][0];
-                            result.downloadUrl = release.value("url", "");
-                            result.zipFileName = release.value("name", "map.zip");
-                        }
-                        
-                        result.previewUrl = item.value("image_url", "");
-                        result.sizeBytes = item.value("file_size", "0");
-                        
-                        searchResults.push_back(result);
-                    }
-                } else {
-                    LOG("WorkshopDownloader: Search failed with code {}", code);
-                }
-                
-                isSearching = false;
-            });
-            
-        } catch (const std::exception& e) {
-            LOG("WorkshopDownloader: Search error: {}", e.what());
-            isSearching = false;
-        }
-    });
-    
-    searchThread.detach();
+    BakkesmodPath = gw->GetDataFolder().string() + "\\";
+    IfNoPreviewImagePath = BakkesmodPath + "SuiteSpot\\Workshop\\NoPreview.jpg";
 }
 
-void WorkshopDownloader::DownloadMap(const WorkshopSearchResult& result,
-                                      const std::filesystem::path& destinationFolder,
-                                      std::function<void(const DownloadProgress&)> progressCallback)
+void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
 {
-    if (isDownloading) {
-        LOG("WorkshopDownloader: Download already in progress");
-        return;
+    RLMAPS_Searching = true;
+    RLMAPS_MapResultList.clear();
+    RLMAPS_PageSelected = IndexPage;
+    
+    if (IndexPage == 1) {
+        NumPages = 0;
+        std::thread t2(&WorkshopDownloader::GetNumPages, this, keyWord);
+        t2.detach();
     }
-    
-    if (result.downloadUrl.empty()) {
-        LOG("WorkshopDownloader: No download URL for '{}'", result.name);
-        return;
-    }
-    
-    isDownloading = true;
-    downloadProgress = DownloadProgress();
-    downloadProgress.mapName = result.name;
-    
-    LOG("WorkshopDownloader: Starting download of '{}'", result.name);
-    
-    // Download in a separate thread
-    std::thread downloadThread([this, result, destinationFolder, progressCallback]() {
-        try {
-            // Sanitize map name for filesystem
-            std::string safeName = SanitizeMapName(result.name);
-            
-            // Create map folder
-            auto mapFolder = destinationFolder / safeName;
-            if (!std::filesystem::exists(mapFolder)) {
-                std::filesystem::create_directories(mapFolder);
-            }
-            
-            // Create metadata JSON first
-            CreateMapMetadata(mapFolder, result);
-            
-            // Download zip file
-            auto zipPath = mapFolder / result.zipFileName;
-            
-            CurlRequest req;
-            req.url = result.downloadUrl;
-            req.progress_function = [this, progressCallback](double fileSize, double downloaded, ...) {
-                downloadProgress.bytesDownloaded = downloaded;
-                downloadProgress.totalBytes = fileSize;
-                downloadProgress.percentComplete = fileSize > 0 ? (int)((downloaded * 100.0) / fileSize) : 0;
-                
-                if (progressCallback) {
-                    progressCallback(downloadProgress);
-                }
-            };
-            
-            HttpWrapper::SendCurlRequest(req, [this, zipPath, mapFolder, result](int code, char* data, size_t size) {
-                if (code == 200) {
-                    // Write zip file
-                    std::ofstream outFile(zipPath, std::ios::binary);
-                    if (outFile) {
-                        outFile.write(data, size);
-                        outFile.close();
-                        
-                        LOG("WorkshopDownloader: Downloaded {} bytes to {}", size, zipPath.string());
-                        
-                        // Extract zip
-                        ExtractZipFile(zipPath, mapFolder);
-                        
-                        // Rename .udk to .upk if needed
-                        RenameUdkToUpk(mapFolder);
-                        
-                        // Clean up zip file
-                        std::filesystem::remove(zipPath);
-                        
-                        downloadProgress.isComplete = true;
-                        LOG("WorkshopDownloader: Successfully downloaded and extracted '{}'", result.name);
-                    } else {
-                        downloadProgress.hasFailed = true;
-                        downloadProgress.errorMessage = "Failed to write zip file";
-                        LOG("WorkshopDownloader: Failed to write zip file");
-                    }
-                } else {
-                    downloadProgress.hasFailed = true;
-                    downloadProgress.errorMessage = "HTTP error " + std::to_string(code);
-                    LOG("WorkshopDownloader: Download failed with code {}", code);
-                }
-                
-                isDownloading = false;
-            });
-            
-        } catch (const std::exception& e) {
-            downloadProgress.hasFailed = true;
-            downloadProgress.errorMessage = e.what();
-            LOG("WorkshopDownloader: Download error: {}", e.what());
-            isDownloading = false;
-        }
-    });
-    
-    downloadThread.detach();
-}
 
-void WorkshopDownloader::DownloadPreviewImage(WorkshopSearchResult& result)
-{
-    if (result.previewUrl.empty()) {
-        return;
-    }
-    
-    // Create preview cache folder
-    auto previewFolder = workshopFolder / "previews";
-    if (!std::filesystem::exists(previewFolder)) {
-        std::filesystem::create_directories(previewFolder);
-    }
-    
-    // Check if already cached
-    auto imagePath = previewFolder / (result.id + ".jpg");
-    if (std::filesystem::exists(imagePath)) {
-        result.previewImagePath = imagePath;
-        result.previewImage = std::make_shared<ImageWrapper>(imagePath, false, true);
-        result.isPreviewLoaded = true;
-        return;
-    }
-    
-    // Download image
-    LOG("WorkshopDownloader: Downloading preview for '{}'", result.name);
+    std::string searchUrl = rlmaps_url + keyWord + "&page=" + std::to_string(IndexPage);
     
     CurlRequest req;
-    req.url = result.previewUrl;
+    req.url = searchUrl;
     
-    HttpWrapper::SendCurlRequest(req, [this, imagePath, &result](int code, char* data, size_t size) {
+    HttpWrapper::SendCurlJsonRequest(req, [this, keyWord](int code, nlohmann::json actualJson) {
+        if (code != 200 || !actualJson.is_array()) {
+            LOG("Workshop search failed with code {}", code);
+            RLMAPS_Searching = false;
+            return;
+        }
+        
+        RLMAPS_NumberOfMapsFound = actualJson.size();
+        
+        for (int index = 0; index < actualJson.size(); ++index) {
+            std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index);
+            t2.detach();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        
+        while (RLMAPS_MapResultList.size() != actualJson.size()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        
+        RLMAPS_Searching = false;
+    });
+}
+
+void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
+{
+    RLMAPS_MapResult result;
+    result.ID = maps[index]["id"].get<std::string>();
+    result.Name = maps[index]["name"].get<std::string>();
+    result.Description = maps[index]["description"].get<std::string>();
+    
+    CleanHTML(result.Description);
+    
+    std::string releaseUrl = "https://celab.jetfox.ovh/api/v4/projects/" + result.ID + "/releases";
+    
+    CurlRequest releaseReq;
+    releaseReq.url = releaseUrl;
+    
+    HttpWrapper::SendCurlJsonRequest(releaseReq, [this, result, index, maps](int code, nlohmann::json releaseJson) mutable {
+        if (code != 200 || !releaseJson.is_array()) {
+            return;
+        }
+        
+        std::vector<RLMAPS_Release> releases;
+        for (int release_index = 0; release_index < releaseJson.size(); ++release_index) {
+            RLMAPS_Release release;
+            release.name = releaseJson[release_index]["name"].get<std::string>();
+            release.tag_name = releaseJson[release_index]["tag_name"].get<std::string>();
+            release.description = releaseJson[release_index]["description"].get<std::string>();
+            
+            if (releaseJson[release_index]["assets"]["links"].size() > 0) {
+                release.pictureLink = releaseJson[release_index]["assets"]["links"][0]["url"].get<std::string>();
+            }
+            if (releaseJson[release_index]["assets"]["links"].size() > 1) {
+                release.downloadLink = releaseJson[release_index]["assets"]["links"][1]["url"].get<std::string>();
+                
+                std::string zipNameUnsafe = releaseJson[release_index]["assets"]["links"][1]["name"].get<std::string>();
+                std::string specials[] = { "/", "\\", "?", ":", "*", "\"", "<", ">", "|", "#", "'", "`" };
+                for (auto special : specials) {
+                    EraseAll(zipNameUnsafe, special);
+                }
+                release.zipName = zipNameUnsafe;
+            }
+            
+            releases.push_back(release);
+        }
+        
+        result.releases = releases;
+        result.Size = "10000000";
+        result.Author = maps[index]["namespace"]["path"].get<std::string>();
+        
+        if (!releases.empty()) {
+            result.PreviewUrl = releases[0].pictureLink;
+        }
+        
+        LOG("Workshop map: {}", result.Name);
+        
+        fs::path resultImagePath = BakkesmodPath + "SuiteSpot\\Workshop\\img\\" + result.ID + ".jfif";
+        
+        if (!DirectoryOrFileExists(resultImagePath)) {
+            result.IsDownloadingPreview = true;
+            RLMAPS_MapResultList.push_back(result);
+            DownloadPreviewImage(result.PreviewUrl, resultImagePath.string(), RLMAPS_MapResultList.size() - 1);
+        } else {
+            result.ImagePath = resultImagePath;
+            result.Image = std::make_shared<ImageWrapper>(resultImagePath, false, true);
+            result.isImageLoaded = true;
+            RLMAPS_MapResultList.push_back(result);
+        }
+    });
+}
+
+void WorkshopDownloader::GetNumPages(std::string keyWord)
+{
+    int ResultsSize = 20;
+    std::string searchUrl = rlmaps_url + keyWord;
+    
+    CurlRequest req;
+    req.url = searchUrl;
+    
+    HttpWrapper::SendCurlJsonRequest(req, [this, ResultsSize](int code, nlohmann::json actualJson) {
+        if (code == 200 && actualJson.is_array()) {
+            NumPages = (actualJson.size() / ResultsSize) + 1;
+            LOG("Workshop search found {} pages", NumPages);
+        }
+    });
+}
+
+void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_MapResult mapResult, RLMAPS_Release release)
+{
+    UserIsChoosingYESorNO = true;
+    
+    while (UserIsChoosingYESorNO) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
+    if (!AcceptTheDownload) {
+        return;
+    }
+    
+    std::string workshopSafeMapName = SanitizeMapName(mapResult.Name);
+    
+    std::string Workshop_Dl_Path;
+    if (folderpath.back() == '/' || folderpath.back() == '\\') {
+        Workshop_Dl_Path = folderpath + workshopSafeMapName;
+    } else {
+        Workshop_Dl_Path = folderpath + "/" + workshopSafeMapName;
+    }
+    
+    try {
+        fs::create_directory(Workshop_Dl_Path);
+        LOG("Workshop directory created: {}", Workshop_Dl_Path);
+    } catch (const std::exception& ex) {
+        LOG("Failed to create directory: {}", ex.what());
+        FolderErrorText = ex.what();
+        FolderErrorBool = true;
+        return;
+    }
+    
+    CreateJSONLocalWorkshopInfos(workshopSafeMapName, Workshop_Dl_Path + "/", 
+                                 mapResult.Name, mapResult.Author, 
+                                 mapResult.Description, mapResult.PreviewUrl);
+    LOG("JSON created: {}/{}.json", Workshop_Dl_Path, workshopSafeMapName);
+    
+    if (DirectoryOrFileExists(mapResult.ImagePath)) {
+        fs::copy(mapResult.ImagePath, Workshop_Dl_Path + "/" + workshopSafeMapName + ".jfif");
+        LOG("Preview pasted: {}/{}.jfif", Workshop_Dl_Path, workshopSafeMapName);
+    }
+    
+    std::string download_url = release.downloadLink;
+    LOG("Download URL: {}", download_url);
+    std::string Folder_Path = Workshop_Dl_Path + "/" + release.zipName;
+    
+    RLMAPS_WorkshopDownload_Progress = 0;
+    RLMAPS_Download_Progress = 0;
+    RLMAPS_IsDownloadingWorkshop = true;
+    
+    LOG("Download starting...");
+    
+    CurlRequest req;
+    req.url = download_url;
+    req.progress_function = [this](double file_size, double downloaded, ...) {
+        RLMAPS_Download_Progress = downloaded;
+        RLMAPS_WorkshopDownload_FileSize = file_size;
+    };
+    
+    HttpWrapper::SendCurlRequest(req, [this, Folder_Path, Workshop_Dl_Path](int code, char* data, size_t size) {
         if (code == 200) {
-            std::ofstream outFile(imagePath, std::ios::binary);
+            std::ofstream out_file{ Folder_Path, std::ios_base::binary };
+            if (out_file) {
+                out_file.write(data, size);
+                out_file.close();
+                
+                LOG("Workshop downloaded to: {}", Workshop_Dl_Path);
+                RLMAPS_IsDownloadingWorkshop = false;
+                
+                ExtractZipPowerShell(Folder_Path, Workshop_Dl_Path);
+                
+                int checkTime = 0;
+                while (UdkInDirectory(Workshop_Dl_Path) == "Null") {
+                    LOG("Extracting zip file");
+                    if (checkTime > 10) {
+                        LOG("Failed extracting the map zip file");
+                        return;
+                    }
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                    checkTime++;
+                }
+                
+                LOG("File extracted");
+                RenameFileToUPK(Workshop_Dl_Path);
+            }
+        } else {
+            LOG("Workshop download failed with code {}", code);
+            RLMAPS_IsDownloadingWorkshop = false;
+        }
+    });
+    
+    while (RLMAPS_IsDownloadingWorkshop == true) {
+        LOG("downloading...............");
+        RLMAPS_WorkshopDownload_Progress = RLMAPS_Download_Progress;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+}
+
+void WorkshopDownloader::DownloadPreviewImage(std::string downloadUrl, std::string filePath, int mapResultIndex)
+{
+    if (downloadUrl.empty()) {
+        return;
+    }
+    
+    fs::create_directories(fs::path(filePath).parent_path());
+    
+    CurlRequest req;
+    req.url = downloadUrl;
+    
+    HttpWrapper::SendCurlRequest(req, [this, filePath, mapResultIndex](int code, char* data, size_t size) {
+        if (code == 200) {
+            std::ofstream outFile(filePath, std::ios::binary);
             if (outFile) {
                 outFile.write(data, size);
                 outFile.close();
                 
-                result.previewImagePath = imagePath;
-                result.previewImage = std::make_shared<ImageWrapper>(imagePath, false, true);
-                result.isPreviewLoaded = true;
+                if (mapResultIndex >= 0 && mapResultIndex < RLMAPS_MapResultList.size()) {
+                    RLMAPS_MapResultList[mapResultIndex].ImagePath = filePath;
+                    RLMAPS_MapResultList[mapResultIndex].Image = std::make_shared<ImageWrapper>(filePath, false, true);
+                    RLMAPS_MapResultList[mapResultIndex].isImageLoaded = true;
+                    RLMAPS_MapResultList[mapResultIndex].IsDownloadingPreview = false;
+                }
                 
-                LOG("WorkshopDownloader: Preview downloaded to {}", imagePath.string());
+                LOG("Preview downloaded: {}", filePath);
             }
         }
     });
 }
 
-void WorkshopDownloader::ExtractZipFile(const std::filesystem::path& zipPath, 
-                                         const std::filesystem::path& extractTo)
+void WorkshopDownloader::CreateJSONLocalWorkshopInfos(std::string jsonFileName, std::string workshopMapPath,
+                                                       std::string mapTitle, std::string mapAuthor,
+                                                       std::string mapDescription, std::string mapPreviewUrl)
 {
-    LOG("WorkshopDownloader: Extracting {} to {}", zipPath.string(), extractTo.string());
+    std::string filename = workshopMapPath + jsonFileName + ".json";
+    std::ofstream JSONFile(filename);
     
-    // Use PowerShell Expand-Archive cmdlet
-    std::string command = "powershell.exe -Command \"Expand-Archive -LiteralPath '" + 
-                          zipPath.string() + "' -DestinationPath '" + 
-                          extractTo.string() + "' -Force\"";
+    nlohmann::json j;
+    j["Title"] = mapTitle;
+    j["Author"] = mapAuthor;
+    j["Description"] = mapDescription;
+    j["PreviewUrl"] = mapPreviewUrl;
     
-    int result = system(command.c_str());
-    
-    if (result == 0) {
-        LOG("WorkshopDownloader: Extraction successful");
-    } else {
-        LOG("WorkshopDownloader: Extraction failed with code {}", result);
-    }
+    JSONFile << j.dump();
+    JSONFile.close();
 }
 
-void WorkshopDownloader::CreateMapMetadata(const std::filesystem::path& mapFolder, 
-                                            const WorkshopSearchResult& result)
+void WorkshopDownloader::ExtractZipPowerShell(std::string zipFilePath, std::string destinationPath)
 {
-    nlohmann::json metadata;
-    metadata["Title"] = result.name;
-    metadata["Author"] = result.author;
-    metadata["Description"] = result.description;
-    metadata["PreviewUrl"] = result.previewUrl;
-    metadata["DownloadUrl"] = result.downloadUrl;
-    metadata["ID"] = result.id;
-    
-    std::string safeName = SanitizeMapName(result.name);
-    auto jsonPath = mapFolder / (safeName + ".json");
-    
-    std::ofstream file(jsonPath);
-    if (file.is_open()) {
-        file << metadata.dump(4);
-        file.close();
-        LOG("WorkshopDownloader: Created metadata at {}", jsonPath.string());
-    } else {
-        LOG("WorkshopDownloader: Failed to create metadata file");
-    }
+    std::string extractCommand = "powershell.exe Expand-Archive -LiteralPath '" + 
+                                 zipFilePath + "' -DestinationPath '" + 
+                                 destinationPath + "' -Force";
+    system(extractCommand.c_str());
 }
 
-void WorkshopDownloader::RenameUdkToUpk(const std::filesystem::path& mapFolder)
+void WorkshopDownloader::RenameFileToUPK(fs::path filePath)
 {
-    // Find .udk file and rename to .upk
-    std::string udkFile = FindUdkInDirectory(mapFolder);
-    if (!udkFile.empty()) {
-        std::filesystem::path udkPath = mapFolder / udkFile;
-        std::filesystem::path upkPath = mapFolder / (udkFile.substr(0, udkFile.length() - 4) + ".upk");
+    std::string udkFile = UdkInDirectory(filePath.string());
+    
+    if (udkFile != "Null") {
+        fs::path udkPath = filePath / udkFile;
+        std::string upkName = udkFile.substr(0, udkFile.length() - 4) + ".upk";
+        fs::path upkPath = filePath / upkName;
         
         try {
-            std::filesystem::rename(udkPath, upkPath);
-            LOG("WorkshopDownloader: Renamed {} to {}", udkFile, upkPath.filename().string());
+            fs::rename(udkPath, upkPath);
+            LOG("Renamed {} to {}", udkFile, upkName);
         } catch (const std::exception& e) {
-            LOG("WorkshopDownloader: Failed to rename .udk to .upk: {}", e.what());
+            LOG("Failed to rename .udk to .upk: {}", e.what());
         }
     }
 }
 
-std::string WorkshopDownloader::FindUdkInDirectory(const std::filesystem::path& dir)
+std::string WorkshopDownloader::UdkInDirectory(std::string dirPath)
 {
-    if (!std::filesystem::exists(dir)) {
-        return "";
+    if (!DirectoryOrFileExists(fs::path(dirPath))) {
+        return "Null";
     }
     
-    for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".udk") {
-            return entry.path().filename().string();
+    for (const auto& entry : fs::directory_iterator(dirPath)) {
+        if (entry.is_regular_file()) {
+            std::string ext = entry.path().extension().string();
+            if (ext == ".udk") {
+                return entry.path().filename().string();
+            }
         }
     }
     
-    return "";
+    return "Null";
 }
 
 std::string WorkshopDownloader::SanitizeMapName(const std::string& name)
 {
     std::string safe = name;
+    ReplaceAll(safe, " ", "_");
     
-    // Replace spaces with underscores
-    std::replace(safe.begin(), safe.end(), ' ', '_');
-    
-    // Remove special characters
-    std::vector<std::string> specials = { "/", "\\", "?", ":", "*", "\"", "<", ">", "|", "-", "#" };
-    for (const auto& special : specials) {
+    std::string specials[] = { "/", "\\", "?", ":", "*", "\"", "<", ">", "|", "-", "#" };
+    for (auto special : specials) {
         EraseAll(safe, special);
     }
     
     return safe;
 }
 
-std::string WorkshopDownloader::CleanHTML(const std::string& html)
+void WorkshopDownloader::CleanHTML(std::string& S)
 {
-    // Remove HTML tags
-    std::string cleaned = html;
     size_t pos = 0;
-    while ((pos = cleaned.find('<')) != std::string::npos) {
-        size_t endPos = cleaned.find('>', pos);
+    while ((pos = S.find('<')) != std::string::npos) {
+        size_t endPos = S.find('>', pos);
         if (endPos != std::string::npos) {
-            cleaned.erase(pos, endPos - pos + 1);
+            S.erase(pos, endPos - pos + 1);
         } else {
             break;
         }
     }
-    return cleaned;
 }
 
 void WorkshopDownloader::EraseAll(std::string& str, const std::string& from)
@@ -316,4 +356,18 @@ void WorkshopDownloader::EraseAll(std::string& str, const std::string& from)
     while ((pos = str.find(from, pos)) != std::string::npos) {
         str.erase(pos, from.length());
     }
+}
+
+void WorkshopDownloader::ReplaceAll(std::string& str, const std::string& from, const std::string& to)
+{
+    size_t pos = 0;
+    while ((pos = str.find(from, pos)) != std::string::npos) {
+        str.replace(pos, from.length(), to);
+        pos += to.length();
+    }
+}
+
+bool WorkshopDownloader::DirectoryOrFileExists(const fs::path& p)
+{
+    return fs::exists(p);
 }

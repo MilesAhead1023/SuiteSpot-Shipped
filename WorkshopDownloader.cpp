@@ -45,6 +45,7 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
         // Check if this callback is still valid for the current search
         if (searchGeneration.load() != currentGeneration) {
             LOG("Ignoring stale search callback (generation mismatch)");
+            RLMAPS_Searching = false;  // Release the lock for new searches
             return;
         }
         
@@ -68,6 +69,13 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
             LOG("Workshop search found {} maps", RLMAPS_NumberOfMapsFound);
 
             int expectedRequests = (int)actualJson.size();
+            
+            // Handle empty result set
+            if (expectedRequests == 0) {
+                LOG("Search returned no maps");
+                RLMAPS_Searching = false;
+                return;
+            }
             
             for (int index = 0; index < expectedRequests; ++index) {
                 std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index, currentGeneration);
@@ -93,18 +101,24 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
 
 void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index, int generation)
 {
+    // Always ensure we track completion for this request
+    auto notifyCompletion = [this]() {
+        completedRequests++;
+        resultsCV.notify_one();
+    };
+    
     try {
         // Check if this callback is still valid for the current search
         if (searchGeneration.load() != generation) {
             LOG("Ignoring stale map result callback (generation mismatch)");
+            notifyCompletion();  // Still count this as completed
             return;
         }
         
         RLMAPS_MapResult result;
         if (!maps[index].contains("id") || !maps[index].contains("name") || !maps[index].contains("description") || !maps[index].contains("namespace")) {
             LOG("Workshop map index {} missing required fields", index);
-            completedRequests++;
-            resultsCV.notify_one();
+            notifyCompletion();
             return;
         }
 
@@ -129,18 +143,13 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index, int genera
         CurlRequest releaseReq;
         releaseReq.url = releaseUrl;
         
-        HttpWrapper::SendCurlRequest(releaseReq, [this, result, index, maps, generation](int code, std::string responseText) mutable {
+        HttpWrapper::SendCurlRequest(releaseReq, [this, result, index, maps, generation, notifyCompletion](int code, std::string responseText) mutable {
             // Check if this callback is still valid for the current search
             if (searchGeneration.load() != generation) {
                 LOG("Ignoring stale release callback (generation mismatch)");
+                notifyCompletion();  // Still count this as completed
                 return;
             }
-            
-            // Ensure we always notify completion, even on failure
-            auto notifyCompletion = [this]() {
-                completedRequests++;
-                resultsCV.notify_one();
-            };
             
             if (code != 200) {
                 LOG("Failed to get releases for map {}, code: {}", result.Name, code);
@@ -196,8 +205,7 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index, int genera
 
                 fs::path resultImagePath = BakkesmodPath + "SuiteSpot\\Workshop\\img\\" + result.ID + ".jfif";
 
-                // Only add to list and notify if we have releases or always add?
-                // For now, always add the result even if releases is empty
+                // Only add to list and notify if we have releases
                 if (releases.empty()) {
                     LOG("Map {} has no releases, skipping", result.Name);
                     notifyCompletion();
@@ -232,8 +240,7 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index, int genera
         });
     } catch (const std::exception& e) {
         LOG("CRITICAL: Error in GetMapResult thread: {}", e.what());
-        completedRequests++;
-        resultsCV.notify_one();
+        notifyCompletion();
     }
 }
 

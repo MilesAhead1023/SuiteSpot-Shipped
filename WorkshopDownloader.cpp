@@ -57,9 +57,11 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
-            while (RLMAPS_MapResultList.size() != actualJson.size()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            }
+            // Wait for all map results to be populated with proper synchronization
+            std::unique_lock<std::mutex> lock(resultsMutex);
+            resultsCV.wait(lock, [this, &actualJson]() {
+                return RLMAPS_MapResultList.size() == actualJson.size();
+            });
 
             RLMAPS_Searching = false;
         }
@@ -161,6 +163,7 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
                         RLMAPS_MapResultList.push_back(result);
                         newIndex = (int)RLMAPS_MapResultList.size() - 1;
                     }
+                    resultsCV.notify_one();
                     DownloadPreviewImage(result.PreviewUrl, resultImagePath.string(), newIndex);
                 } else {
                     result.ImagePath = resultImagePath;
@@ -170,6 +173,7 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
                         std::lock_guard<std::mutex> lock(resultsMutex);
                         RLMAPS_MapResultList.push_back(result);
                     }
+                    resultsCV.notify_one();
                 }
             }
             catch (const std::exception& e) {
@@ -207,16 +211,6 @@ void WorkshopDownloader::GetNumPages(std::string keyWord)
 
 void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_MapResult mapResult, RLMAPS_Release release)
 {
-    UserIsChoosingYESorNO = true;
-    
-    while (UserIsChoosingYESorNO) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    
-    if (!AcceptTheDownload) {
-        return;
-    }
-    
     std::string workshopSafeMapName = SanitizeMapName(mapResult.Name);
     
     std::string Workshop_Dl_Path;
@@ -271,7 +265,6 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                 out_file.close();
                 
                 LOG("Workshop downloaded to: {}", Workshop_Dl_Path);
-                RLMAPS_IsDownloadingWorkshop = false;
                 
                 ExtractZipPowerShell(Folder_Path, Workshop_Dl_Path);
                 
@@ -280,6 +273,7 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                     LOG("Extracting zip file");
                     if (checkTime > 10) {
                         LOG("Failed extracting the map zip file");
+                        RLMAPS_IsDownloadingWorkshop = false;
                         return;
                     }
                     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -288,6 +282,7 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                 
                 LOG("File extracted");
                 RenameFileToUPK(Workshop_Dl_Path);
+                RLMAPS_IsDownloadingWorkshop = false;
             }
         } else {
             LOG("Workshop download failed with code {}", code);
@@ -295,9 +290,10 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
         }
     });
     
-    while (RLMAPS_IsDownloadingWorkshop == true) {
+    // Monitor download progress on this thread
+    while (RLMAPS_IsDownloadingWorkshop.load()) {
         LOG("downloading...............");
-        RLMAPS_WorkshopDownload_Progress = RLMAPS_Download_Progress;
+        RLMAPS_WorkshopDownload_Progress = RLMAPS_Download_Progress.load();
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }

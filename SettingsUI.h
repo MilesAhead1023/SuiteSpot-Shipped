@@ -74,4 +74,13 @@ private:
     // Workshop local browser state (two-panel layout)
     int selectedWorkshopIndex = -1;  // Currently selected in list
     std::string lastSelectedWorkshopPath;  // Track path to detect changes
+    
+    // Pending download state for confirmation flow
+    bool hasPendingDownload = false;
+    RLMAPS_MapResult pendingMapResult;
+    RLMAPS_Release pendingRelease;
+    std::string pendingDownloadPath;
+    
+    // Cached result list for rendering (to avoid holding mutex during render)
+    std::vector<RLMAPS_MapResult> cachedResultList;
 };

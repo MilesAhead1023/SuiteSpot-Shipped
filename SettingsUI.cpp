@@ -782,13 +782,16 @@ void SettingsUI::RenderWorkshopBrowserTab() {
 void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
     if (!plugin_->workshopDownloader) return;
     
-    std::lock_guard<std::mutex> lock(plugin_->workshopDownloader->resultsMutex);
+    // Copy the result list under mutex to avoid holding lock during rendering
+    {
+        std::lock_guard<std::mutex> lock(plugin_->workshopDownloader->resultsMutex);
+        cachedResultList = plugin_->workshopDownloader->RLMAPS_MapResultList;
+    }
+    
+    if (cachedResultList.empty()) return;
 
-    auto& resultList = plugin_->workshopDownloader->RLMAPS_MapResultList;
-    if (resultList.empty()) return;
-
-    // Safe Lazy Loading of Preview Images on Render Thread
-    for (auto& map : resultList) {
+    // Safe Lazy Loading of Preview Images on Render Thread (no mutex needed on copy)
+    for (auto& map : cachedResultList) {
         if (map.Image == nullptr && !map.IsDownloadingPreview && !map.ImagePath.empty()) {
             // Check if file exists before trying to load
             if (std::filesystem::exists(map.ImagePath)) {
@@ -800,6 +803,17 @@ void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
         }
     }
     
+    // Update the original list with loaded images
+    {
+        std::lock_guard<std::mutex> lock(plugin_->workshopDownloader->resultsMutex);
+        for (size_t i = 0; i < cachedResultList.size() && i < plugin_->workshopDownloader->RLMAPS_MapResultList.size(); ++i) {
+            if (cachedResultList[i].isImageLoaded && cachedResultList[i].Image) {
+                plugin_->workshopDownloader->RLMAPS_MapResultList[i].Image = cachedResultList[i].Image;
+                plugin_->workshopDownloader->RLMAPS_MapResultList[i].isImageLoaded = true;
+            }
+        }
+    }
+    
     if (ImGui::BeginChild("##SearchResults", ImVec2(0, 500), true)) {
         ImDrawList* drawList = ImGui::GetWindowDrawList();
         
@@ -807,7 +821,7 @@ void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
         float cardWidth = 190.0f;
         float cardHeight = 260.0f;
         
-        for (int i = 0; i < resultList.size(); i++) {
+        for (int i = 0; i < cachedResultList.size(); i++) {
             if (i % columns != 0) ImGui::SameLine();
             
             RLMAPS_RenderAResult(i, drawList, mapspath);
@@ -819,12 +833,11 @@ void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
 void SettingsUI::RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* mapspath) {
     if (!plugin_->workshopDownloader) return;
     
-    auto& resultList = plugin_->workshopDownloader->RLMAPS_MapResultList;
-    if (i >= resultList.size()) return;
+    if (i >= cachedResultList.size()) return;
     
     ImGui::PushID(i);
     
-    RLMAPS_MapResult& mapResult = resultList[i];
+    RLMAPS_MapResult& mapResult = cachedResultList[i];
     std::string mapName = mapResult.Name;
     std::string mapDescription = mapResult.Description;
     std::string mapAuthor = mapResult.Author;
@@ -901,11 +914,13 @@ void SettingsUI::RenderReleases(RLMAPS_MapResult mapResult, const char* mapspath
             if (ImGui::Button(release.tag_name.c_str(), ImVec2(182, 20))) {
                 if (!plugin_->workshopDownloader->RLMAPS_IsDownloadingWorkshop && 
                     fs::exists(mapspath)) {
-                    std::thread t2(&WorkshopDownloader::RLMAPS_DownloadWorkshop, 
-                                   plugin_->workshopDownloader.get(), 
-                                   std::string(mapspath), mapResult, release);
-                    t2.detach();
+                    // Store pending download info and open confirmation popup
+                    hasPendingDownload = true;
+                    pendingMapResult = mapResult;
+                    pendingRelease = release;
+                    pendingDownloadPath = std::string(mapspath);
                     ImGui::CloseCurrentPopup();
+                    ImGui::OpenPopup("Download?");
                 }
             }
         }
@@ -924,13 +939,19 @@ void SettingsUI::RenderAcceptDownload() {
     RenderYesNoPopup("Download?", 
                      "Do you really want to download?\\nYou'll not be able to cancel if you start it.",
                      [this]() {
-                         plugin_->workshopDownloader->AcceptTheDownload = true;
-                         plugin_->workshopDownloader->UserIsChoosingYESorNO = false;
+                         // User confirmed - start the download
+                         if (hasPendingDownload) {
+                             std::thread t2(&WorkshopDownloader::RLMAPS_DownloadWorkshop, 
+                                            plugin_->workshopDownloader.get(), 
+                                            pendingDownloadPath, pendingMapResult, pendingRelease);
+                             t2.detach();
+                             hasPendingDownload = false;
+                         }
                          ImGui::CloseCurrentPopup();
                      },
                      [this]() {
-                         plugin_->workshopDownloader->AcceptTheDownload = false;
-                         plugin_->workshopDownloader->UserIsChoosingYESorNO = false;
+                         // User cancelled - clear pending download
+                         hasPendingDownload = false;
                          ImGui::CloseCurrentPopup();
                      });
 }

@@ -758,8 +758,8 @@ void SettingsUI::RenderWorkshopBrowserTab() {
     ImGui::SameLine();
     if (plugin_->workshopDownloader->RLMAPS_Searching) {
         ImGui::TextDisabled("Searching...");
-    } else if (plugin_->workshopDownloader->RLMAPS_MapResultList.size() > 0) {
-        ImGui::Text("%d maps found", plugin_->workshopDownloader->RLMAPS_NumberOfMapsFound);
+    } else if (plugin_->workshopDownloader->RLMAPS_NumberOfMapsFound > 0) {
+        ImGui::Text("%d maps found", plugin_->workshopDownloader->RLMAPS_NumberOfMapsFound.load());
     }
     
     ImGui::Spacing();
@@ -937,7 +937,7 @@ void SettingsUI::RenderAcceptDownload() {
     if (!plugin_->workshopDownloader) return;
     
     RenderYesNoPopup("Download?", 
-                     "Do you really want to download?\\nYou'll not be able to cancel if you start it.",
+                     "Do you really want to download?\nYou'll not be able to cancel if you start it.",
                      [this]() {
                          // User confirmed - start the download
                          if (hasPendingDownload) {

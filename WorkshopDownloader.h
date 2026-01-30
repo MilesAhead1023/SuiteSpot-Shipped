@@ -71,8 +71,6 @@ public:
     std::atomic<int> RLMAPS_WorkshopDownload_Progress = 0;
     std::atomic<int> RLMAPS_WorkshopDownload_FileSize = 0;
     
-    std::atomic<bool> UserIsChoosingYESorNO = false;
-    std::atomic<bool> AcceptTheDownload = false;
     std::atomic<bool> FolderErrorBool = false;
     std::string FolderErrorText;
     
@@ -82,6 +80,7 @@ public:
 
     mutable std::mutex resultsMutex; // Protects RLMAPS_MapResultList
     std::condition_variable resultsCV; // Signals when map results are ready
+    std::atomic<int> completedRequests = 0; // Tracks completed HTTP requests (success or failure)
 
 private:
     std::shared_ptr<GameWrapper> gameWrapper;

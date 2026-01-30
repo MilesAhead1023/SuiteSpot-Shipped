@@ -18,6 +18,7 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
         std::lock_guard<std::mutex> lock(resultsMutex);
         RLMAPS_MapResultList.clear();
     }
+    completedRequests = 0;
     RLMAPS_PageSelected = IndexPage;
     
     if (IndexPage == 1) {
@@ -51,16 +52,18 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
             RLMAPS_NumberOfMapsFound = (int)actualJson.size();
             LOG("Workshop search found {} maps", RLMAPS_NumberOfMapsFound);
 
-            for (int index = 0; index < (int)actualJson.size(); ++index) {
+            int expectedRequests = (int)actualJson.size();
+            
+            for (int index = 0; index < expectedRequests; ++index) {
                 std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index);
                 t2.detach();
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
-            // Wait for all map results to be populated with proper synchronization
+            // Wait for all map requests to complete (success or failure)
             std::unique_lock<std::mutex> lock(resultsMutex);
-            resultsCV.wait(lock, [this, &actualJson]() {
-                return RLMAPS_MapResultList.size() == actualJson.size();
+            resultsCV.wait(lock, [this, expectedRequests]() {
+                return completedRequests.load() >= expectedRequests;
             });
 
             RLMAPS_Searching = false;
@@ -78,6 +81,8 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
         RLMAPS_MapResult result;
         if (!maps[index].contains("id") || !maps[index].contains("name") || !maps[index].contains("description") || !maps[index].contains("namespace")) {
             LOG("Workshop map index {} missing required fields", index);
+            completedRequests++;
+            resultsCV.notify_one();
             return;
         }
 
@@ -103,8 +108,15 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
         releaseReq.url = releaseUrl;
         
         HttpWrapper::SendCurlRequest(releaseReq, [this, result, index, maps](int code, std::string responseText) mutable {
+            // Ensure we always notify completion, even on failure
+            auto notifyCompletion = [this]() {
+                completedRequests++;
+                resultsCV.notify_one();
+            };
+            
             if (code != 200) {
                 LOG("Failed to get releases for map {}, code: {}", result.Name, code);
+                notifyCompletion();
                 return;
             }
 
@@ -113,6 +125,7 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
 
                 if (!releaseJson.is_array()) {
                     LOG("Release response is not an array for map {}", result.Name);
+                    notifyCompletion();
                     return;
                 }
 
@@ -163,7 +176,7 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
                         RLMAPS_MapResultList.push_back(result);
                         newIndex = (int)RLMAPS_MapResultList.size() - 1;
                     }
-                    resultsCV.notify_one();
+                    notifyCompletion();
                     DownloadPreviewImage(result.PreviewUrl, resultImagePath.string(), newIndex);
                 } else {
                     result.ImagePath = resultImagePath;
@@ -173,15 +186,18 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
                         std::lock_guard<std::mutex> lock(resultsMutex);
                         RLMAPS_MapResultList.push_back(result);
                     }
-                    resultsCV.notify_one();
+                    notifyCompletion();
                 }
             }
             catch (const std::exception& e) {
                 LOG("Failed to parse releases for map {}: {}", result.Name, e.what());
+                notifyCompletion();
             }
         });
     } catch (const std::exception& e) {
         LOG("CRITICAL: Error in GetMapResult thread: {}", e.what());
+        completedRequests++;
+        resultsCV.notify_one();
     }
 }
 
@@ -282,6 +298,9 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                 
                 LOG("File extracted");
                 RenameFileToUPK(Workshop_Dl_Path);
+                RLMAPS_IsDownloadingWorkshop = false;
+            } else {
+                LOG("Failed to open output file: {}", Folder_Path);
                 RLMAPS_IsDownloadingWorkshop = false;
             }
         } else {

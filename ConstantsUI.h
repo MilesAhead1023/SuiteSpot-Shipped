@@ -363,4 +363,29 @@ namespace UI {
 		constexpr float COLUMN_SHOTS_WIDTH = 80.0f;
 	}
 
+	// ===================================================================
+	// WORKSHOP BROWSER UI CONSTANTS (Two-Panel Layout)
+	// ===================================================================
+	namespace WorkshopBrowserUI {
+		// Percentage of available width for left panel (map list)
+		constexpr float LEFT_PANEL_WIDTH_PERCENT = 0.40f;
+
+		// Minimum width for left panel
+		constexpr float LEFT_PANEL_MIN_WIDTH = 200.0f;
+
+		// Height of the two-panel browser area
+		constexpr float BROWSER_HEIGHT = 400.0f;
+
+		// Preview image dimensions
+		constexpr float PREVIEW_IMAGE_WIDTH = 280.0f;
+		constexpr float PREVIEW_IMAGE_HEIGHT = 158.0f;  // 16:9 aspect ratio
+
+		// Colors
+		inline const ImVec4 MAP_NAME_COLOR = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+		inline const ImVec4 AUTHOR_COLOR = ImVec4(0.7f, 0.7f, 0.7f, 1.0f);
+		inline const ImVec4 DESCRIPTION_COLOR = ImVec4(0.6f, 0.6f, 0.6f, 1.0f);
+		inline const ImVec4 NO_MAPS_COLOR = ImVec4(0.8f, 0.8f, 0.3f, 1.0f);
+		inline const ImVec4 SELECTED_BADGE_COLOR = ImVec4(0.2f, 0.7f, 0.2f, 1.0f);
+	}
+
 }  // namespace UI

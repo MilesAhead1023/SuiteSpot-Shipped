@@ -2,6 +2,9 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <filesystem>
+#include <memory>
+#include "bakkesmod/plugin/bakkesmodplugin.h"
 
 // Freeplay maps
 struct MapEntry {
@@ -36,7 +39,13 @@ extern std::vector<TrainingEntry> RLTraining;
 
 // Workshop maps
 struct WorkshopEntry {
-    std::string filePath;
-    std::string name;      
+    std::string filePath;       // UPK file path
+    std::string name;           // Display name
+    std::string author;         // Map author (from JSON)
+    std::string description;    // Map description (from JSON)
+    std::filesystem::path folder;        // Map folder path
+    std::filesystem::path previewPath;   // Preview image path (.jfif, .jpg, .png)
+    std::shared_ptr<ImageWrapper> previewImage;  // Loaded image
+    bool isImageLoaded = false;
 };
 extern std::vector<WorkshopEntry> RLWorkshop;

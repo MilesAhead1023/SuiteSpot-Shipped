@@ -1,6 +1,7 @@
 #pragma once
 #include "IMGUI/imgui.h"
 #include "StatusMessageUI.h"
+#include "WorkshopDownloader.h"
 #include <string>
 #include <vector>
 
@@ -49,9 +50,37 @@ private:
     void RenderSinglePackMode(std::string& currentTrainingCode);
     void RenderBagRotationMode();
     std::vector<std::string> GetQuickPicksList();
+    
+    // Workshop browser tab
+    void RenderWorkshopBrowserTab();
+    void RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* mapspath);
+    void RLMAPS_RenderSearchWorkshopResults(const char* mapspath);
+    void RenderReleases(RLMAPS_MapResult mapResult, const char* mapspath);
+    void RenderAcceptDownload();
+    void RenderYesNoPopup(const char* popupName, const char* label, std::function<void()> yesFunc, std::function<void()> noFunc);
+    void RenderInfoPopup(const char* popupName, const char* label);
+    void CenterNextItem(float itemWidth);
+    std::string LimitTextSize(std::string str, float maxTextSize);
 
     // Workshop path configuration state
     char workshopPathBuf[512] = {0};
     bool workshopPathInit = false;
     std::string workshopPathCache = "";
+
+    // Workshop browser state
+    char workshopSearchBuf[256] = {0};
+    char workshopDownloadPathBuf[512] = {0};
+
+    // Workshop local browser state (two-panel layout)
+    int selectedWorkshopIndex = -1;  // Currently selected in list
+    std::string lastSelectedWorkshopPath;  // Track path to detect changes
+    
+    // Pending download state for confirmation flow
+    bool hasPendingDownload = false;
+    RLMAPS_MapResult pendingMapResult;
+    RLMAPS_Release pendingRelease;
+    std::string pendingDownloadPath;
+    
+    // Cached result list for rendering (to avoid holding mutex during render)
+    std::vector<RLMAPS_MapResult> cachedResultList;
 };

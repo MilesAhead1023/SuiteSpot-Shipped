@@ -22,7 +22,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v145</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
@@ -147,6 +147,7 @@ exit /b 0</Command>
     <ClCompile Include="StatusMessageUI.cpp" />
     <ClCompile Include="HelpersUI.cpp" />
     <ClCompile Include="PackUsageTracker.cpp" />
+    <ClCompile Include="WorkshopDownloader.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -185,23 +186,13 @@ exit /b 0</Command>
     <ClInclude Include="StatusMessageUI.h" />
     <ClInclude Include="ConstantsUI.h" />
     <ClInclude Include="HelpersUI.h" />
+    <ClInclude Include="WorkshopDownloader.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SuiteSpot.h" />
     <ClInclude Include="version.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SuiteSpot.rc" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include=".githooks\pre-commit" />
-    <None Include=".githooks\pre-push" />
-    <None Include=".github\CODEOWNERS" />
-    <None Include=".github\ISSUE_TEMPLATE\bug_report.md" />
-    <None Include=".github\ISSUE_TEMPLATE\feature_request.md" />
-    <None Include=".github\pull_request_template.md" />
-    <None Include=".github\workflows\branch-flow.yml" />
-    <None Include="README.md" />
-    <None Include="TODO.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

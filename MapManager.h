@@ -45,10 +45,19 @@ public:
     
     // The big scanner: Finds maps in a folder and adds them to the list
     void DiscoverWorkshopInDir(const std::filesystem::path& dir, std::vector<WorkshopEntry>& outList) const;
-    
+
     // Refreshes the list of maps
     void LoadWorkshopMaps(std::vector<WorkshopEntry>& outList, int& currentIndex);
 
 private:
     std::filesystem::path dataRoot;
+
+    // Parse workshop JSON metadata file
+    bool LoadWorkshopMetadata(const std::filesystem::path& jsonPath,
+                              std::string& outTitle,
+                              std::string& outAuthor,
+                              std::string& outDescription) const;
+
+    // Find preview image in workshop folder (.jfif, .jpg, .png)
+    std::filesystem::path FindPreviewImage(const std::filesystem::path& folder) const;
 };

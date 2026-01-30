@@ -436,3 +436,4 @@ vectors.db
 plugins/*.dll
 plugins/*.exp
 plugins/*.lib
+_codeql_detected_source_root

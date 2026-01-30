@@ -11,6 +11,8 @@
 #include <functional>
 #include <thread>
 #include <mutex>
+#include <atomic>
+#include <condition_variable>
 
 namespace fs = std::filesystem;
 
@@ -45,7 +47,7 @@ public:
     WorkshopDownloader(std::shared_ptr<GameWrapper> gw);
     
     void GetResults(std::string keyWord, int IndexPage);
-    void GetMapResult(nlohmann::json maps, int index);
+    void GetMapResult(nlohmann::json maps, int index, int generation);
     void GetNumPages(std::string keyWord);
     
     void RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_MapResult mapResult, RLMAPS_Release release);
@@ -58,20 +60,18 @@ public:
     void RenameFileToUPK(fs::path filePath);
     std::string UdkInDirectory(std::string dirPath);
     
-    bool RLMAPS_Searching = false;
-    int RLMAPS_NumberOfMapsFound = 0;
-    int NumPages = 0;
-    int RLMAPS_PageSelected = 0;
+    std::atomic<bool> RLMAPS_Searching = false;
+    std::atomic<int> RLMAPS_NumberOfMapsFound = 0;
+    std::atomic<int> NumPages = 0;
+    std::atomic<int> RLMAPS_PageSelected = 0;
     std::vector<RLMAPS_MapResult> RLMAPS_MapResultList;
     
-    bool RLMAPS_IsDownloadingWorkshop = false;
-    int RLMAPS_Download_Progress = 0;
-    int RLMAPS_WorkshopDownload_Progress = 0;
-    int RLMAPS_WorkshopDownload_FileSize = 0;
+    std::atomic<bool> RLMAPS_IsDownloadingWorkshop = false;
+    std::atomic<int> RLMAPS_Download_Progress = 0;
+    std::atomic<int> RLMAPS_WorkshopDownload_Progress = 0;
+    std::atomic<int> RLMAPS_WorkshopDownload_FileSize = 0;
     
-    bool UserIsChoosingYESorNO = false;
-    bool AcceptTheDownload = false;
-    bool FolderErrorBool = false;
+    std::atomic<bool> FolderErrorBool = false;
     std::string FolderErrorText;
     
     std::string BakkesmodPath;
@@ -79,6 +79,9 @@ public:
     std::string rlmaps_url = "https://celab.jetfox.ovh/api/v4/projects/?search=";
 
     mutable std::mutex resultsMutex; // Protects RLMAPS_MapResultList
+    std::condition_variable resultsCV; // Signals when map results are ready
+    std::atomic<int> completedRequests = 0; // Tracks completed HTTP requests (success or failure)
+    std::atomic<int> searchGeneration = 0; // Incremented on each new search to invalidate old callbacks
 
 private:
     std::shared_ptr<GameWrapper> gameWrapper;

@@ -13,7 +13,16 @@ WorkshopDownloader::WorkshopDownloader(std::shared_ptr<GameWrapper> gw)
 
 void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
 {
-    RLMAPS_Searching = true;
+    // Prevent new search if one is already in progress
+    bool expectedSearching = false;
+    if (!RLMAPS_Searching.compare_exchange_strong(expectedSearching, true)) {
+        LOG("Search already in progress, ignoring new search request");
+        return;
+    }
+    
+    // Increment generation to invalidate callbacks from previous searches
+    int currentGeneration = ++searchGeneration;
+    
     {
         std::lock_guard<std::mutex> lock(resultsMutex);
         RLMAPS_MapResultList.clear();
@@ -32,7 +41,13 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
     CurlRequest req;
     req.url = searchUrl;
     
-    HttpWrapper::SendCurlRequest(req, [this, keyWord](int code, std::string result) {
+    HttpWrapper::SendCurlRequest(req, [this, keyWord, currentGeneration](int code, std::string result) {
+        // Check if this callback is still valid for the current search
+        if (searchGeneration.load() != currentGeneration) {
+            LOG("Ignoring stale search callback (generation mismatch)");
+            return;
+        }
+        
         LOG("Workshop search response code: {}, length: {}", code, result.length());
         if (code != 200) {
             LOG("Workshop search failed with HTTP code {}", code);
@@ -55,15 +70,16 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
             int expectedRequests = (int)actualJson.size();
             
             for (int index = 0; index < expectedRequests; ++index) {
-                std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index);
+                std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index, currentGeneration);
                 t2.detach();
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
 
             // Wait for all map requests to complete (success or failure)
             std::unique_lock<std::mutex> lock(resultsMutex);
-            resultsCV.wait(lock, [this, expectedRequests]() {
-                return completedRequests.load() >= expectedRequests;
+            resultsCV.wait(lock, [this, expectedRequests, currentGeneration]() {
+                // Also wake up if search generation changed (new search started)
+                return completedRequests.load() >= expectedRequests || searchGeneration.load() != currentGeneration;
             });
 
             RLMAPS_Searching = false;
@@ -75,9 +91,15 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
     });
 }
 
-void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
+void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index, int generation)
 {
     try {
+        // Check if this callback is still valid for the current search
+        if (searchGeneration.load() != generation) {
+            LOG("Ignoring stale map result callback (generation mismatch)");
+            return;
+        }
+        
         RLMAPS_MapResult result;
         if (!maps[index].contains("id") || !maps[index].contains("name") || !maps[index].contains("description") || !maps[index].contains("namespace")) {
             LOG("Workshop map index {} missing required fields", index);
@@ -107,7 +129,13 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
         CurlRequest releaseReq;
         releaseReq.url = releaseUrl;
         
-        HttpWrapper::SendCurlRequest(releaseReq, [this, result, index, maps](int code, std::string responseText) mutable {
+        HttpWrapper::SendCurlRequest(releaseReq, [this, result, index, maps, generation](int code, std::string responseText) mutable {
+            // Check if this callback is still valid for the current search
+            if (searchGeneration.load() != generation) {
+                LOG("Ignoring stale release callback (generation mismatch)");
+                return;
+            }
+            
             // Ensure we always notify completion, even on failure
             auto notifyCompletion = [this]() {
                 completedRequests++;
@@ -167,6 +195,14 @@ void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
                 LOG("Workshop map: {}", result.Name);
 
                 fs::path resultImagePath = BakkesmodPath + "SuiteSpot\\Workshop\\img\\" + result.ID + ".jfif";
+
+                // Only add to list and notify if we have releases or always add?
+                // For now, always add the result even if releases is empty
+                if (releases.empty()) {
+                    LOG("Map {} has no releases, skipping", result.Name);
+                    notifyCompletion();
+                    return;
+                }
 
                 if (!DirectoryOrFileExists(resultImagePath)) {
                     result.IsDownloadingPreview = true;

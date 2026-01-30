@@ -47,7 +47,7 @@ public:
     WorkshopDownloader(std::shared_ptr<GameWrapper> gw);
     
     void GetResults(std::string keyWord, int IndexPage);
-    void GetMapResult(nlohmann::json maps, int index);
+    void GetMapResult(nlohmann::json maps, int index, int generation);
     void GetNumPages(std::string keyWord);
     
     void RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_MapResult mapResult, RLMAPS_Release release);
@@ -81,6 +81,7 @@ public:
     mutable std::mutex resultsMutex; // Protects RLMAPS_MapResultList
     std::condition_variable resultsCV; // Signals when map results are ready
     std::atomic<int> completedRequests = 0; // Tracks completed HTTP requests (success or failure)
+    std::atomic<int> searchGeneration = 0; // Incremented on each new search to invalidate old callbacks
 
 private:
     std::shared_ptr<GameWrapper> gameWrapper;

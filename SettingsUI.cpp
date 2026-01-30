@@ -803,13 +803,21 @@ void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
         }
     }
     
-    // Update the original list with loaded images
+    // Update the original list with loaded images by matching IDs
     {
         std::lock_guard<std::mutex> lock(plugin_->workshopDownloader->resultsMutex);
-        for (size_t i = 0; i < cachedResultList.size() && i < plugin_->workshopDownloader->RLMAPS_MapResultList.size(); ++i) {
-            if (cachedResultList[i].isImageLoaded && cachedResultList[i].Image) {
-                plugin_->workshopDownloader->RLMAPS_MapResultList[i].Image = cachedResultList[i].Image;
-                plugin_->workshopDownloader->RLMAPS_MapResultList[i].isImageLoaded = true;
+        auto& originalList = plugin_->workshopDownloader->RLMAPS_MapResultList;
+        
+        for (const auto& cachedMap : cachedResultList) {
+            if (cachedMap.isImageLoaded && cachedMap.Image) {
+                // Find matching map in original list by ID
+                for (auto& originalMap : originalList) {
+                    if (originalMap.ID == cachedMap.ID && !originalMap.isImageLoaded) {
+                        originalMap.Image = cachedMap.Image;
+                        originalMap.isImageLoaded = true;
+                        break;
+                    }
+                }
             }
         }
     }

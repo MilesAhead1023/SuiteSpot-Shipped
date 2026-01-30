@@ -117,6 +117,9 @@
     <ClCompile Include="PackUsageTracker.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WorkshopDownloader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imgui\imgui_rangeslider.h">
@@ -218,21 +221,13 @@
     <ClInclude Include="SettingsSync.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WorkshopDownloader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SuiteSpot.rc">
       <Filter>Resource</Filter>
     </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="README.md" />
-    <None Include=".githooks\pre-push" />
-    <None Include=".githooks\pre-commit" />
-    <None Include=".github\pull_request_template.md" />
-    <None Include=".github\ISSUE_TEMPLATE\bug_report.md" />
-    <None Include=".github\ISSUE_TEMPLATE\feature_request.md" />
-    <None Include=".github\workflows\branch-flow.yml" />
-    <None Include=".github\CODEOWNERS" />
-    <None Include="TODO.md" />
   </ItemGroup>
 </Project>

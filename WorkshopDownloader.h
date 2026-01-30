@@ -10,6 +10,7 @@
 #include <memory>
 #include <functional>
 #include <thread>
+#include <mutex>
 
 namespace fs = std::filesystem;
 
@@ -76,7 +77,9 @@ public:
     std::string BakkesmodPath;
     std::string IfNoPreviewImagePath;
     std::string rlmaps_url = "https://celab.jetfox.ovh/api/v4/projects/?search=";
-    
+
+    mutable std::mutex resultsMutex; // Protects RLMAPS_MapResultList
+
 private:
     std::shared_ptr<GameWrapper> gameWrapper;
     

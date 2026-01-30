@@ -194,17 +194,6 @@ exit /b 0</Command>
   <ItemGroup>
     <ResourceCompile Include="SuiteSpot.rc" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include=".githooks\pre-commit" />
-    <None Include=".githooks\pre-push" />
-    <None Include=".github\CODEOWNERS" />
-    <None Include=".github\ISSUE_TEMPLATE\bug_report.md" />
-    <None Include=".github\ISSUE_TEMPLATE\feature_request.md" />
-    <None Include=".github\pull_request_template.md" />
-    <None Include=".github\workflows\branch-flow.yml" />
-    <None Include="README.md" />
-    <None Include="TODO.md" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

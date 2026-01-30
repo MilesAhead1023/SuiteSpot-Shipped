@@ -782,8 +782,23 @@ void SettingsUI::RenderWorkshopBrowserTab() {
 void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
     if (!plugin_->workshopDownloader) return;
     
+    std::lock_guard<std::mutex> lock(plugin_->workshopDownloader->resultsMutex);
+
     auto& resultList = plugin_->workshopDownloader->RLMAPS_MapResultList;
     if (resultList.empty()) return;
+
+    // Safe Lazy Loading of Preview Images on Render Thread
+    for (auto& map : resultList) {
+        if (map.Image == nullptr && !map.IsDownloadingPreview && !map.ImagePath.empty()) {
+            // Check if file exists before trying to load
+            if (std::filesystem::exists(map.ImagePath)) {
+                map.Image = std::make_shared<ImageWrapper>(map.ImagePath.string(), false, true);
+                if (map.Image) {
+                    map.isImageLoaded = true;
+                }
+            }
+        }
+    }
     
     if (ImGui::BeginChild("##SearchResults", ImVec2(0, 500), true)) {
         ImDrawList* drawList = ImGui::GetWindowDrawList();

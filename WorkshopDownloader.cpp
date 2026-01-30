@@ -14,7 +14,10 @@ WorkshopDownloader::WorkshopDownloader(std::shared_ptr<GameWrapper> gw)
 void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
 {
     RLMAPS_Searching = true;
-    RLMAPS_MapResultList.clear();
+    {
+        std::lock_guard<std::mutex> lock(resultsMutex);
+        RLMAPS_MapResultList.clear();
+    }
     RLMAPS_PageSelected = IndexPage;
     
     if (IndexPage == 1) {
@@ -28,109 +31,176 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
     CurlRequest req;
     req.url = searchUrl;
     
-    HttpWrapper::SendCurlJsonRequest(req, [this, keyWord](int code, nlohmann::json actualJson) {
-        if (code != 200 || !actualJson.is_array()) {
-            LOG("Workshop search failed with code {}", code);
+    HttpWrapper::SendCurlRequest(req, [this, keyWord](int code, std::string result) {
+        LOG("Workshop search response code: {}, length: {}", code, result.length());
+        if (code != 200) {
+            LOG("Workshop search failed with HTTP code {}", code);
             RLMAPS_Searching = false;
             return;
         }
-        
-        RLMAPS_NumberOfMapsFound = actualJson.size();
-        
-        for (int index = 0; index < actualJson.size(); ++index) {
-            std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index);
-            t2.detach();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        try {
+            nlohmann::json actualJson = nlohmann::json::parse(result);
+
+            if (!actualJson.is_array()) {
+                LOG("Workshop search response is not an array");
+                RLMAPS_Searching = false;
+                return;
+            }
+
+            RLMAPS_NumberOfMapsFound = (int)actualJson.size();
+            LOG("Workshop search found {} maps", RLMAPS_NumberOfMapsFound);
+
+            for (int index = 0; index < (int)actualJson.size(); ++index) {
+                std::thread t2(&WorkshopDownloader::GetMapResult, this, actualJson, index);
+                t2.detach();
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+
+            while (RLMAPS_MapResultList.size() != actualJson.size()) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+
+            RLMAPS_Searching = false;
         }
-        
-        while (RLMAPS_MapResultList.size() != actualJson.size()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        catch (const std::exception& e) {
+            LOG("Workshop search JSON parse error: {}", e.what());
+            RLMAPS_Searching = false;
         }
-        
-        RLMAPS_Searching = false;
     });
 }
 
 void WorkshopDownloader::GetMapResult(nlohmann::json maps, int index)
 {
-    RLMAPS_MapResult result;
-    result.ID = maps[index]["id"].get<std::string>();
-    result.Name = maps[index]["name"].get<std::string>();
-    result.Description = maps[index]["description"].get<std::string>();
-    
-    CleanHTML(result.Description);
-    
-    std::string releaseUrl = "https://celab.jetfox.ovh/api/v4/projects/" + result.ID + "/releases";
-    
-    CurlRequest releaseReq;
-    releaseReq.url = releaseUrl;
-    
-    HttpWrapper::SendCurlJsonRequest(releaseReq, [this, result, index, maps](int code, nlohmann::json releaseJson) mutable {
-        if (code != 200 || !releaseJson.is_array()) {
+    try {
+        RLMAPS_MapResult result;
+        if (!maps[index].contains("id") || !maps[index].contains("name") || !maps[index].contains("description") || !maps[index].contains("namespace")) {
+            LOG("Workshop map index {} missing required fields", index);
             return;
         }
+
+        // Safely extract fields that might be numbers or strings
+        auto& id_json = maps[index]["id"];
+        result.ID = id_json.is_string() ? id_json.get<std::string>() : id_json.dump();
         
-        std::vector<RLMAPS_Release> releases;
-        for (int release_index = 0; release_index < releaseJson.size(); ++release_index) {
-            RLMAPS_Release release;
-            release.name = releaseJson[release_index]["name"].get<std::string>();
-            release.tag_name = releaseJson[release_index]["tag_name"].get<std::string>();
-            release.description = releaseJson[release_index]["description"].get<std::string>();
-            
-            if (releaseJson[release_index]["assets"]["links"].size() > 0) {
-                release.pictureLink = releaseJson[release_index]["assets"]["links"][0]["url"].get<std::string>();
+        // Remove quotes if dump() was used (though nlohmann::json::dump on numbers shouldn't have them)
+        result.ID.erase(std::remove(result.ID.begin(), result.ID.end(), '\"'), result.ID.end());
+
+        auto& name_json = maps[index]["name"];
+        result.Name = name_json.is_string() ? name_json.get<std::string>() : name_json.dump();
+        result.Name.erase(std::remove(result.Name.begin(), result.Name.end(), '\"'), result.Name.end());
+
+        auto& desc_json = maps[index]["description"];
+        result.Description = desc_json.is_string() ? desc_json.get<std::string>() : desc_json.dump();
+        
+        CleanHTML(result.Description);
+        
+        std::string releaseUrl = "https://celab.jetfox.ovh/api/v4/projects/" + result.ID + "/releases";
+        
+        CurlRequest releaseReq;
+        releaseReq.url = releaseUrl;
+        
+        HttpWrapper::SendCurlRequest(releaseReq, [this, result, index, maps](int code, std::string responseText) mutable {
+            if (code != 200) {
+                LOG("Failed to get releases for map {}, code: {}", result.Name, code);
+                return;
             }
-            if (releaseJson[release_index]["assets"]["links"].size() > 1) {
-                release.downloadLink = releaseJson[release_index]["assets"]["links"][1]["url"].get<std::string>();
-                
-                std::string zipNameUnsafe = releaseJson[release_index]["assets"]["links"][1]["name"].get<std::string>();
-                std::string specials[] = { "/", "\\", "?", ":", "*", "\"", "<", ">", "|", "#", "'", "`" };
-                for (auto special : specials) {
-                    EraseAll(zipNameUnsafe, special);
+
+            try {
+                nlohmann::json releaseJson = nlohmann::json::parse(responseText);
+
+                if (!releaseJson.is_array()) {
+                    LOG("Release response is not an array for map {}", result.Name);
+                    return;
                 }
-                release.zipName = zipNameUnsafe;
+
+                std::vector<RLMAPS_Release> releases;
+                for (int release_index = 0; release_index < (int)releaseJson.size(); ++release_index) {
+                    RLMAPS_Release release;
+                    release.name = releaseJson[release_index]["name"].get<std::string>();
+                    release.tag_name = releaseJson[release_index]["tag_name"].get<std::string>();
+                    release.description = releaseJson[release_index]["description"].get<std::string>();
+
+                    if (releaseJson[release_index]["assets"]["links"].size() > 0) {
+                        release.pictureLink = releaseJson[release_index]["assets"]["links"][0]["url"].get<std::string>();
+                    }
+                    if (releaseJson[release_index]["assets"]["links"].size() > 1) {
+                        release.downloadLink = releaseJson[release_index]["assets"]["links"][1]["url"].get<std::string>();
+
+                        std::string zipNameUnsafe = releaseJson[release_index]["assets"]["links"][1]["name"].get<std::string>();
+                        std::string specials[] = { "/", "\\", "?", ":", "*", "\"", "<", ">", "|", "#", "'", "`" };
+                        for (auto special : specials) {
+                            EraseAll(zipNameUnsafe, special);
+                        }
+                        release.zipName = zipNameUnsafe;
+                    }
+
+                    releases.push_back(release);
+                }
+
+                result.releases = releases;
+                result.Size = "10000000";
+                
+                auto& author_json = maps[index]["namespace"]["path"];
+                result.Author = author_json.is_string() ? author_json.get<std::string>() : author_json.dump();
+                result.Author.erase(std::remove(result.Author.begin(), result.Author.end(), '\"'), result.Author.end());
+
+                if (!releases.empty()) {
+                    result.PreviewUrl = releases[0].pictureLink;
+                }
+
+                LOG("Workshop map: {}", result.Name);
+
+                fs::path resultImagePath = BakkesmodPath + "SuiteSpot\\Workshop\\img\\" + result.ID + ".jfif";
+
+                if (!DirectoryOrFileExists(resultImagePath)) {
+                    result.IsDownloadingPreview = true;
+                    int newIndex = -1;
+                    {
+                        std::lock_guard<std::mutex> lock(resultsMutex);
+                        RLMAPS_MapResultList.push_back(result);
+                        newIndex = (int)RLMAPS_MapResultList.size() - 1;
+                    }
+                    DownloadPreviewImage(result.PreviewUrl, resultImagePath.string(), newIndex);
+                } else {
+                    result.ImagePath = resultImagePath;
+                    // result.Image = std::make_shared<ImageWrapper>(resultImagePath, false, true);
+                    result.isImageLoaded = true;
+                    {
+                        std::lock_guard<std::mutex> lock(resultsMutex);
+                        RLMAPS_MapResultList.push_back(result);
+                    }
+                }
             }
-            
-            releases.push_back(release);
-        }
-        
-        result.releases = releases;
-        result.Size = "10000000";
-        result.Author = maps[index]["namespace"]["path"].get<std::string>();
-        
-        if (!releases.empty()) {
-            result.PreviewUrl = releases[0].pictureLink;
-        }
-        
-        LOG("Workshop map: {}", result.Name);
-        
-        fs::path resultImagePath = BakkesmodPath + "SuiteSpot\\Workshop\\img\\" + result.ID + ".jfif";
-        
-        if (!DirectoryOrFileExists(resultImagePath)) {
-            result.IsDownloadingPreview = true;
-            RLMAPS_MapResultList.push_back(result);
-            DownloadPreviewImage(result.PreviewUrl, resultImagePath.string(), RLMAPS_MapResultList.size() - 1);
-        } else {
-            result.ImagePath = resultImagePath;
-            result.Image = std::make_shared<ImageWrapper>(resultImagePath, false, true);
-            result.isImageLoaded = true;
-            RLMAPS_MapResultList.push_back(result);
-        }
-    });
+            catch (const std::exception& e) {
+                LOG("Failed to parse releases for map {}: {}", result.Name, e.what());
+            }
+        });
+    } catch (const std::exception& e) {
+        LOG("CRITICAL: Error in GetMapResult thread: {}", e.what());
+    }
 }
 
 void WorkshopDownloader::GetNumPages(std::string keyWord)
 {
     int ResultsSize = 20;
     std::string searchUrl = rlmaps_url + keyWord;
-    
+
     CurlRequest req;
     req.url = searchUrl;
-    
-    HttpWrapper::SendCurlJsonRequest(req, [this, ResultsSize](int code, nlohmann::json actualJson) {
-        if (code == 200 && actualJson.is_array()) {
-            NumPages = (actualJson.size() / ResultsSize) + 1;
-            LOG("Workshop search found {} pages", NumPages);
+
+    HttpWrapper::SendCurlRequest(req, [this, ResultsSize](int code, std::string result) {
+        if (code != 200) return;
+
+        try {
+            nlohmann::json actualJson = nlohmann::json::parse(result);
+            if (actualJson.is_array()) {
+                NumPages = ((int)actualJson.size() / ResultsSize) + 1;
+                LOG("Workshop search found {} pages", NumPages);
+            }
+        }
+        catch (...) {
+            // Ignore parse errors for page count
         }
     });
 }
@@ -245,19 +315,25 @@ void WorkshopDownloader::DownloadPreviewImage(std::string downloadUrl, std::stri
     
     HttpWrapper::SendCurlRequest(req, [this, filePath, mapResultIndex](int code, char* data, size_t size) {
         if (code == 200) {
-            std::ofstream outFile(filePath, std::ios::binary);
-            if (outFile) {
-                outFile.write(data, size);
-                outFile.close();
-                
-                if (mapResultIndex >= 0 && mapResultIndex < RLMAPS_MapResultList.size()) {
-                    RLMAPS_MapResultList[mapResultIndex].ImagePath = filePath;
-                    RLMAPS_MapResultList[mapResultIndex].Image = std::make_shared<ImageWrapper>(filePath, false, true);
-                    RLMAPS_MapResultList[mapResultIndex].isImageLoaded = true;
-                    RLMAPS_MapResultList[mapResultIndex].IsDownloadingPreview = false;
+            try {
+                std::ofstream outFile(filePath, std::ios::binary);
+                if (outFile) {
+                    outFile.write(data, size);
+                    outFile.close();
+                    
+                    {
+                        std::lock_guard<std::mutex> lock(resultsMutex);
+                        if (mapResultIndex >= 0 && mapResultIndex < RLMAPS_MapResultList.size()) {
+                            RLMAPS_MapResultList[mapResultIndex].ImagePath = filePath;
+                            // Image loading deferred to Render thread to avoid crash
+                            RLMAPS_MapResultList[mapResultIndex].IsDownloadingPreview = false;
+                        }
+                    }
+                    
+                    LOG("Preview downloaded: {}", filePath);
                 }
-                
-                LOG("Preview downloaded: {}", filePath);
+            } catch (const std::exception& e) {
+                LOG("Error writing preview file {}: {}", filePath, e.what());
             }
         }
     });

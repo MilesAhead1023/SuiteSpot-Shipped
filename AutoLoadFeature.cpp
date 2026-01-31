@@ -71,11 +71,17 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
 
         // Resolve target code
         if (!targetCode.empty()) {
+            // FIX: Trust BakkesMod to handle invalid codes. Don't validate against cache.
+            // This allows loading codes that aren't in our cached list (fresh/shared codes).
+            codeToLoad = targetCode;
+
+            // Try to find name in cache for logging, but don't require it
             auto it = std::find_if(training.begin(), training.end(),
                 [&](const TrainingEntry& e) { return e.code == targetCode; });
             if (it != training.end()) {
-                codeToLoad = targetCode;
                 nameToLoad = it->name;
+            } else {
+                nameToLoad = targetCode; // Use code as name if not in cache
             }
         }
 

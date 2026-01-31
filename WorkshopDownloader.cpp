@@ -66,7 +66,7 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
             }
 
             RLMAPS_NumberOfMapsFound = (int)actualJson.size();
-            LOG("Workshop search found {} maps", RLMAPS_NumberOfMapsFound);
+            LOG("Workshop search found {} maps", RLMAPS_NumberOfMapsFound.load());
 
             int expectedRequests = (int)actualJson.size();
             
@@ -259,7 +259,7 @@ void WorkshopDownloader::GetNumPages(std::string keyWord)
             nlohmann::json actualJson = nlohmann::json::parse(result);
             if (actualJson.is_array()) {
                 NumPages = ((int)actualJson.size() / ResultsSize) + 1;
-                LOG("Workshop search found {} pages", NumPages);
+                LOG("Workshop search found {} pages", NumPages.load());
             }
         }
         catch (...) {

@@ -1,0 +1,7 @@
+CompileFlags:
+  Add:
+    - "-IC:/Users/bmile/AppData/Roaming/bakkesmod/bakkesmod/bakkesmodsdk/include"
+    - "-DWIN32_LEAN_AND_MEAN"
+    - "-D_CRT_SECURE_NO_WARNINGS"
+    - "-DNOMINMAX"
+    - "-std=c++20"

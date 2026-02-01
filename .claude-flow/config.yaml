@@ -1,7 +1,15 @@
 # Claude Flow V3 Runtime Configuration
 # Generated: 2026-01-31T13:02:49.784Z
+# Updated with BakkesMod-specific hooks: 2026-01-31
 
 version: "3.0.0"
+
+# Project-specific configuration
+project:
+  type: bakkesmod-plugin
+  language: cpp20
+  platform: windows-x64
+  buildSystem: msbuild
 
 swarm:
   topology: hierarchical-mesh
@@ -22,7 +30,82 @@ neural:
 hooks:
   enabled: true
   autoExecute: true
+  customPaths:
+    - .claude/bakkesmod-hooks
+  
+  # BakkesMod-specific hook configuration
+  bakkesmod:
+    preEdit:
+      enabled: true
+      validateSyntax: true
+      checkImGuiApi: true
+      checkThreadSafety: true
+      checkCvarNaming: true
+      checkIncludes: true
+      backupFiles: true
+    
+    postEdit:
+      enabled: true
+      autoFormat: true
+      validateBuild: false  # Set to true for strict validation
+      checkThreadSafety: true
+      memoryStorage: true
+      trainPatterns: true
+    
+    preBuild:
+      enabled: true
+      checkSdk: true
+      validateVcxproj: true
+      checkVersion: true
+      verifyToolchain: true
+      checkDependencies: true
+    
+    postBuild:
+      enabled: true
+      verifyDll: true
+      checkPatch: true
+      validateResources: true
+      testLoad: false  # Set to true for full integration test
+      logMetrics: true
+    
+    projectInit:
+      enabled: true
+      checkAll: true
+      autoFix: false  # Set to true to auto-fix common issues
+    
+    cvarValidation:
+      enabled: true
+      checkNaming: true
+      checkRegistration: true
+      checkCallbacks: true
+      checkNullSafety: true
+      checkSync: true
+      autoFix: false  # Set to true to auto-fix naming violations
 
 mcp:
   autoStart: false
   port: 3000
+
+# BakkesMod-specific patterns to enforce
+patterns:
+  deferredExecution:
+    required: true
+    minDelay: 0.5  # seconds
+  
+  threadSafety:
+    enforceMusexes: true
+    checkAtomics: true
+  
+  cvarNaming:
+    prefix: "suitespot_"
+    case: lowercase
+    regex: "^suitespot_[a-z][a-z0-9_]*$"
+  
+  imguiVersion:
+    version: "1.75"
+    validateApi: true
+    referenceFile: "IMGUI/imgui.h"
+  
+  logging:
+    preferMacro: true  # Use LOG() not std::cout
+    logPrefix: "SuiteSpot:"

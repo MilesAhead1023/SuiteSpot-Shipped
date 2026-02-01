@@ -38,8 +38,11 @@ jobs:
       run: nuget restore ${{env.SOLUTION_FILE_PATH}}
 
     - name: Clone BakkesMod SDK
+      working-directory: ${{env.GITHUB_WORKSPACE}}
       run: |
-        git clone https://github.com/bakkesmodorg/BakkesModSDK.git bakkesmodsdk
+        git clone --depth 1 https://github.com/bakkesmodorg/BakkesModSDK.git bakkesmodsdk
+        cd bakkesmodsdk
+        git checkout 479e8f571cf554b25f4eeb64d611dec4133edcaf
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}

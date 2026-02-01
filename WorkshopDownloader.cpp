@@ -322,11 +322,11 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
             if (out_file) {
                 out_file.write(data, size);
                 out_file.close();
-                
+
                 LOG("Workshop downloaded to: {}", Workshop_Dl_Path);
-                
+
                 ExtractZipPowerShell(Folder_Path, Workshop_Dl_Path);
-                
+
                 int checkTime = 0;
                 while (UdkInDirectory(Workshop_Dl_Path) == "Null") {
                     LOG("Extracting zip file");
@@ -338,7 +338,7 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                     checkTime++;
                 }
-                
+
                 LOG("File extracted");
                 RenameFileToUPK(Workshop_Dl_Path);
                 RLMAPS_IsDownloadingWorkshop = false;
@@ -351,13 +351,6 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
             RLMAPS_IsDownloadingWorkshop = false;
         }
     });
-    
-    // Monitor download progress on this thread
-    while (RLMAPS_IsDownloadingWorkshop.load()) {
-        LOG("downloading...............");
-        RLMAPS_WorkshopDownload_Progress = RLMAPS_Download_Progress.load();
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    }
 }
 
 void WorkshopDownloader::DownloadPreviewImage(std::string downloadUrl, std::string filePath, int mapResultIndex)

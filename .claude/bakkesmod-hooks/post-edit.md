@@ -105,6 +105,49 @@ class Manager {
 };
 ```
 
+### 3a. Wrapper Storage Detection (CRITICAL)
+
+Validates no wrappers stored as class members:
+
+**FLAGGED**:
+```cpp
+class Plugin {
+    ServerWrapper server_;  // DANGER! Will become invalid
+    CarWrapper car_;        // DANGER! Pointer invalidation
+};
+```
+
+**RECOMMENDED**:
+```cpp
+class Plugin {
+    void UseServer() {
+        ServerWrapper server = gameWrapper->GetCurrentGameState();
+        if (!server) { return; }
+        // Use immediately
+    }
+};
+```
+
+### 3b. Execute Pattern Validation (UI Safety)
+
+Validates UI code properly wraps game operations:
+
+**FLAGGED**:
+```cpp
+if (ImGui::Button("Action")) {
+    cvarManager->executeCommand("command");  // CRASH!
+}
+```
+
+**RECOMMENDED**:
+```cpp
+if (ImGui::Button("Action")) {
+    gameWrapper->Execute([this](GameWrapper* gw) {
+        cvarManager->executeCommand("command");  // Safe
+    });
+}
+```
+
 ### 4. Memory Safety Check
 
 Validates memory management:

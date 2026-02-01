@@ -50,12 +50,22 @@ Initial project setup validation:
 - PowerShell execution policy check
 - Directory structure validation
 
-#### `cvar-validation.md`
-CVar-specific validation:
-- Ensures all CVars use suitespot_ prefix
-- Validates CVar callback patterns
-- Checks for null-safety in CVar access
-- Verifies CVar synchronization with local variables
+#### `hook-patterns.md`
+Event hooking patterns and best practices:
+- Function hook types (HookEvent, HookEventPost, WithCaller variants)
+- Commonly hooked functions with examples
+- Parameter struct patterns
+- Hook timing (pre vs post)
+- Critical limitations (no duplicate hooks, wrapper storage)
+- Integration with Execute and SetTimeout patterns
+
+### Reference Documentation
+
+#### `QUICK_REFERENCE.md`
+Quick reference card with common commands and patterns
+
+#### `IMPLEMENTATION_SUMMARY.md`
+Complete implementation details and statistics
 
 ## BakkesMod-Specific Patterns
 
@@ -66,6 +76,9 @@ CVar-specific validation:
 3. **CVar Null Checks**: Always verify CVar exists before accessing
 4. **ImGui API**: Only use verified v1.75 APIs
 5. **Naming Convention**: All CVars must use `suitespot_` prefix
+6. **Wrapper Storage**: Never store wrappers as class members (pointers become invalid)
+7. **Execute Pattern**: UI buttons calling game code must use `gameWrapper->Execute()`
+8. **Hook Uniqueness**: Only hook each function once (subsequent hooks ignored)
 
 ### Code Quality Checks
 

@@ -31,6 +31,35 @@ Checks file for C++20 compatibility:
 - Range-based for loops
 - `std::atomic<T>` for thread safety
 
+### 1a. Execute Pattern Validation (UI Safety)
+
+Validates UI code properly wraps game-modifying operations:
+
+**CRITICAL PATTERN**: ImGui buttons that call game code must use `gameWrapper->Execute()`
+
+**CORRECT**:
+```cpp
+if (ImGui::Button("Load Pack")) {
+  gameWrapper->Execute([this](GameWrapper* gw) {
+    cvarManager->executeCommand("load_training CODE");  // Safe
+  });
+}
+```
+
+**INCORRECT**:
+```cpp
+if (ImGui::Button("Load Pack")) {
+  cvarManager->executeCommand("load_training CODE");  // CRASH!
+}
+```
+
+**Why**: UI code runs on render thread. Direct game modifications crash. `Execute()` safely schedules operation.
+
+**Checks**:
+- All ImGui button callbacks use `Execute()` if calling game code
+- All ImGui input callbacks use `Execute()` if modifying ServerWrapper
+- Execute pattern used for executeCommand, wrapper manipulation
+
 ### 2. ImGui API Version Check (v1.75)
 
 Verifies ImGui function signatures match v1.75:
@@ -47,6 +76,42 @@ ImGui::BeginChild(ImGuiID id, ...) // ID overload doesn't exist in v1.75
 ```
 
 **Reference file**: `IMGUI/imgui.h` - This is the source of truth
+
+### 2a. Wrapper Storage Anti-Pattern (CRITICAL)
+
+Validates against storing wrappers as class members:
+
+**CRITICAL ANTI-PATTERN**: Never store BakkesMod wrappers as member variables
+
+**INCORRECT**:
+```cpp
+class MyPlugin {
+private:
+    ServerWrapper storedServer;  // DANGER! Pointer becomes invalid
+    CarWrapper storedCar;         // DANGER! Will crash later
+    BallWrapper storedBall;       // DANGER! Points to wrong memory
+};
+```
+
+**CORRECT**:
+```cpp
+class MyPlugin {
+    void ProcessMatch() {
+        // Obtain wrappers when needed
+        ServerWrapper server = gameWrapper->GetCurrentGameState();
+        if (!server) { return; }
+        // Use immediately, don't store
+    }
+};
+```
+
+**Why**: Wrapper pointers become invalid between frames/matches. Stored wrappers will crash when used later.
+
+**Checks**:
+- No ServerWrapper, CarWrapper, BallWrapper, etc. as class members
+- Wrappers obtained fresh when needed
+- Wrappers only passed to immediate-use functions/lambdas
+- No wrappers in SetTimeout callbacks (obtain fresh inside callback)
 
 ### 3. Thread Safety Pattern Validation
 
@@ -189,6 +254,24 @@ system("powershell.exe -i -File script.ps1"); // -i (interactive) doesn't work
 - Virtual scrolling: Use `ImGuiListClipper` for large lists
 - Thread safety: No blocking operations in render loop
 - Constants: Use values from `ConstantsUI.h`
+- **Execute pattern**: UI buttons calling game code must use `gameWrapper->Execute()`
+
+### For Hook Registration files:
+
+- **No duplicate hooks**: Same function hooked multiple times only executes first callback
+- **Proper hook type**: Use HookEvent vs HookEventPost appropriately
+- **WithCaller usage**: Use WithCaller variants for accessing caller wrapper
+- **Null check params**: Always check params pointer before casting
+
+**Hook validation**:
+```cpp
+// FLAGGED: Duplicate hook registration
+gameWrapper->HookEvent(eventName, callback1);  // Called
+gameWrapper->HookEvent(eventName, callback2);  // IGNORED!
+
+// CORRECT: Only register once
+gameWrapper->HookEvent(eventName, callbackThatHandlesBoth);
+```
 
 ## Output
 

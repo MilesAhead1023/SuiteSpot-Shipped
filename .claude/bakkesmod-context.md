@@ -14,6 +14,9 @@ This file provides BakkesMod-specific guidance for Claude when working on the Su
 6. **NEVER** block render thread → No long operations in UI code
 7. **NEVER** use CVar names without `suitespot_` prefix
 8. **NEVER** modify shared data without mutex protection
+9. **NEVER** store wrappers as class members → Pointers become invalid
+10. **NEVER** call game code from UI without Execute → Will crash
+11. **NEVER** hook same function multiple times → Only first callback runs
 
 ### Always Do Rules
 
@@ -25,6 +28,9 @@ This file provides BakkesMod-specific guidance for Claude when working on the Su
 6. **ALWAYS** run hooks: pre-edit → edit → post-edit → pre-build → build → post-build
 7. **ALWAYS** defer execution with `SetTimeout()` for post-match operations
 8. **ALWAYS** sync CVar changes to local variables via callbacks
+9. **ALWAYS** null check wrappers before using
+10. **ALWAYS** obtain wrappers fresh when needed (don't store)
+11. **ALWAYS** wrap UI-to-game calls in `gameWrapper->Execute()`
 
 ## BakkesMod Environment
 
@@ -149,6 +155,61 @@ if (cvar) {
 // BETTER: Use helper
 UI::Helpers::SetCVarSafely(cvarManager, "suitespot_enabled", true);
 ```
+
+### Wrapper Storage Anti-Pattern (CRITICAL)
+
+```cpp
+// WRONG: Storing wrappers as class members
+class Plugin {
+    ServerWrapper storedServer;  // DANGER! Pointer becomes invalid
+    CarWrapper storedCar;         // DANGER! Will crash later
+};
+
+// CORRECT: Obtain fresh when needed
+class Plugin {
+    void ProcessMatch() {
+        ServerWrapper server = gameWrapper->GetCurrentGameState();
+        if (!server) { return; }
+        // Use immediately, don't store
+    }
+};
+```
+
+**Why**: Wrappers are pointers that become invalid between frames/matches. Stored wrappers will crash.
+
+### Execute Pattern (UI Safety - CRITICAL)
+
+```cpp
+// WRONG: Direct call from UI
+if (ImGui::Button("Load Pack")) {
+    cvarManager->executeCommand("load_training CODE");  // CRASH!
+}
+
+// CORRECT: Wrap in Execute
+if (ImGui::Button("Load Pack")) {
+    gameWrapper->Execute([this](GameWrapper* gw) {
+        cvarManager->executeCommand("load_training CODE");  // Safe
+    });
+}
+```
+
+**Why**: UI runs on render thread. Direct game modifications crash. Execute schedules operation safely.
+
+### Hook Registration Pattern (CRITICAL)
+
+```cpp
+// WRONG: Hooking same function multiple times
+gameWrapper->HookEvent(eventName, callback1);  // Runs
+gameWrapper->HookEvent(eventName, callback2);  // IGNORED!
+
+// CORRECT: Single hook with combined logic
+gameWrapper->HookEvent(eventName, [this](std::string e) {
+    DoAction1();
+    DoAction2();
+});
+```
+
+**Why**: Only first hook callback executes. Subsequent hooks silently ignored.
 
 ### ImGui Virtual Scrolling Pattern
 

@@ -73,6 +73,9 @@ npx claude-flow hook post-build --verify-dll --check-patch
 - ❌ Name CVars without `suitespot_` prefix
 - ❌ Use `PowerShell -i` flag
 - ❌ Block render thread with long operations
+- ❌ **Store wrappers as class members** (pointers become invalid)
+- ❌ **Call game code from UI without Execute** (will crash)
+- ❌ **Hook same function multiple times** (only first runs)
 
 ### ALWAYS Do These
 - ✅ Defer post-match loading: `SetTimeout(..., 0.5f)`
@@ -82,6 +85,9 @@ npx claude-flow hook post-build --verify-dll --check-patch
 - ✅ Prefix CVars: `suitespot_enabled`
 - ✅ Log with macro: `LOG("message")`
 - ✅ Include pch.h first in .cpp files
+- ✅ **Obtain wrappers fresh** when needed (don't store)
+- ✅ **Wrap UI-to-game calls** in `gameWrapper->Execute()`
+- ✅ **Null check all wrappers** before using
 
 ## 🎯 Common Patterns
 
@@ -124,6 +130,39 @@ auto cvar = cvarManager->getCvar("suitespot_enabled");
 if (cvar) {
     cvar.setBoolValue(true);
 }
+```
+
+### Wrapper Storage (DON'T!)
+```cpp
+// WRONG
+class Plugin {
+    ServerWrapper server_;  // DANGER!
+};
+
+// CORRECT
+void UseServer() {
+    ServerWrapper server = gameWrapper->GetCurrentGameState();
+    if (!server) { return; }
+    // Use immediately
+}
+```
+
+### Execute Pattern (UI Safety)
+```cpp
+if (ImGui::Button("Action")) {
+    gameWrapper->Execute([this](GameWrapper* gw) {
+        cvarManager->executeCommand("cmd");  // Safe
+    });
+}
+```
+
+### Hook Pattern
+```cpp
+// Only hook once!
+gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded",
+  [this](std::string eventName) {
+    LOG("Match ended");
+});
 ```
 
 ## 📁 Key Files

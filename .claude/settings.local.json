@@ -2,11 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(powershell:*)",
-      "Bash(msbuild:*)"
+      "Bash(msbuild:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(wc:*)"
     ]
   },
-  "outputStyle": "Explanatory",
-  "remote": {
-    "defaultEnvironmentId": "env_01JthKyF9eGtSRpn9jqhvgEg"
-  }
+  "outputStyle": "Explanatory"
 }

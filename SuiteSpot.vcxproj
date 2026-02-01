@@ -101,9 +101,12 @@ set "DLL=$(TargetPath)"
 set "PROJECT_DIR=$(ProjectDir)"
 mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
 mkdir "%25BM%25\data\SuiteSpot\TrainingSuite" 2&gt;nul
+  mkdir "%25BM%25\data\SuiteSpot\Workshop" 2>nul
 mkdir "%25BM%25\plugins\settings" 2&gt;nul
 echo [PostBuild] Copying resources...
 xcopy "%25PROJECT_DIR%25Resources" "%25BM%25\data\SuiteSpot\Resources" /E /I /Y /Q
+  copy /Y "%25PROJECT_DIR%25Resources\NoPreview.jpg" "%25BM%25\data\SuiteSpot\Workshop\NoPreview.jpg"
+  copy /Y "%25PROJECT_DIR%25DataToCopy\prejump_packs.json" "%25BM%25\data\SuiteSpot\TrainingSuite\training_packs.json"
 if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
   exit /b 1
@@ -198,3 +201,5 @@ exit /b 0</Command>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
+
+

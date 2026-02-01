@@ -35,6 +35,7 @@ This file provides BakkesMod-specific guidance for Claude when working on the Su
 ## BakkesMod Environment
 
 ### Platform Requirements
+
 - **OS**: Windows 10/11 x64 only (Rocket League requirement)
 - **Compiler**: MSVC v143 (Visual Studio 2022)
 - **Language**: C++20 (`/std:c++20`)
@@ -42,12 +43,14 @@ This file provides BakkesMod-specific guidance for Claude when working on the Su
 - **Output**: DLL (Dynamic Link Library)
 
 ### Critical Dependencies
+
 - **BakkesMod SDK**: Game hooks, wrappers (via registry at `HKEY_CURRENT_USER\Software\BakkesMod`)
 - **ImGui v1.75**: Bundled in `IMGUI/` folder (DirectX 11 backend)
 - **nlohmann/json**: Via vcpkg at `C:\Users\bmile\vcpkg\installed\x64-windows\include`
 - **PowerShell 5.1+**: Script execution for build automation
 
 ### Build Process
+
 ```bash
 # Pre-build: Auto-increment version
 powershell.exe -ExecutionPolicy Bypass -NoProfile -NonInteractive -File CompiledScripts/update_version.ps1 "./version.h"
@@ -84,6 +87,7 @@ public:
 ```
 
 **Where this applies**:
+
 - `TrainingPackManager`: `packMutex_` protects `RLTraining` vector
 - `MapManager`: Mutex protects `RLWorkshop` vector
 - Any data accessed by both UI thread and background threads
@@ -314,11 +318,13 @@ SuiteSpot/
 ### Adding a New CVar
 
 1. Declare in `SettingsSync.h`:
+
    ```cpp
    bool newSetting_ = false;
    ```
 
 2. Register in `SettingsSync.cpp::RegisterAllCVars()`:
+
    ```cpp
    auto cvar = cvarManager->registerCvar("suitespot_new_setting", "0", "Description");
    if (cvar) {
@@ -330,11 +336,13 @@ SuiteSpot/
    ```
 
 3. Add getter in `SettingsSync.h`:
+
    ```cpp
    bool GetNewSetting() const { return newSetting_; }
    ```
 
 4. Add UI in `SettingsUI.cpp`:
+
    ```cpp
    if (ImGui::Checkbox("Enable Feature", &plugin_->settingsSync->newSetting_)) {
        UI::Helpers::SetCVarSafely(plugin_->cvarManager, "suitespot_new_setting", 
@@ -407,6 +415,7 @@ Hooks are located in `.claude/bakkesmod-hooks/`:
 - **cvar-validation**: CVar naming, registration, callbacks, null safety
 
 **Workflow**:
+
 ```
 pre-edit → Edit File → post-edit → pre-build → Build → post-build
 ```

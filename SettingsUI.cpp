@@ -41,6 +41,7 @@ void SettingsUI::RenderMainSettingsWindow() {
         if (mapType == 0) { // Freeplay
             std::string code = p->GetCurrentFreeplayCode();
             if (!code.empty()) {
+                LOG("SuiteSpot UI: User clicked Load Now (Freeplay: {})", code);
                 p->gameWrapper->SetTimeout([p, code](GameWrapper* gw) {
                     p->cvarManager->executeCommand("load_freeplay " + code);
                 }, 0.0f);
@@ -52,6 +53,7 @@ void SettingsUI::RenderMainSettingsWindow() {
             if (code.empty()) code = p->GetCurrentTrainingCode();
 
             if (!code.empty()) {
+                LOG("SuiteSpot UI: User clicked Load Now (Training: {})", code);
                 if (p->usageTracker) p->usageTracker->IncrementLoadCount(code);
                 p->gameWrapper->SetTimeout([p, code](GameWrapper* gw) {
                     p->cvarManager->executeCommand("load_training " + code);
@@ -61,6 +63,7 @@ void SettingsUI::RenderMainSettingsWindow() {
         } else if (mapType == 2) { // Workshop
             std::string path = p->GetCurrentWorkshopPath();
             if (!path.empty()) {
+                LOG("SuiteSpot UI: User clicked Load Now (Workshop: {})", path);
                 p->gameWrapper->SetTimeout([p, path](GameWrapper* gw) {
                     p->cvarManager->executeCommand("load_workshop \"" + path + "\"");
                 }, 0.0f);
@@ -278,6 +281,7 @@ void SettingsUI::RenderGeneralTab(bool& enabledValue, int& mapTypeValue) {
         if (i > 0) ImGui::SameLine(0, UI::SettingsUI::MAP_TYPE_RADIO_BUTTON_SPACING);
         if (ImGui::RadioButton(mapLabels[i], mapTypeValue == i)) {
             mapTypeValue = i;
+            LOG("SuiteSpot UI: User switched Map Mode to {}", mapLabels[i]);
             UI::Helpers::SetCVarSafely("suitespot_map_type", mapTypeValue, plugin_->cvarManager, plugin_->gameWrapper);
         }
     }
@@ -347,6 +351,7 @@ const char* freeplayLabel = RLMaps.empty() ? "<none>" : RLMaps[currentIndex].nam
                 bool selected = (RLMaps[row].code == currentFreeplayCode);
                 if (ImGui::Selectable(RLMaps[row].name.c_str(), selected)) {
                     currentFreeplayCode = RLMaps[row].code;
+                    LOG("SuiteSpot UI: User selected Freeplay map: {} ({})", RLMaps[row].name, currentFreeplayCode);
                     plugin_->settingsSync->SetCurrentFreeplayCode(currentFreeplayCode);
                     plugin_->cvarManager->getCvar("suitespot_current_freeplay_code").setValue(currentFreeplayCode);
                 }
@@ -449,6 +454,7 @@ void SettingsUI::RenderWorkshopMode(std::string& currentWorkshopPath) {
                 // FIX: Update CVar immediately when selection changes (not just on explicit button click)
                 // This synchronizes selectedWorkshopIndex with currentWorkshopPath so "Load Now" works
                 currentWorkshopPath = entry.filePath;
+                LOG("SuiteSpot UI: User selected Workshop map: {} ({})", entry.name, entry.filePath);
                 plugin_->settingsSync->SetCurrentWorkshopPath(entry.filePath);
                 if (auto cvar = plugin_->cvarManager->getCvar("suitespot_current_workshop_path")) {
                     cvar.setValue(entry.filePath);
@@ -659,6 +665,7 @@ std::string selectedCode = plugin_->settingsSync->GetQuickPicksSelectedCode();
                 ImGui::PushID(code.c_str());
                 if (ImGui::RadioButton("##select", isSelected)) {
                     selectedCode = code;
+                    LOG("SuiteSpot UI: User selected Training pack: {} ({})", name, code);
                     plugin_->settingsSync->SetQuickPicksSelected(code);
                     plugin_->cvarManager->getCvar("suitespot_quickpicks_selected").setValue(code);
                 }
@@ -749,6 +756,18 @@ void SettingsUI::RenderWorkshopBrowserTab() {
     ImGui::SetNextItemWidth(400.0f);
     ImGui::InputText("##WorkshopPath", workshopDownloadPathBuf, IM_ARRAYSIZE(workshopDownloadPathBuf));
     
+    ImGui::SameLine();
+    RenderTextureCheck();
+
+    ImGui::SameLine();
+    bool autoDl = plugin_->settingsSync->IsAutoDownloadTextures();
+    if (ImGui::Checkbox("Auto-Check on Launch", &autoDl)) {
+        UI::Helpers::SetCVarSafely("suitespot_auto_download_textures", autoDl ? 1 : 0, plugin_->cvarManager, plugin_->gameWrapper);
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Automatically check for and download missing textures when the game starts.");
+    }
+
     ImGui::Spacing();
     
     // Search bar
@@ -764,6 +783,10 @@ void SettingsUI::RenderWorkshopBrowserTab() {
     
     ImGui::SameLine();
     if (plugin_->workshopDownloader->RLMAPS_Searching) {
+        if (ImGui::Button("Stop")) {
+            plugin_->workshopDownloader->StopSearch();
+        }
+        ImGui::SameLine();
         ImGui::TextDisabled("Searching...");
     } else if (plugin_->workshopDownloader->RLMAPS_NumberOfMapsFound > 0) {
         ImGui::Text("%d maps found", plugin_->workshopDownloader->RLMAPS_NumberOfMapsFound.load());
@@ -789,27 +812,22 @@ void SettingsUI::RenderWorkshopBrowserTab() {
 void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
     if (!plugin_->workshopDownloader) return;
     
-    // Copy the result list under mutex to avoid holding lock during rendering
-    {
+    // Check if list has changed
+    int currentVersion = plugin_->workshopDownloader->listVersion.load();
+    if (currentVersion != lastListVersion) {
         std::lock_guard<std::mutex> lock(plugin_->workshopDownloader->resultsMutex);
         cachedResultList = plugin_->workshopDownloader->RLMAPS_MapResultList;
+        LOG("UI Synced list. New version: {}, items: {}", currentVersion, cachedResultList.size());
+        lastListVersion = currentVersion;
     }
     
     if (cachedResultList.empty()) return;
 
-    // Lazy load images from the cached copy (images are already loaded/cached here)
-    for (auto& map : cachedResultList) {
-        if (map.Image == nullptr && !map.IsDownloadingPreview && !map.ImagePath.empty()) {
-            // Check if file exists before trying to load
-            if (std::filesystem::exists(map.ImagePath)) {
-                map.Image = std::make_shared<ImageWrapper>(map.ImagePath.string(), false, true);
-                if (map.Image) {
-                    map.isImageLoaded = true;
-                }
-            }
-        }
-    }
-
+    // Lazy load images (only if not loaded)
+    // We only check loaded status here, actual loading happens in background or when flagged
+    // We do NOT perform FS checks every frame.
+    // The downloader updates the image pointer when ready.
+    
     // OPTIMIZATION: Removed O(N²) sync loop that matched cached images back to original list
     // This was causing quadratic CPU burn. The original list will get fresh images on next search.
     
@@ -886,18 +904,35 @@ void SettingsUI::RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* m
                              ImColor(255, 255, 255, 255), ("By " + mapAuthor).c_str());
             
             ImGui::SetCursorScreenPos(ImVec2(TopCornerLeft.x + 4.0f, TopCornerLeft.y + 235.0f));
-            if (ImGui::Button("Download", ImVec2(182, 20))) {
-                if (!plugin_->workshopDownloader->RLMAPS_IsDownloadingWorkshop && 
-                    fs::exists(mapspath)) {
-                    ImGui::OpenPopup("Releases");
-                } else if (!fs::exists(mapspath)) {
-                    ImGui::OpenPopup("Exists?");
+            
+            bool hasReleases = !mapResult.releases.empty();
+            
+            if (hasReleases) {
+                if (ImGui::Button("Download", ImVec2(182, 20))) {
+                    if (!plugin_->workshopDownloader->RLMAPS_IsDownloadingWorkshop && 
+                        fs::exists(mapspath)) {
+                        ImGui::OpenPopup("Releases");
+                    } else if (!fs::exists(mapspath)) {
+                        ImGui::OpenPopup("Exists?");
+                    } else {
+                        ImGui::OpenPopup("Downloading?");
+                    }
+                }
+                RenderReleases(mapResult, mapspath);
+            } else {
+                if (plugin_->workshopDownloader->RLMAPS_Searching) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+                    ImGui::Button("Loading details...", ImVec2(182, 20));
+                    ImGui::PopStyleVar();
                 } else {
-                    ImGui::OpenPopup("Downloading?");
+                    if (ImGui::Button("Fetch Details", ImVec2(182, 20))) {
+                        int generation = plugin_->workshopDownloader->GetSearchGeneration();
+                        std::thread t(&WorkshopDownloader::FetchReleaseDetails, 
+                                      plugin_->workshopDownloader.get(), i, generation);
+                        t.detach();
+                    }
                 }
             }
-            
-            RenderReleases(mapResult, mapspath);
             
             ImGui::EndGroup();
             
@@ -955,9 +990,11 @@ void SettingsUI::RenderAcceptDownload() {
                      [this]() {
                          // User confirmed - start the download
                          if (hasPendingDownload) {
-                             std::thread t2(&WorkshopDownloader::RLMAPS_DownloadWorkshop, 
-                                            plugin_->workshopDownloader.get(), 
-                                            pendingDownloadPath, pendingMapResult, pendingRelease);
+                             auto downloader = plugin_->workshopDownloader;
+                             std::thread t2([downloader, this]() {
+                                 downloader->RLMAPS_DownloadWorkshop(
+                                     pendingDownloadPath, pendingMapResult, pendingRelease);
+                             });
                              t2.detach();
                              hasPendingDownload = false;
                          }
@@ -1020,4 +1057,71 @@ std::string SettingsUI::LimitTextSize(std::string str, float maxTextSize) {
         str = str.substr(0, str.size() - 1);
     }
     return str;
+}
+void SettingsUI::RenderTextureCheck() {
+    if (!plugin_->textureDownloader) return;
+
+    if (ImGui::Button("Check Textures")) {
+        showTexturePopup = true;
+        ImGui::OpenPopup("DownloadTextures");
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Check for missing workshop textures and install them");
+    }
+
+    if (showTexturePopup) {
+        std::vector<std::string> missing = plugin_->textureDownloader->CheckMissingTextures();
+        RenderDownloadTexturesPopup(missing);
+    }
+}
+
+void SettingsUI::RenderDownloadTexturesPopup(const std::vector<std::string>& missingFiles) {
+    if (ImGui::BeginPopupModal("DownloadTextures", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (!missingFiles.empty()) {
+            ImGui::Text("It seems like the workshop textures aren't installed.");
+            ImGui::Text("You can still play without them but some maps will have white/weird textures.");
+            
+            if (plugin_->textureDownloader->isDownloading) {
+                ImGui::Separator();
+                ImGui::Text("Downloading... %d%%", plugin_->textureDownloader->downloadProgress.load());
+                ImGui::ProgressBar(plugin_->textureDownloader->downloadProgress.load() / 100.0f, ImVec2(300, 20));
+                ImGui::Separator();
+            }
+
+            ImGui::NewLine();
+            
+            if (ImGui::BeginChild("##MissingFiles", ImVec2(300, 150), true)) {
+                ImGui::Text("Missing Files (%d):", (int)missingFiles.size());
+                ImGui::Separator();
+                for (const auto& file : missingFiles) {
+                    ImGui::Text("%s", file.c_str());
+                }
+                ImGui::EndChild();
+            }
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Download & Install", ImVec2(140, 25)) && !plugin_->textureDownloader->isDownloading) {
+                std::thread t([this]() {
+                    plugin_->textureDownloader->DownloadAndInstallTextures();
+                });
+                t.detach();
+            }
+            
+            ImGui::SameLine();
+            
+            if (ImGui::Button("Close", ImVec2(100, 25))) {
+                showTexturePopup = false;
+                ImGui::CloseCurrentPopup();
+            }
+        } else {
+            ImGui::Text("Workshop textures are installed!");
+            ImGui::NewLine();
+            if (ImGui::Button("OK", ImVec2(100, 25))) {
+                showTexturePopup = false;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndPopup();
+    }
 }

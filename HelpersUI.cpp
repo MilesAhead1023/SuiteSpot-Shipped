@@ -37,6 +37,9 @@ namespace Helpers {
 			// This is what makes the setting persist when you restart the game
 			if (cvarName && cvarManager && gameWrapper) {
 				SetCVarSafely(cvarName, value, cvarManager, gameWrapper);
+
+				// Immediately persist to config file to prevent settings loss on crash
+				cvarManager->executeCommand("writeconfig", false);
 			}
 		}
 
@@ -194,6 +197,9 @@ namespace Helpers {
 			// This makes the checkbox state persist when you restart the game
 			if (cvarName && cvarManager && gameWrapper) {
 				SetCVarSafely(cvarName, value, cvarManager, gameWrapper);
+
+				// Immediately persist to config file to prevent settings loss on crash
+				cvarManager->executeCommand("writeconfig", false);
 			}
 		}
 
@@ -233,6 +239,24 @@ namespace Helpers {
 
 		// Return whether the text was modified
 		return changed;
+	}
+
+	//
+	// ExecuteCommandSafely - Execute command on game thread
+	//
+	void ExecuteCommandSafely(
+		std::shared_ptr<GameWrapper> gameWrapper,
+		std::shared_ptr<CVarManagerWrapper> cvarManager,
+		const std::string& command,
+		float delay)
+	{
+		// Safety checks
+		if (!gameWrapper || !cvarManager) return;
+
+		// Schedule command execution on game thread to avoid crashes
+		gameWrapper->SetTimeout([cvarManager, command](GameWrapper* gw) {
+			cvarManager->executeCommand(command);
+		}, delay);
 	}
 
 } // namespace Helpers

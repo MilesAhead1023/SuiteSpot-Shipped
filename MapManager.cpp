@@ -99,9 +99,29 @@ std::filesystem::path MapManager::GetDataRoot() const
     return std::filesystem::path(appdata) / "bakkesmod" / "bakkesmod" / "data";
 }
 
+std::filesystem::path MapManager::GetSuiteSpotRoot() const
+{
+    return GetDataRoot() / "SuiteSpot";
+}
+
 std::filesystem::path MapManager::GetSuiteTrainingDir() const
 {
-    return GetDataRoot() / "SuiteSpot" / "TrainingSuite";
+    return GetSuiteSpotRoot() / "TrainingSuite";
+}
+
+std::filesystem::path MapManager::GetWorkshopCacheDir() const
+{
+    return GetSuiteSpotRoot() / "Workshop";
+}
+
+std::filesystem::path MapManager::GetTexturesDir() const
+{
+    return GetWorkshopCacheDir();  // Same as workshop cache
+}
+
+std::filesystem::path MapManager::GetTrainingPacksPath() const
+{
+    return GetSuiteTrainingDir() / "training_packs.json";
 }
 
 std::filesystem::path MapManager::GetWorkshopLoaderConfigPath() const

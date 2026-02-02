@@ -72,21 +72,16 @@ void SettingsSync::RegisterAllCVars(const std::shared_ptr<CVarManagerWrapper>& c
             currentWorkshopPath = cvar.getStringValue();
         });
 
+    cvarManager->registerCvar("suitespot_auto_download_textures", "0", "Auto-download missing workshop textures on launch", true, true, 0, true, 1)
+        .addOnValueChanged([this](std::string oldValue, CVarWrapper cvar) {
+            autoDownloadTextures = cvar.getBoolValue();
+        });
+
     cvarManager->registerCvar("ss_training_maps", "", "Stored training maps", true, false, 0, false, 0);
 
-    cvarManager->getCvar("suitespot_enabled").setValue(enabled ? 1 : 0);
-    cvarManager->getCvar("suitespot_map_type").setValue(mapType);
-    cvarManager->getCvar("suitespot_auto_queue").setValue(autoQueue ? 1 : 0);
-    // Bag rotation removed - suitespot_training_mode removed
-    cvarManager->getCvar("suitespot_quickpicks_count").setValue(quickPicksCount);
-    cvarManager->getCvar("suitespot_quickpicks_selected").setValue(quickPicksSelected);
-    cvarManager->getCvar("suitespot_delay_queue_sec").setValue(delayQueueSec);
-    cvarManager->getCvar("suitespot_delay_freeplay_sec").setValue(delayFreeplaySec);
-    cvarManager->getCvar("suitespot_delay_training_sec").setValue(delayTrainingSec);
-    cvarManager->getCvar("suitespot_delay_workshop_sec").setValue(delayWorkshopSec);
-    cvarManager->getCvar("suitespot_current_freeplay_code").setValue(currentFreeplayCode);
-    cvarManager->getCvar("suitespot_current_training_code").setValue(currentTrainingCode);
-    cvarManager->getCvar("suitespot_current_workshop_path").setValue(currentWorkshopPath);
+    // Note: CVars auto-initialize to defaults from registerCvar() above
+    // The addOnValueChanged callbacks will sync values if user has saved config
+    // No need to redundantly set values here
 }
 
 void SettingsSync::SetCurrentFreeplayCode(const std::string& code)

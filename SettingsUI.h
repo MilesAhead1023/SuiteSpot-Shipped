@@ -53,6 +53,9 @@ private:
     
     // Workshop browser tab
     void RenderWorkshopBrowserTab();
+    void RenderTextureCheck();
+    void RenderDownloadTexturesPopup(const std::vector<std::string>& missingFiles);
+    
     void RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* mapspath);
     void RLMAPS_RenderSearchWorkshopResults(const char* mapspath);
     void RenderReleases(RLMAPS_MapResult mapResult, const char* mapspath);
@@ -83,4 +86,8 @@ private:
     
     // Cached result list for rendering (to avoid holding mutex during render)
     std::vector<RLMAPS_MapResult> cachedResultList;
+    int lastListVersion = -1; // Track version to know when to refresh cache
+
+    // Texture popup state
+    bool showTexturePopup = false;
 };

@@ -99,14 +99,17 @@ set "BM=%25AppData%25\bakkesmod\bakkesmod"
 set "PATCH=%25BM%25\bakkesmodsdk\bakkesmod-patch.exe"
 set "DLL=$(TargetPath)"
 set "PROJECT_DIR=$(ProjectDir)"
-mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul
-mkdir "%25BM%25\data\SuiteSpot\TrainingSuite" 2&gt;nul
-  mkdir "%25BM%25\data\SuiteSpot\Workshop" 2>nul
-mkdir "%25BM%25\plugins\settings" 2&gt;nul
-echo [PostBuild] Copying resources...
-xcopy "%25PROJECT_DIR%25Resources" "%25BM%25\data\SuiteSpot\Resources" /E /I /Y /Q
-  copy /Y "%25PROJECT_DIR%25Resources\NoPreview.jpg" "%25BM%25\data\SuiteSpot\Workshop\NoPreview.jpg"
-  copy /Y "%25PROJECT_DIR%25DataToCopy\prejump_packs.json" "%25BM%25\data\SuiteSpot\TrainingSuite\training_packs.json"
+echo [PostBuild] Creating directories...
+mkdir "%25BM%25\data\SuiteSpot" 2&gt;nul &amp;&amp; echo Created: %25BM%25\data\SuiteSpot
+mkdir "%25BM%25\data\SuiteSpot\TrainingSuite" 2&gt;nul &amp;&amp; echo Created: %25BM%25\data\SuiteSpot\TrainingSuite
+mkdir "%25BM%25\data\SuiteSpot\Workshop" 2&gt;nul &amp;&amp; echo Created: %25BM%25\data\SuiteSpot\Workshop
+mkdir "%25BM%25\plugins\settings" 2&gt;nul &amp;&amp; echo Created: %25BM%25\plugins\settings
+echo [PostBuild] Copying Resources folder...
+xcopy "%25PROJECT_DIR%25Resources" "%25BM%25\data\SuiteSpot\Resources" /E /I /Y
+echo [PostBuild] Copying NoPreview.jpg...
+copy /Y "%25PROJECT_DIR%25Resources\NoPreview.jpg" "%25BM%25\data\SuiteSpot\Workshop\NoPreview.jpg"
+echo [PostBuild] Copying training_packs.json...
+copy /Y "%25PROJECT_DIR%25DataToCopy\training_packs.json" "%25BM%25\data\SuiteSpot\TrainingSuite\training_packs.json"
 if not exist "%25DLL%25" (
   echo [PostBuild] ERROR: Built DLL not found: "%25DLL%25"
   exit /b 1
@@ -151,6 +154,7 @@ exit /b 0</Command>
     <ClCompile Include="HelpersUI.cpp" />
     <ClCompile Include="PackUsageTracker.cpp" />
     <ClCompile Include="WorkshopDownloader.cpp" />
+    <ClCompile Include="TextureDownloader.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
@@ -190,6 +194,7 @@ exit /b 0</Command>
     <ClInclude Include="ConstantsUI.h" />
     <ClInclude Include="HelpersUI.h" />
     <ClInclude Include="WorkshopDownloader.h" />
+    <ClInclude Include="TextureDownloader.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="SuiteSpot.h" />
     <ClInclude Include="version.h" />

@@ -45,6 +45,9 @@ public:
     int GetDelayTrainingSec() const { return delayTrainingSec; }
     int GetDelayWorkshopSec() const { return delayWorkshopSec; }
 
+    // Texture settings
+    bool IsAutoDownloadTextures() const { return autoDownloadTextures; }
+
     // Selection getters (Which map/pack is selected?)
     std::string GetCurrentFreeplayCode() const { return currentFreeplayCode; }
     std::string GetCurrentTrainingCode() const { return currentTrainingCode; }
@@ -73,6 +76,8 @@ private:
     int delayFreeplaySec = 0;
     int delayTrainingSec = 0;
     int delayWorkshopSec = 0;
+
+    bool autoDownloadTextures = false;
 
     std::string currentFreeplayCode;   // Freeplay map code (e.g., "beckwith_park_p")
     std::string currentTrainingCode;   // Training pack code (e.g., "XXXX-XXXX-XXXX-XXXX")

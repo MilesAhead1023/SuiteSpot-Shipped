@@ -156,5 +156,27 @@ namespace Helpers {
 		ImGuiInputTextFlags flags = 0
 	);
 
+	//
+	// ExecuteCommandSafely - Execute BakkesMod command on game thread
+	//
+	// Safely executes a command by scheduling it on the game thread to avoid crashes.
+	// This is the standard way to execute commands from UI or render threads.
+	//
+	// Parameters:
+	//   gameWrapper - The game wrapper (for SetTimeout)
+	//   cvarManager - The CVar manager (for executeCommand)
+	//   command - The command to execute (e.g., "load_freeplay 555F-7503-BBB9-E1E3")
+	//   delay - Optional delay in seconds before execution (default: 0.0f)
+	//
+	// Usage:
+	//   ExecuteCommandSafely(gameWrapper, cvarManager, "load_freeplay ABC123");
+	//
+	void ExecuteCommandSafely(
+		std::shared_ptr<GameWrapper> gameWrapper,
+		std::shared_ptr<CVarManagerWrapper> cvarManager,
+		const std::string& command,
+		float delay = 0.0f
+	);
+
 } // namespace Helpers
 } // namespace UI

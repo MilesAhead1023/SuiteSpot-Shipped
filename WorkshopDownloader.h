@@ -36,30 +36,38 @@ struct RLMAPS_MapResult
     std::string Author;
     std::vector<RLMAPS_Release> releases;
     fs::path ImagePath;
+    std::string ImageExtension;  // Store detected image extension (.jpg, .png, .webp, etc.)
     std::shared_ptr<ImageWrapper> Image;
     bool isImageLoaded = false;
     bool IsDownloadingPreview = false;
 };
 
-class WorkshopDownloader
+class WorkshopDownloader : public std::enable_shared_from_this<WorkshopDownloader>
 {
 public:
     WorkshopDownloader(std::shared_ptr<GameWrapper> gw);
+    ~WorkshopDownloader();
     
     void GetResults(std::string keyWord, int IndexPage);
-    void GetMapResult(nlohmann::json maps, int index, int generation);
+    void FetchReleaseDetails(int index, int generation);
     void GetNumPages(std::string keyWord);
     
     void RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_MapResult mapResult, RLMAPS_Release release);
-    void DownloadPreviewImage(std::string downloadUrl, std::string filePath, int mapResultIndex);
+    void DownloadPreviewImage(std::string downloadUrl, std::string filePath, int mapResultIndex, int generation);
     
     void CreateJSONLocalWorkshopInfos(std::string jsonFileName, std::string workshopMapPath, 
                                      std::string mapTitle, std::string mapAuthor, 
                                      std::string mapDescription, std::string mapPreviewUrl);
-    void ExtractZipPowerShell(std::string zipFilePath, std::string destinationPath);
+    int ExtractZipPowerShell(std::string zipFilePath, std::string destinationPath);
     void RenameFileToUPK(fs::path filePath);
     std::string UdkInDirectory(std::string dirPath);
     
+    // Cancels any active search
+    void StopSearch();
+    
+    // Thread-safe update for UI to write back loaded images
+    void UpdateImage(int index, std::shared_ptr<ImageWrapper> image);
+
     std::atomic<bool> RLMAPS_Searching = false;
     std::atomic<int> RLMAPS_NumberOfMapsFound = 0;
     std::atomic<int> NumPages = 0;
@@ -73,6 +81,9 @@ public:
     
     std::atomic<bool> FolderErrorBool = false;
     std::string FolderErrorText;
+
+    std::atomic<bool> SearchErrorBool = false;
+    std::string SearchErrorText;
     
     std::string BakkesmodPath;
     std::string IfNoPreviewImagePath;
@@ -80,11 +91,17 @@ public:
 
     mutable std::mutex resultsMutex; // Protects RLMAPS_MapResultList
     std::condition_variable resultsCV; // Signals when map results are ready
-    std::atomic<int> completedRequests = 0; // Tracks completed HTTP requests (success or failure)
-    std::atomic<int> searchGeneration = 0; // Incremented on each new search to invalidate old callbacks
+    std::atomic<int> completedRequests = 0; 
+    std::atomic<int> searchGeneration = 0; 
+    std::atomic<bool> stopRequested = false; // Flag to abort the search loop
+    std::atomic<int> listVersion = 0; // Incremented whenever the list is modified, so UI knows when to copy
+
+    // Helper to get current generation safely
+    int GetSearchGeneration() const { return searchGeneration.load(); }
 
 private:
     std::shared_ptr<GameWrapper> gameWrapper;
+    std::thread searchThread; // Worker thread for search operations
     
     std::string SanitizeMapName(const std::string& name);
     void CleanHTML(std::string& S);

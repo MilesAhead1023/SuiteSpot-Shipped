@@ -77,7 +77,7 @@ void TrainingPackUI::Render() {
     // Apply font scale to this window
     ImGui::SetWindowFontScale(UI::FONT_SCALE);
 
-    const auto* manager = plugin_->trainingPackMgr;
+    const auto* manager = plugin_->trainingPackMgr.get();
     static const std::vector<TrainingEntry> emptyPacks;
     static const std::string emptyString;
     const auto& packs = manager ? manager->GetPacks() : emptyPacks;
@@ -872,7 +872,7 @@ void TrainingPackUI::LoadPackImmediately(const std::string& packCode) {
 
     // Find pack name for logging
     std::string packName = packCode;
-    const auto* manager = plugin_->trainingPackMgr;
+    const auto* manager = plugin_->trainingPackMgr.get();
     if (manager) {
         for (const auto& pack : manager->GetPacks()) {
             if (pack.code == packCode) {

@@ -319,13 +319,13 @@ void SuiteSpot::TryHealCurrentPack(GameWrapper* gw) {
 void SuiteSpot::onLoad() {
     _globalCvarManager = cvarManager;
     LOG("SuiteSpot loaded");
-    mapManager = new MapManager();
-    settingsSync = new SettingsSync();
-    autoLoadFeature = new AutoLoadFeature();
-    trainingPackMgr = new TrainingPackManager();
-    settingsUI = new SettingsUI(this);
+    mapManager = std::make_unique<MapManager>();
+    settingsSync = std::make_unique<SettingsSync>();
+    autoLoadFeature = std::make_unique<AutoLoadFeature>();
+    trainingPackMgr = std::make_unique<TrainingPackManager>();
+    settingsUI = std::make_unique<SettingsUI>(this);
     trainingPackUI = std::make_shared<TrainingPackUI>(this);
-    loadoutUI = new LoadoutUI(this);
+    loadoutUI = std::make_unique<LoadoutUI>(this);
 
     EnsureDataDirectories();
     LoadWorkshopMaps();
@@ -339,8 +339,12 @@ void SuiteSpot::onLoad() {
     LOG("SuiteSpot: PackUsageTracker initialized");
 
     // Initialize WorkshopDownloader
-    workshopDownloader = std::make_unique<WorkshopDownloader>(gameWrapper);
+    workshopDownloader = std::make_shared<WorkshopDownloader>(gameWrapper);
     LOG("SuiteSpot: WorkshopDownloader initialized");
+
+    // Initialize TextureDownloader
+    textureDownloader = std::make_unique<TextureDownloader>(gameWrapper, cvarManager);
+    LOG("SuiteSpot: TextureDownloader initialized");
 
     // Check Pack cache and load if available
 
@@ -359,28 +363,49 @@ void SuiteSpot::onLoad() {
 
     if (settingsSync) {
         settingsSync->RegisterAllCVars(cvarManager);
+        
+        // Auto-download textures if enabled
+        if (settingsSync->IsAutoDownloadTextures() && textureDownloader) {
+            std::vector<std::string> missing = textureDownloader->CheckMissingTextures();
+            if (!missing.empty()) {
+                LOG("SuiteSpot: Missing textures detected. Auto-downloading...");
+                // Clean up any previous download thread
+                if (textureDownloadThread.joinable()) {
+                    textureDownloadThread.join();
+                }
+                // Start managed texture download thread
+                textureDownloadThread = std::thread([this]() {
+                    textureDownloader->DownloadAndInstallTextures();
+                });
+            }
+        }
     }
 
     LOG("SuiteSpot: Plugin initialization complete");
 }
 
 void SuiteSpot::onUnload() {
+    LOG("SuiteSpot unloading...");
+
+    // Wait for texture download to complete if running
+    if (textureDownloadThread.joinable()) {
+        LOG("SuiteSpot: Waiting for texture download to complete...");
+        textureDownloadThread.join();
+    }
+
     if (usageTracker) {
         usageTracker->SaveStats();
     }
-    delete settingsUI;
-    settingsUI = nullptr;
-    trainingPackUI = nullptr;
-    delete loadoutUI;
-    loadoutUI = nullptr;
-    delete trainingPackMgr;
-    trainingPackMgr = nullptr;
-    delete autoLoadFeature;
-    autoLoadFeature = nullptr;
-    delete settingsSync;
-    settingsSync = nullptr;
-    delete mapManager;
-    mapManager = nullptr;
+
+    // Automatic cleanup with smart pointers - explicit reset for clarity
+    settingsUI.reset();
+    trainingPackUI.reset();
+    loadoutUI.reset();
+    trainingPackMgr.reset();
+    autoLoadFeature.reset();
+    settingsSync.reset();
+    mapManager.reset();
+
     LOG("SuiteSpot unloaded");
 }
 
@@ -509,7 +534,7 @@ void SuiteSpot::OnClose() {
 
 std::filesystem::path SuiteSpot::GetTrainingPacksPath() const
 {
-    return gameWrapper->GetDataFolder() / L"SuiteSpot" / L"TrainingSuite" / L"training_packs.json";
+    return mapManager ? mapManager->GetTrainingPacksPath() : std::filesystem::path();
 }
 
 void SuiteSpot::LoadTrainingPacksFromFile(const std::filesystem::path& filePath)

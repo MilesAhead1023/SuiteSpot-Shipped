@@ -32,10 +32,18 @@ public:
 
     // Finds the main "Data" folder where we save our stuff
     std::filesystem::path GetDataRoot() const;
-    
+
     // Finds the specific folder for SuiteSpot data
+    std::filesystem::path GetSuiteSpotRoot() const;
     std::filesystem::path GetSuiteTrainingDir() const;
-    
+
+    // Workshop-specific paths
+    std::filesystem::path GetWorkshopCacheDir() const;
+    std::filesystem::path GetTexturesDir() const;
+
+    // Training pack path
+    std::filesystem::path GetTrainingPacksPath() const;
+
     // Makes sure these folders actually exist (creates them if missing)
     void EnsureDataDirectories() const;
 

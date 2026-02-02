@@ -45,7 +45,7 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
 
     if (mapType == 0) { // Freeplay
         if (currentFreeplayCode.empty()) {
-            LOG("SuiteSpot: No freeplay map selected; skipping load.");
+            LOG("SuiteSpot: ⚠️ No freeplay map selected; skipping load.");
         } else {
             // Verify the map code exists in the list
             auto it = std::find_if(maps.begin(), maps.end(),
@@ -53,9 +53,10 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             if (it != maps.end()) {
                 safeExecute(delayFreeplaySec, "load_freeplay " + currentFreeplayCode);
                 mapLoadDelay = delayFreeplaySec;
-                LOG("SuiteSpot: Loading freeplay map: " + it->name);
+                LOG("SuiteSpot: ✅ Loading freeplay map: {}", it->name);
             } else {
-                LOG("SuiteSpot: Freeplay map code not found: " + currentFreeplayCode);
+                LOG("SuiteSpot: ❌ Freeplay map '{}' not found. Available maps: {}",
+                    currentFreeplayCode, maps.size());
             }
         }
     } else if (mapType == 1) { // Training
@@ -122,7 +123,7 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
     } else if (mapType == 2) { // Workshop
 
         if (currentWorkshopPath.empty()) {
-            LOG("SuiteSpot: No workshop map selected; skipping load.");
+            LOG("SuiteSpot: ⚠️ No workshop map selected; skipping load.");
         } else {
             // Verify the workshop map exists in the list
             auto it = std::find_if(workshop.begin(), workshop.end(),
@@ -130,9 +131,10 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             if (it != workshop.end()) {
                 safeExecute(delayWorkshopSec, "load_workshop \"" + currentWorkshopPath + "\"");
                 mapLoadDelay = delayWorkshopSec;
-                LOG("SuiteSpot: Loading workshop map: " + it->name);
+                LOG("SuiteSpot: ✅ Loading workshop map: {}", it->name);
             } else {
-                LOG("SuiteSpot: Workshop map path not found: " + currentWorkshopPath);
+                LOG("SuiteSpot: ❌ Workshop map not found: {}", currentWorkshopPath);
+                LOG("SuiteSpot: 💡 Check WorkshopMapLoader plugin settings for maps folder path");
             }
         }
     }

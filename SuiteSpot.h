@@ -36,6 +36,7 @@
 #include "MapList.h"
 #include "LoadoutManager.h"
 #include "PackUsageTracker.h"
+#include "TextureDownloader.h"
 #include "version.h"
 #include <filesystem>
 #include <set>
@@ -132,17 +133,19 @@ private:
     // Loadout management
     std::unique_ptr<LoadoutManager> loadoutManager;
     std::unique_ptr<PackUsageTracker> usageTracker;
-    std::unique_ptr<WorkshopDownloader> workshopDownloader;
+    std::shared_ptr<WorkshopDownloader> workshopDownloader;
+    std::unique_ptr<TextureDownloader> textureDownloader;
 
-    MapManager* mapManager = nullptr;
-    SettingsSync* settingsSync = nullptr;
-    AutoLoadFeature* autoLoadFeature = nullptr;
-    TrainingPackManager* trainingPackMgr = nullptr;
-    SettingsUI* settingsUI = nullptr;
-    std::shared_ptr<TrainingPackUI> trainingPackUI = nullptr;
-    LoadoutUI* loadoutUI = nullptr;
+    std::unique_ptr<MapManager> mapManager;
+    std::unique_ptr<SettingsSync> settingsSync;
+    std::unique_ptr<AutoLoadFeature> autoLoadFeature;
+    std::unique_ptr<TrainingPackManager> trainingPackMgr;
+    std::unique_ptr<SettingsUI> settingsUI;
+    std::shared_ptr<TrainingPackUI> trainingPackUI;
+    std::unique_ptr<LoadoutUI> loadoutUI;
 
     bool isBrowserOpen = false;
     uintptr_t imgui_ctx = 0;
     std::atomic<bool> isRenderingSettings{false};
+    std::thread textureDownloadThread;  // Managed texture download thread
 };

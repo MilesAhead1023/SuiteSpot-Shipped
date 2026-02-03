@@ -202,8 +202,41 @@ bool MapManager::LoadWorkshopMetadata(const std::filesystem::path& jsonPath,
         std::ifstream file(jsonPath);
         if (!file.is_open()) return false;
 
-        nlohmann::json j;
-        file >> j;
+        // Read entire file content
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        file.close();
+
+        // Sanitize content: replace control characters that break JSON parsing
+        for (char& c : content) {
+            if (c >= 0 && c < 32 && c != '\t' && c != '\n' && c != '\r') {
+                c = ' ';  // Replace control chars with space
+            }
+        }
+
+        // Try parsing with allow_exceptions=false first
+        nlohmann::json j = nlohmann::json::parse(content, nullptr, false);
+
+        if (j.is_discarded()) {
+            // JSON parsing failed - try to extract fields manually as fallback
+            // Look for "Title":"value" pattern
+            auto extractField = [&content](const std::string& fieldName) -> std::string {
+                std::string pattern = "\"" + fieldName + "\":\"";
+                size_t start = content.find(pattern);
+                if (start == std::string::npos) return "";
+                start += pattern.length();
+                size_t end = content.find("\"", start);
+                if (end == std::string::npos) return "";
+                return content.substr(start, end - start);
+            };
+
+            outTitle = extractField("Title");
+            outAuthor = extractField("Author");
+            // Skip description for malformed files - it's usually what contains the bad data
+            outDescription = "";
+
+            return !outTitle.empty();  // Consider success if we at least got the title
+        }
 
         if (j.contains("Title") && j["Title"].is_string()) {
             outTitle = j["Title"].get<std::string>();
@@ -217,7 +250,7 @@ bool MapManager::LoadWorkshopMetadata(const std::filesystem::path& jsonPath,
         return true;
     }
     catch (const std::exception& e) {
-        LOG("SuiteSpot: Failed to parse workshop JSON {}: {}", jsonPath.string(), e.what());
+        // Silently fail for malformed JSON - don't spam the log
         return false;
     }
 }

@@ -110,7 +110,7 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
             }
 
             if (code != 200) {
-                LOG("❌ Workshop search failed with HTTP code {}", code);
+                LOG("[ERR] Workshop search failed with HTTP code {}", code);
                 self->RLMAPS_Searching = false;
                 self->SearchErrorBool = true;
                 self->SearchErrorText = "Search failed: HTTP " + std::to_string(code) + ". RLMAPS API may be down.";
@@ -125,7 +125,7 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
                 nlohmann::json actualJson = nlohmann::json::parse(result);
 
                 if (!actualJson.is_array()) {
-                    LOG("❌ Workshop search response is not an array");
+                    LOG("[ERR] Workshop search response is not an array");
                     self->RLMAPS_Searching = false;
                     self->SearchErrorBool = true;
                     self->SearchErrorText = "Invalid response from RLMAPS API (expected array)";
@@ -188,10 +188,10 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
                 }
 
                 self->RLMAPS_Searching = false;
-                LOG("✅ Workshop search complete: {}/{} maps loaded", self->completedResults.load(), self->expectedResults.load());
+                LOG("[OK] Workshop search complete: {}/{} maps loaded", self->completedResults.load(), self->expectedResults.load());
                 
             } catch (const std::exception& e) {
-                LOG("❌ Workshop search JSON parse error: {}", e.what());
+                LOG("[ERR] Workshop search JSON parse error: {}", e.what());
                 self->RLMAPS_Searching = false;
                 self->SearchErrorBool = true;
                 self->SearchErrorText = "Failed to parse search results: " + std::string(e.what());
@@ -639,7 +639,7 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                 int extractResult = self->ExtractZipPowerShell(Folder_Path, Workshop_Dl_Path);
 
                 if (extractResult != 0) {
-                    LOG("❌ PowerShell extraction failed with code: {}", extractResult);
+                    LOG("[ERR] PowerShell extraction failed with code: {}", extractResult);
                     self->RLMAPS_IsDownloadingWorkshop = false;
                     self->FolderErrorBool = true;
                     self->FolderErrorText = "Failed to extract ZIP file. Check PowerShell execution policy.";
@@ -651,7 +651,7 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                 std::string foundUdk = "Null";
                 while ((foundUdk = self->UdkInDirectory(Workshop_Dl_Path)) == "Null") {
                     if (checkTime > 30) {  // Increased from 10 to 30 seconds
-                        LOG("❌ Timeout waiting for .udk file extraction");
+                        LOG("[ERR] Timeout waiting for .udk file extraction");
                         self->RLMAPS_IsDownloadingWorkshop = false;
                         self->FolderErrorBool = true;
                         self->FolderErrorText = "Extraction timeout: .udk file not found after 30 seconds";
@@ -666,7 +666,7 @@ void WorkshopDownloader::RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_
                     checkTime++;
                 }
 
-                LOG("✅ File extracted: {}", foundUdk);
+                LOG("[OK] File extracted: {}", foundUdk);
                 self->RenameFileToUPK(Workshop_Dl_Path);
                 self->RLMAPS_IsDownloadingWorkshop = false;
             } else {

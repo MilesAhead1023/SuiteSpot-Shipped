@@ -307,11 +307,11 @@ void SuiteSpot::TryHealCurrentPack(GameWrapper* gw) {
     }
     
     if (realShots <= 0) {
-        LOG("SuiteSpot: ❌ All methods failed to extract shot count (got {})", realShots);
+        LOG("SuiteSpot: [ERR] All methods failed to extract shot count (got {})", realShots);
         return;
     }
     
-    LOG("SuiteSpot: ✅ Successfully extracted pack data - Code: {}, Shots: {}", code, realShots);
+    LOG("SuiteSpot: [OK] Successfully extracted pack data - Code: {}, Shots: {}", code, realShots);
     LOG("SuiteSpot: Calling HealPack...");
     trainingPackMgr->HealPack(code, realShots);
 }

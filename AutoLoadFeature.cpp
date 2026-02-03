@@ -53,9 +53,9 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             if (it != maps.end()) {
                 safeExecute(delayFreeplaySec, "load_freeplay " + currentFreeplayCode);
                 mapLoadDelay = delayFreeplaySec;
-                LOG("SuiteSpot: ✅ Loading freeplay map: {}", it->name);
+                LOG("SuiteSpot: [OK] Loading freeplay map: {}", it->name);
             } else {
-                LOG("SuiteSpot: ❌ Freeplay map '{}' not found. Available maps: {}",
+                LOG("SuiteSpot: [ERR] Freeplay map '{}' not found. Available maps: {}",
                     currentFreeplayCode, maps.size());
             }
         }
@@ -131,9 +131,9 @@ void AutoLoadFeature::OnMatchEnded(std::shared_ptr<GameWrapper> gameWrapper,
             if (it != workshop.end()) {
                 safeExecute(delayWorkshopSec, "load_workshop \"" + currentWorkshopPath + "\"");
                 mapLoadDelay = delayWorkshopSec;
-                LOG("SuiteSpot: ✅ Loading workshop map: {}", it->name);
+                LOG("SuiteSpot: [OK] Loading workshop map: {}", it->name);
             } else {
-                LOG("SuiteSpot: ❌ Workshop map not found: {}", currentWorkshopPath);
+                LOG("SuiteSpot: [ERR] Workshop map not found: {}", currentWorkshopPath);
                 LOG("SuiteSpot: 💡 Check WorkshopMapLoader plugin settings for maps folder path");
             }
         }

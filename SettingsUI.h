@@ -4,6 +4,7 @@
 #include "WorkshopDownloader.h"
 #include <string>
 #include <vector>
+#include <map>
 
 /*
  * ======================================================================================
@@ -87,6 +88,9 @@ private:
     // Cached result list for rendering (to avoid holding mutex during render)
     std::vector<RLMAPS_MapResult> cachedResultList;
     int lastListVersion = -1; // Track version to know when to refresh cache
+
+    // Image cache - persists across list refreshes, keyed by map ID
+    std::map<std::string, std::shared_ptr<ImageWrapper>> workshopImageCache;
 
     // Texture popup state
     bool showTexturePopup = false;

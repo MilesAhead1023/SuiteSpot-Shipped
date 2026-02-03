@@ -886,19 +886,27 @@ void SettingsUI::RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* m
             drawList->AddRectFilled(TopCornerLeft, RectFilled_p_max, ImColor(44, 75, 113, 255), 5.0f, 15);
             drawList->AddRect(ImageP_Min, ImageP_Max, ImColor(255, 255, 255, 255), 0, 15, 2.0f);
 
-            // Lazy load image from path if not yet loaded into ImageWrapper
-            if (!mapResult.ImagePath.empty() && !mapResult.Image && mapResult.isImageLoaded) {
-                try {
-                    mapResult.Image = std::make_shared<ImageWrapper>(mapResult.ImagePath.string(), false, true);
-                } catch (...) {
-                    // Failed to load image, will show empty box
+            // Use persistent image cache (keyed by map ID) to survive list refreshes
+            std::shared_ptr<ImageWrapper> image = nullptr;
+            if (!mapResult.ID.empty()) {
+                auto it = workshopImageCache.find(mapResult.ID);
+                if (it != workshopImageCache.end()) {
+                    image = it->second;
+                } else if (!mapResult.ImagePath.empty() && mapResult.isImageLoaded) {
+                    // Load image and store in cache
+                    try {
+                        image = std::make_shared<ImageWrapper>(mapResult.ImagePath.string(), false, true);
+                        workshopImageCache[mapResult.ID] = image;
+                    } catch (...) {
+                        // Failed to load image
+                    }
                 }
             }
 
-            if (mapResult.Image) {
+            if (image) {
                 try {
-                    if (mapResult.Image->GetImGuiTex()) {
-                        drawList->AddImage(mapResult.Image->GetImGuiTex(), ImageP_Min, ImageP_Max);
+                    if (image->GetImGuiTex()) {
+                        drawList->AddImage(image->GetImGuiTex(), ImageP_Min, ImageP_Max);
                     }
                 } catch (...) {}
             }

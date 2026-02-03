@@ -845,7 +845,8 @@ void SettingsUI::RLMAPS_RenderSearchWorkshopResults(const char* mapspath) {
         int itemsPerRow = columns;
         int totalRows = (totalItems + itemsPerRow - 1) / itemsPerRow; // Ceiling division
 
-        clipper.Begin(totalRows);
+        // Specify row height to fix first-row rendering issue
+        clipper.Begin(totalRows, cardHeight);
         while (clipper.Step()) {
             for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
                 for (int col = 0; col < columns; col++) {

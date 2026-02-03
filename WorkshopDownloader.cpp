@@ -10,6 +10,7 @@ namespace {
         if (!j.contains(key)) return defaultVal;
         if (j[key].is_null()) return defaultVal;
         if (j[key].is_string()) return j[key].get<std::string>();
+        if (j[key].is_number_integer()) return std::to_string(j[key].get<int64_t>());
         if (j[key].is_number()) return std::to_string(j[key].get<double>());
         return j[key].dump();  // Fallback: convert to string representation
     }
@@ -151,12 +152,13 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
                         // Use safe JSON extraction with type checking
                         mapResult.ID = SafeGetString(item, "id", "");
                         mapResult.Name = SafeGetString(item, "name", "Unknown Map");
+                        mapResult.Path = SafeGetString(item, "path", "");  // Store path for package URL construction
                         mapResult.Description = SafeGetString(item, "description", "");
                         if (!mapResult.Description.empty()) {
                             self->CleanHTML(mapResult.Description);
                         }
                         mapResult.Author = SafeGetNestedString(item, {"namespace", "path"}, "Unknown");
-                        
+
                         // We don't have preview URL yet
                         mapResult.PreviewUrl = ""; 
                         
@@ -165,9 +167,28 @@ void WorkshopDownloader::GetResults(std::string keyWord, int IndexPage)
                     self->listVersion++; // UI will render the list now (text only)
                     LOG("Map list populated. Version: {}", self->listVersion.load());
                 }
-                
-                // 2. Start fetching details sequentially
-                self->FetchReleaseDetails(0, currentGeneration);
+
+                // Launch parallel threads for each map - use lightweight FetchImageOnly instead of FetchReleaseDetails
+                int totalMaps = actualJson.size();
+                self->expectedResults = totalMaps;
+                self->completedResults = 0;
+
+                for (int i = 0; i < totalMaps; ++i) {
+                    std::thread t(&WorkshopDownloader::FetchImageOnly, self.get(), i, currentGeneration);
+                    t.detach();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // 50ms delay between spawns (faster than before)
+                }
+
+                // Wait for all results to complete
+                while (self->completedResults < self->expectedResults) {
+                    if (self->stopRequested || self->searchGeneration != currentGeneration) {
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+
+                self->RLMAPS_Searching = false;
+                LOG("✅ Workshop search complete: {}/{} maps loaded", self->completedResults.load(), self->expectedResults.load());
                 
             } catch (const std::exception& e) {
                 LOG("❌ Workshop search JSON parse error: {}", e.what());
@@ -204,7 +225,9 @@ void WorkshopDownloader::FetchReleaseDetails(int index, int generation)
     }
     
     std::string releaseUrl = "https://celab.jetfox.ovh/api/v4/projects/" + mapId + "/releases";
-    
+
+    LOG("📡 Fetching releases for '{}' (ID: {}) from: {}", mapName, mapId, releaseUrl);
+
     CurlRequest req;
     req.url = releaseUrl;
     
@@ -383,15 +406,127 @@ void WorkshopDownloader::FetchReleaseDetails(int index, int generation)
 
         }
 
-        
-
-        // Fetch next map in chain
-
-        self->FetchReleaseDetails(index + 1, generation);
+        // Increment completed counter (Vync's approach - no recursive calls)
+        self->completedResults++;
 
     });
 
 }
+
+void WorkshopDownloader::FetchImageOnly(int index, int generation)
+{
+    // Lightweight image fetch - uses /packages endpoint instead of /releases
+    // This is much faster as we only need package name and version to construct image URL
+
+    if (stopRequested || searchGeneration != generation) {
+        completedResults++;
+        return;
+    }
+
+    std::string mapId;
+    std::string mapPath;
+    std::string mapName;
+
+    {
+        std::lock_guard<std::mutex> lock(resultsMutex);
+        if (index >= static_cast<int>(RLMAPS_MapResultList.size())) {
+            completedResults++;
+            return;
+        }
+        mapId = RLMAPS_MapResultList[index].ID;
+        mapPath = RLMAPS_MapResultList[index].Path;
+        mapName = RLMAPS_MapResultList[index].Name;
+    }
+
+    // If no path, we can't construct the URL
+    if (mapPath.empty()) {
+        LOG("FetchImageOnly: No path for map {} (ID: {})", mapName, mapId);
+        completedResults++;
+        return;
+    }
+
+    std::string packagesUrl = "https://celab.jetfox.ovh/api/v4/projects/" + mapId + "/packages";
+    LOG("📦 Fetching packages for '{}' (ID: {}) from: {}", mapName, mapId, packagesUrl);
+
+    CurlRequest req;
+    req.url = packagesUrl;
+
+    std::weak_ptr<WorkshopDownloader> weak_self = shared_from_this();
+
+    HttpWrapper::SendCurlRequest(req, [weak_self, index, generation, mapName, mapId, mapPath](int code, std::string responseText) {
+        auto self = weak_self.lock();
+        if (!self) return;
+
+        if (self->stopRequested || self->searchGeneration != generation) {
+            self->completedResults++;
+            return;
+        }
+
+        if (code == 200) {
+            try {
+                nlohmann::json packagesJson = nlohmann::json::parse(responseText);
+
+                if (packagesJson.is_array() && !packagesJson.empty()) {
+                    // Get the latest package (last in array)
+                    auto& latestPackage = packagesJson.back();
+
+                    std::string packageName = latestPackage.contains("name") ?
+                        latestPackage["name"].get<std::string>() : mapPath;
+                    std::string packageVersion = latestPackage.contains("version") ?
+                        latestPackage["version"].get<std::string>() : "v1.0";
+
+                    // Construct image URL: /projects/{id}/packages/generic/{name}/{version}/{name}.jpg
+                    std::string previewUrl = "https://celab.jetfox.ovh/api/v4/projects/" + mapId +
+                        "/packages/generic/" + packageName + "/" + packageVersion + "/" + packageName + ".jpg";
+
+                    LOG("Constructed image URL for '{}': {}", mapName, previewUrl);
+
+                    // Update map result with preview URL
+                    {
+                        std::lock_guard<std::mutex> lock(self->resultsMutex);
+
+                        if (self->searchGeneration.load() != generation) {
+                            self->completedResults++;
+                            return;
+                        }
+
+                        if (index >= 0 && index < static_cast<int>(self->RLMAPS_MapResultList.size())) {
+                            auto& mapResult = self->RLMAPS_MapResultList[index];
+
+                            if (mapResult.ID == mapId) {
+                                mapResult.PreviewUrl = previewUrl;
+                                mapResult.ImageExtension = ".jpg";
+
+                                // Check local cache for image
+                                fs::path resultImagePath = self->BakkesmodPath + "SuiteSpot\\Workshop\\img\\" + mapId + ".jpg";
+
+                                if (self->DirectoryOrFileExists(resultImagePath)) {
+                                    mapResult.ImagePath = resultImagePath;
+                                    mapResult.isImageLoaded = true;
+                                    LOG("Image already cached for '{}': {}", mapName, resultImagePath.string());
+                                } else {
+                                    mapResult.IsDownloadingPreview = true;
+                                    self->DownloadPreviewImage(previewUrl, resultImagePath.string(), index, generation);
+                                }
+
+                                self->listVersion++;
+                            }
+                        }
+                    }
+                } else {
+                    LOG("No packages found for '{}' (ID: {})", mapName, mapId);
+                }
+            } catch (const std::exception& e) {
+                LOG("Failed to parse packages for '{}': {}", mapName, e.what());
+            }
+        } else {
+            LOG("Failed to fetch packages for '{}' (code {})", mapName, code);
+        }
+
+        self->completedResults++;
+    });
+}
+
 void WorkshopDownloader::GetNumPages(std::string keyWord)
 {
     int ResultsSize = 20;

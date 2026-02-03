@@ -885,8 +885,17 @@ void SettingsUI::RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* m
             
             drawList->AddRectFilled(TopCornerLeft, RectFilled_p_max, ImColor(44, 75, 113, 255), 5.0f, 15);
             drawList->AddRect(ImageP_Min, ImageP_Max, ImColor(255, 255, 255, 255), 0, 15, 2.0f);
-            
-            if (mapResult.isImageLoaded && mapResult.Image) {
+
+            // Lazy load image from path if not yet loaded into ImageWrapper
+            if (!mapResult.ImagePath.empty() && !mapResult.Image && mapResult.isImageLoaded) {
+                try {
+                    mapResult.Image = std::make_shared<ImageWrapper>(mapResult.ImagePath.string(), false, true);
+                } catch (...) {
+                    // Failed to load image, will show empty box
+                }
+            }
+
+            if (mapResult.Image) {
                 try {
                     if (mapResult.Image->GetImGuiTex()) {
                         drawList->AddImage(mapResult.Image->GetImGuiTex(), ImageP_Min, ImageP_Max);
@@ -922,12 +931,12 @@ void SettingsUI::RLMAPS_RenderAResult(int i, ImDrawList* drawList, const char* m
             } else {
                 if (plugin_->workshopDownloader->RLMAPS_Searching) {
                     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-                    ImGui::Button("Loading details...", ImVec2(182, 20));
+                    ImGui::Button("Loading...", ImVec2(182, 20));
                     ImGui::PopStyleVar();
                 } else {
-                    if (ImGui::Button("Fetch Details", ImVec2(182, 20))) {
+                    if (ImGui::Button("Get Downloads", ImVec2(182, 20))) {
                         int generation = plugin_->workshopDownloader->GetSearchGeneration();
-                        std::thread t(&WorkshopDownloader::FetchReleaseDetails, 
+                        std::thread t(&WorkshopDownloader::FetchReleaseDetails,
                                       plugin_->workshopDownloader.get(), i, generation);
                         t.detach();
                     }

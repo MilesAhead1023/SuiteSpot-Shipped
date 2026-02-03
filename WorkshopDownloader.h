@@ -30,6 +30,7 @@ struct RLMAPS_MapResult
 {
     std::string ID;
     std::string Name;
+    std::string Path;  // Project path for constructing package URLs
     std::string Size;
     std::string Description;
     std::string PreviewUrl;
@@ -50,6 +51,7 @@ public:
     
     void GetResults(std::string keyWord, int IndexPage);
     void FetchReleaseDetails(int index, int generation);
+    void FetchImageOnly(int index, int generation);  // Lightweight: only fetches image via /packages endpoint
     void GetNumPages(std::string keyWord);
     
     void RLMAPS_DownloadWorkshop(std::string folderpath, RLMAPS_MapResult mapResult, RLMAPS_Release release);
@@ -64,9 +66,6 @@ public:
     
     // Cancels any active search
     void StopSearch();
-    
-    // Thread-safe update for UI to write back loaded images
-    void UpdateImage(int index, std::shared_ptr<ImageWrapper> image);
 
     std::atomic<bool> RLMAPS_Searching = false;
     std::atomic<int> RLMAPS_NumberOfMapsFound = 0;
@@ -91,8 +90,10 @@ public:
 
     mutable std::mutex resultsMutex; // Protects RLMAPS_MapResultList
     std::condition_variable resultsCV; // Signals when map results are ready
-    std::atomic<int> completedRequests = 0; 
-    std::atomic<int> searchGeneration = 0; 
+    std::atomic<int> completedRequests = 0;
+    std::atomic<int> completedResults = 0;  // Tracks completed release detail fetches
+    std::atomic<int> expectedResults = 0;   // Total number of maps to fetch
+    std::atomic<int> searchGeneration = 0;
     std::atomic<bool> stopRequested = false; // Flag to abort the search loop
     std::atomic<int> listVersion = 0; // Incremented whenever the list is modified, so UI knows when to copy
 

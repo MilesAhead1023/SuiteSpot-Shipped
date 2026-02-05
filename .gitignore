@@ -1,0 +1,35 @@
+# Python RAG Stack
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# RAG Storage
+rag_storage/
+gemini_rag_storage/
+storage/
+
+# Logs
+*.log
+rag_build.log
+gemini_build.log
+rag_error.log
+gemini_error.log
+
+# Environment
+.env
+.env.local
+
+# Cache
+.gptcache/
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+
+# Build artifacts
+build/
+plugins/
+node_modules/

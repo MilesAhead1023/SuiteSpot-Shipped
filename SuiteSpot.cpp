@@ -384,6 +384,23 @@ void SuiteSpot::onLoad() {
     LOG("SuiteSpot: Plugin initialization complete");
 }
 
+// #detailed comments: onUnload
+// Purpose: Clean up all SDK resources in proper order to enable hot-reload.
+//
+// Cleanup sequence (CRITICAL - must follow this order):
+//  1. Join all background threads (prevents dangling thread callbacks)
+//  2. Save pending data (ensures no data loss)
+//  3. Unhook events (removes game event callbacks pointing to freed memory)
+//  4. Reset UI components (releases ImGui resources)
+//  5. Reset managers (releases business logic)
+//  6. Clear ImGui context
+//
+// Note: BakkesMod automatically cleans up CVars and notifiers on plugin unload,
+// but event hooks MUST be manually unhooked to prevent hot-reload crashes.
+//
+// DO NOT CHANGE: This sequence prevents hot-reload crashes by ensuring
+// all callbacks are removed before the plugin DLL is unloaded. Skipping
+// event unhooking will cause BakkesMod to call freed memory on reload.
 void SuiteSpot::onUnload() {
     LOG("SuiteSpot unloading...");
 

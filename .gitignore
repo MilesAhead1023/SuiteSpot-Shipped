@@ -440,3 +440,6 @@ _codeql_detected_source_root
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Git worktrees (isolated development workspaces)
+.worktrees/

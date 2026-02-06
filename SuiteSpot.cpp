@@ -393,9 +393,20 @@ void SuiteSpot::onUnload() {
         textureDownloadThread.join();
     }
 
+    // Stop workshop downloader search thread
+    if (workshopDownloader) {
+        workshopDownloader->StopSearch();
+    }
+
     if (usageTracker) {
         usageTracker->SaveStats();
     }
+
+    // STEP 3: Unhook all game events (CRITICAL - SDK requirement)
+    gameWrapper->UnhookEventPost("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded");
+    gameWrapper->UnhookEventPost("Function TAGame.GameEvent_TrainingEditor_TA.OnInit");
+    gameWrapper->UnhookEventPost("Function TAGame.TrainingEditorMetrics_TA.TrainingShotAttempt");
+    LOG("Event hooks removed");
 
     // Automatic cleanup with smart pointers - explicit reset for clarity
     settingsUI.reset();

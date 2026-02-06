@@ -87,3 +87,7 @@ Components don't communicate directly—all coordination flows through the Hub.
 ## CVar Naming Convention
 
 All CVars use `suitespot_` prefix: `suitespot_enabled`, `suitespot_map_type`, `suitespot_delay_queue`, etc.
+
+## Related Projects
+
+**BakkesMod RAG Documentation System:** For a Python-based RAG system to query BakkesMod SDK documentation, see the separate repository at [github.com/MilesAhead1023/BakkesMod-RAG-Documentation](https://github.com/MilesAhead1023/BakkesMod-RAG-Documentation). This tool was originally developed to assist with SuiteSpot development but is now maintained independently.

@@ -408,16 +408,24 @@ void SuiteSpot::onUnload() {
     gameWrapper->UnhookEventPost("Function TAGame.TrainingEditorMetrics_TA.TrainingShotAttempt");
     LOG("Event hooks removed");
 
-    // Automatic cleanup with smart pointers - explicit reset for clarity
+    // STEP 4: Reset UI components (releases ImGui resources)
     settingsUI.reset();
     trainingPackUI.reset();
     loadoutUI.reset();
+    LOG("UI components destroyed");
+
+    // STEP 5: Reset data managers
     trainingPackMgr.reset();
     autoLoadFeature.reset();
     settingsSync.reset();
     mapManager.reset();
+    workshopDownloader.reset();
+    LOG("Managers destroyed");
 
-    LOG("SuiteSpot unloaded");
+    // STEP 6: Clear ImGui context
+    imgui_ctx = 0;
+
+    LOG("SuiteSpot unloaded successfully");
 }
 
 void SuiteSpot::Render() {
